@@ -1,0 +1,154 @@
+
+
+@file:Suppress("unused")
+
+package c.ponom.recorder2.audio_streams
+
+import android.media.AudioFormat.*
+import java.io.IOException
+import java.lang.Integer.min
+
+
+class TestSoundInputStream() : AbstractSoundInputStream()  {
+
+
+    private var prepared: Boolean=false
+    private var closed: Boolean=false
+    var testFrequency:Int = 440
+    var volume: Short = 2000
+
+    @JvmOverloads
+    @Throws(IllegalArgumentException::class,IOException::class)
+    constructor (sampleRate:Int,
+                 channelConfig:Int= CHANNEL_IN_MONO,
+                 encoding:Int= ENCODING_PCM_16BIT,
+                 testFreq: Short, volume:Short) : this() {
+        if (!(channelConfig== CHANNEL_IN_MONO ||channelConfig== CHANNEL_IN_STEREO))
+            throw IllegalArgumentException("Only CHANNEL_IN_MONO and CHANNEL_IN_STEREO supported")
+        if (!(encoding== ENCODING_PCM_8BIT ||encoding== ENCODING_PCM_16BIT))
+            throw IllegalArgumentException("Only 16 and 8 bit encodings supported")
+        // кинуть предупреждение если частоты в неслышимом диапазоне
+        channelsCount = if (channelConfig== CHANNEL_IN_MONO) 1 else  2
+        this.sampleRate = sampleRate
+        this.volume = volume
+        testFrequency=testFreq.toInt()
+
+        // todo тут будет проверка на законные значения из списка, варнинг для всех законных кроме 16,22 и 44к
+        //  и исключение для совсем левых
+        bytesPerSample = if (encoding== ENCODING_PCM_16BIT) 2 else  1
+        frameSize=bytesPerSample*channelsCount
+        prepared=true
+
+}
+
+    //доработать вызов после закрытия потока -
+
+
+   override fun read(): Int {
+       throw IllegalArgumentException("Not  implemented, use read(....)")
+   }
+
+   @Throws(IllegalArgumentException::class,NullPointerException::class)
+   override fun read(b: ByteArray?): Int {
+       if (b==null) throw NullPointerException ("Null array passed")
+       return read(b,0,b.size)
+   }
+
+
+
+    @Volatile
+   override var bytesSent: Long = 0
+
+   /**
+    * Return -1 when there is no estimated stream length (for example,for endless streams)
+    * or estimated rest of bytes in stream
+    */
+   override fun totalBytesEstimate(): Long {
+       return -1
+   }
+
+    /**
+     * Return -1 when there is no estimated stream length (for example,for endless streams)
+     * or estimated rest of bytes in stream
+     */
+   override fun bytesRemainingEstimate(): Long {
+       return -1L
+   }
+
+    /**
+     * смотри описание исходного. Теоретически тут надо сообщить сколько можно отдать без
+     * блокирования из буферов, подумать реализуемо ли это
+     */
+   override fun available(): Int {
+       return 0
+   }
+
+
+    /**
+     * Params:
+     * audioData – the array to which the recorded audio data is written.
+     * offset – 0
+     * Must not be negative, or cause the data access to go out of bounds of the array.
+     * size – the number of requested shorts. Must not be negative, or cause the data
+     * access to go out of bounds of the array.
+     * Returns:
+     * zero or the positive number of bytes that were read, or one of the following error codes.
+     * Minus 1 if stream is closed (ended)
+     * The number of shorts will be a multiple of the channel count not to exceed sizeInShorts.
+     *AudioRecord.ERROR_INVALID_OPERATION if the object isn't properly initialized
+     * AudioRecord.ERROR_BAD_VALUE if the parameters don't resolve to valid data and indexes
+     * AudioRecord.ERROR_DEAD_OBJECT if the object is not valid anymore and needs to be recreated.
+     * The dead object error code is not returned if some data was successfully transferred.
+     * In this case, the error is returned at the next read() ERROR in case of other error
+     */
+
+    @Synchronized
+    @Throws(NullPointerException::class,java.lang.IllegalArgumentException::class)
+    override fun read(b: ByteArray?, off: Int, len: Int): Int {
+        if (b==null) throw NullPointerException ("Null array passed")
+        if (off != 0) throw IllegalArgumentException("Non zero offset currently not implemented")
+        if (closed) return -1
+        val newBytes = readNextBytes(min(len,b.size))
+        newBytes.copyInto(b)
+        val bytes= newBytes.size
+        bytesSent+=bytes
+        onReadCallback?.invoke(bytesSent)
+        return bytes
+   }
+
+    private fun readNextBytes(len: Int): ByteArray {
+        return ByteArray(len)
+    }
+
+    /**
+     *
+     */
+
+    @Synchronized
+    fun readShorts(b: ShortArray, off: Int, len: Int): Int {
+        if (closed) return -1
+        val samples = 0 //audioRecord!!.read(b, off, len)
+        //onReadCallback?.invoke(bytesSent)
+        //bytesSent+=samples.coerceAtLeast(0)*2
+        return samples
+    }
+
+    @Synchronized
+    @Throws(NullPointerException::class,IllegalStateException::class)
+    fun readShorts(buffer: ShortArray): Int {
+         return readShorts(buffer,0,buffer.size)
+    }
+
+
+    //todo - как идея - можно унифицировать поведение скип и клоуз с filestream - то есть для
+    // закрытых потоков кидать исключение а не игнорить
+    @Synchronized
+    override fun close() {
+       prepared=false
+       closed=true
+    }
+
+
+}
+
+
