@@ -30,7 +30,7 @@ class MicSoundInputStream : AbstractSoundInputStream()  {
     @JvmOverloads
     @SuppressLint("MissingPermission")
     @Throws(IllegalArgumentException::class,IOException::class)
-    fun getMicSoundStream(freq:Int, bufferSize:Int, channelConfig:Int= CHANNEL_IN_MONO,
+    fun getMicSoundStream(freq:Int, bufferSize:Int=0, channelConfig:Int= CHANNEL_IN_MONO,
                           encoding:Int= ENCODING_PCM_16BIT,
                           mic:Int= MediaRecorder.AudioSource.VOICE_COMMUNICATION){
         if (!(channelConfig== CHANNEL_IN_MONO ||channelConfig== CHANNEL_IN_STEREO))
@@ -140,6 +140,7 @@ class MicSoundInputStream : AbstractSoundInputStream()  {
      * In this case, the error is returned at the next read() ERROR in case of other error
      */
 
+
     @Synchronized
     @Throws(NullPointerException::class,IllegalStateException::class)
     override fun read(b: ByteArray?, off: Int, len: Int): Int {
@@ -152,6 +153,23 @@ class MicSoundInputStream : AbstractSoundInputStream()  {
         return bytes
    }
 
+
+    @Synchronized
+    @Throws(NullPointerException::class,IllegalStateException::class)
+    fun read(b: ByteArray?, off: Int, len: Int,
+             onReady:((samples:Int,dataBytes: ByteArray) -> Unit)?): Int {
+        if (b==null) throw NullPointerException ("Null array passed")
+        if (audioRecord==null) return -1
+        val bytes = audioRecord!!.read(b, off, len)
+        var data = ByteArray(0)
+        if (bytes>0) data=b.copyOf(bytes)
+        if (onReady != null)
+            onReady(bytes,data)
+        if (bytes== ERROR_DEAD_OBJECT) close() //Конец потока
+        bytesSent+=bytes.coerceAtLeast(0)
+        onReadCallback?.invoke(bytesSent)
+        return bytes
+    }
     /**
      * Params:
      * audioData – the array to which the recorded audio data is written.
@@ -169,14 +187,20 @@ class MicSoundInputStream : AbstractSoundInputStream()  {
      * The dead object error code is not returned if some data was successfully transferred.
      * In this case, the error is returned at the next read() ERROR in case of other error
      */
-
+    @JvmOverloads
     @Synchronized
-    fun readShorts(b: ShortArray, off: Int, len: Int): Int {
+    fun readShorts(b: ShortArray, off: Int, len: Int,
+                   onReady:((samples:Int,dataSamples: ShortArray) -> Unit)? =
+        null): Int {
         if (audioRecord==null) return -1
         val samples = audioRecord!!.read(b, off, len)
         if (samples== ERROR_DEAD_OBJECT) close() //Конец потока
-        onReadCallback?.invoke(bytesSent)
+        var data = ShortArray(0)
+        if (samples>0) data=b.copyOf(samples)
+        if(onReady!=null)
+            onReady(samples,data)
         bytesSent+=samples.coerceAtLeast(0)*2
+        onReadCallback?.invoke(bytesSent)
         return samples
     }
 
