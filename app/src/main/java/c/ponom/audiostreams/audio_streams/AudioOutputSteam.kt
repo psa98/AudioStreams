@@ -9,7 +9,6 @@ import android.media.AudioFormat.*
 import android.media.AudioRecord
 import android.media.AudioTrack
 import java.io.ByteArrayOutputStream
-import java.io.IOException
 import java.nio.ByteBuffer
 
 
@@ -19,6 +18,8 @@ private const val RESERVE_BUFFER_SIZE = 16 * 1024
 
 class AudioOutputSteam private constructor() :AbstractSoundOutputStream(){
 
+
+
     lateinit var audioFormat: AudioFormat
     var audioOut:AudioTrack?=null
     private var bufferReady: Boolean = false
@@ -26,6 +27,7 @@ class AudioOutputSteam private constructor() :AbstractSoundOutputStream(){
     private var prepared = false
     private var mainBuffer: ByteBuffer = ByteBuffer.allocate(MAX_BUFFER_SIZE)
     private var growBuffer: ByteArrayOutputStream = ByteArrayOutputStream(MAX_BUFFER_SIZE)
+
 
     @JvmOverloads
     @Throws(IllegalArgumentException::class, UnsupportedOperationException::class)
@@ -91,38 +93,16 @@ The streaming start threshold is the buffer level that the written audio data mu
     }
 
     /**
-     * Writes `len` bytes from the specified byte array
-     * starting at offset `off` to this output stream.
-     * The general contract for `write(b, off, len)` is that
-     * some of the bytes in the array `b` are written to the
-     * output stream in order; element `b[off]` is the first
-     * byte written and `b[off+len-1]` is the last byte written
-     * by this operation.
-     *
-     *
-     * The `write` method of `OutputStream` calls
-     * the write method of one argument on each of the bytes to be
-     * written out. Subclasses are encouraged to override this method and
-     * provide a more efficient implementation.
-     *
-     *
-     * If `b` is `null`, a
-     * `NullPointerException` is thrown.
-     *
-     *
-     * If `off` is negative, or `len` is negative, or
-     * `off+len` is greater than the length of the array
-     * `b`, then an <tt>IndexOutOfBoundsException</tt> is thrown.
-     *
-     * @param      b     the data.
-     * @param      off   the start offset in the data.
-     * @param      len   the number of bytes to write.
-     * @exception  IOException  if an I/O error occurs. In particular,
-     * an `IOException` is thrown if the output
-     * stream is closed.
+     *Writes the audio data to the audio sink for playback (streaming mode), or copies audio data for later playback (static buffer mode). The format specified in the AudioTrack constructor should be AudioFormat.ENCODING_PCM_8BIT to correspond to the data in the array. The format can be AudioFormat.ENCODING_PCM_16BIT, but this is deprecated.
+    In streaming mode, the write will normally block until all the data has been enqueued for playback, and will return a full transfer count. However, if the track is stopped or paused on entry, or another thread interrupts the write by calling stop or pause, or an I/O error occurs during the write, then the write may return a short transfer count.
+    In static buffer mode, copies the data to the buffer starting at offset 0. Note that the actual playback of this data might occur after this function returns.
      */
+
+    @Throws(IllegalArgumentException::class,NullPointerException::class)
+    @Synchronized
     override fun write(b: ByteArray?, off: Int, len: Int) {
-        super.write(b, off, len)
+        if (b == null) throw NullPointerException("Null byte array passed")
+        audioOut?.write(b, off, len)
     }
 
     override fun close() {
