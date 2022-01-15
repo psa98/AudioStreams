@@ -141,7 +141,7 @@ open class AudioFileSoundSource {
     @Throws(IllegalStateException::class,MediaCodec.CodecException::class)
     private fun fillBuffer() {
         if (!prepared || bufferReady || eofReached) throw
-        IllegalStateException("Extractor not prepared or already released")
+        IllegalStateException("Extractor not isReady or already released")
         maxChunkSize=0
         mainBuffer.clear()
         do {

@@ -7,22 +7,27 @@ package c.ponom.recorder2.audio_streams
 import android.media.AudioFormat.*
 import java.io.IOException
 import java.lang.Integer.min
+import kotlin.math.PI
+import kotlin.math.sin
 
 
-class TestSoundInputStream() : AbstractSoundInputStream()  {
+class TestSoundInputStream private constructor() : AbstractSoundInputStream()  {
+
 
 
     private var prepared: Boolean=false
     private var closed: Boolean=false
-    var testFrequency:Int = 440
-    var volume: Short = 2000
+    var testFrequency = 0.0
+    var volume: Short = 0
+    var periodDuration =0.0
+    var samplesInPeriod=0.0
 
     @JvmOverloads
     @Throws(IllegalArgumentException::class,IOException::class)
-    constructor (sampleRate:Int,
+    constructor (testFreq: Short, volume:Short,
+                 sampleRate:Int=16000,
                  channelConfig:Int= CHANNEL_IN_MONO,
-                 encoding:Int= ENCODING_PCM_16BIT,
-                 testFreq: Short, volume:Short) : this() {
+                 encoding:Int= ENCODING_PCM_16BIT,) : this() {
         if (!(channelConfig== CHANNEL_IN_MONO ||channelConfig== CHANNEL_IN_STEREO))
             throw IllegalArgumentException("Only CHANNEL_IN_MONO and CHANNEL_IN_STEREO supported")
         if (!(encoding== ENCODING_PCM_8BIT ||encoding== ENCODING_PCM_16BIT))
@@ -31,8 +36,9 @@ class TestSoundInputStream() : AbstractSoundInputStream()  {
         channelsCount = if (channelConfig== CHANNEL_IN_MONO) 1 else  2
         this.sampleRate = sampleRate
         this.volume = volume
-        testFrequency=testFreq.toInt()
-
+        testFrequency=testFreq.toDouble()
+        periodDuration=1.0/testFrequency
+        samplesInPeriod=sampleRate.toDouble()/testFrequency
         // todo тут будет проверка на законные значения из списка, варнинг для всех законных кроме 16,22 и 44к
         //  и исключение для совсем левых
         bytesPerSample = if (encoding== ENCODING_PCM_16BIT) 2 else  1
@@ -127,10 +133,15 @@ class TestSoundInputStream() : AbstractSoundInputStream()  {
     @Synchronized
     fun readShorts(b: ShortArray, off: Int, len: Int): Int {
         if (closed) return -1
-        val samples = 0 //audioRecord!!.read(b, off, len)
-        //onReadCallback?.invoke(bytesSent)
-        //bytesSent+=samples.coerceAtLeast(0)*2
-        return samples
+        if (off != 0) throw IllegalArgumentException("Non zero offset currently not implemented")
+        val length = min(b.size,len)
+        val dataArray=ShortArray(length)
+        dataArray.forEachIndexed { index, value ->
+            dataArray[index] = calculateSampleValue(index.toLong())
+        }
+        dataArray.copyInto(b)
+        bytesSent+=len*2
+        return len
     }
 
     @Synchronized
@@ -147,6 +158,12 @@ class TestSoundInputStream() : AbstractSoundInputStream()  {
        prepared=false
        closed=true
     }
+
+    private fun calculateSampleValue(sampleNum:Long):Short{
+        val x =(sampleNum/samplesInPeriod*2*PI)
+        return (sin(x)*volume).toInt().toShort()
+    }
+
 
 
 }

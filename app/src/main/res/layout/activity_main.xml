@@ -1,38 +1,59 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
-    <com.google.android.material.appbar.AppBarLayout
-        android:layout_width="match_parent"
+
+    <TextView
+        android:id="@+id/micData"
+        android:layout_margin="16dp"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:theme="@style/Theme.AudioStreams.AppBarOverlay">
+        android:text="Mic data"
+        android:textSize="16sp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
-        <androidx.appcompat.widget.Toolbar
-            android:id="@+id/toolbar"
-            android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
-            android:background="?attr/colorPrimary"
-            app:popupTheme="@style/Theme.AudioStreams.PopupOverlay" />
+    <TextView
+        android:id="@+id/volume"
+        android:layout_margin="16dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Volume"
+        android:textSize="16sp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/micData" />
 
-    </com.google.android.material.appbar.AppBarLayout>
+    <Button
+        android:id="@+id/startMic"
+        android:layout_margin="16dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:onClick="startMic"
+        android:textAllCaps="false"
+        android:text="Start Mic"
+        android:textSize="16sp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/volume"  />
 
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/fab"
-        android:layout_width="70dp"
-        android:layout_height="70dp"
 
-        android:layout_gravity="bottom|end"
-        android:foregroundGravity="center"
-        android:layout_marginEnd="@dimen/fab_margin"
+    <Button
+        android:id="@+id/stopMic"
+        android:layout_margin="16dp"
+        android:onClick="stopMic"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAllCaps="false"
+        android:text="Stop Mic"
+        android:textSize="16sp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/startMic"  />
 
-        style="@style/Widget.MaterialComponents.ExtendedFloatingActionButton.Icon"
-        android:layout_marginBottom="16dp"
-        android:foreground="@android:drawable/ic_btn_speak_now" />
 
-    <include layout="@layout/content_main" />
 
-</androidx.coordinatorlayout.widget.CoordinatorLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

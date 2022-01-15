@@ -5,25 +5,35 @@
 package c.ponom.recorder2.audio_streams
 
 import android.annotation.SuppressLint
+import android.content.Context
+import android.media.AudioDeviceInfo
+import android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO
+import android.media.AudioDeviceInfo.TYPE_WIRED_HEADSET
 import android.media.AudioFormat.*
+import android.media.AudioManager
 import android.media.AudioRecord
 import android.media.AudioRecord.*
 import android.media.MediaRecorder
+import android.os.Build
+import androidx.annotation.RequiresApi
 import java.io.IOException
 import java.lang.Integer.max
-
 
 
 private const val BUFFER_SIZE__MULT: Int=4 //переделать под мс
 class MicSoundInputStream : AbstractSoundInputStream()  {
 
-
     private var recordingIsOn: Boolean=false
-    var realBufferSize =0
-    private var  audioRecord:AudioRecord?=null
-    var prepared=false
+    private var realBufferSize =0
+    var audioRecord:AudioRecord?=null
+
+    var isReady=false
     var bufferSizeMs = 0
 
+    var isPaused: Boolean=false
+        set(value) {
+            if (isRecording()) field=value
+    }
 
     // если разрешения нет - данные от микрофона будут пустыми. Описать в доках,
     // это проблема програмиста, а не повод бросать исключение
@@ -32,7 +42,7 @@ class MicSoundInputStream : AbstractSoundInputStream()  {
     @Throws(IllegalArgumentException::class,IOException::class)
     fun getMicSoundStream(freq:Int, bufferSize:Int=0, channelConfig:Int= CHANNEL_IN_MONO,
                           encoding:Int= ENCODING_PCM_16BIT,
-                          mic:Int= MediaRecorder.AudioSource.VOICE_COMMUNICATION){
+                          mic:Int= MediaRecorder.AudioSource.VOICE_COMMUNICATION): MicSoundInputStream {
         if (!(channelConfig== CHANNEL_IN_MONO ||channelConfig== CHANNEL_IN_STEREO))
             throw IllegalArgumentException("Only CHANNEL_IN_MONO and CHANNEL_IN_STEREO supported")
         if (!(encoding== ENCODING_PCM_8BIT ||encoding== ENCODING_PCM_16BIT))
@@ -76,8 +86,9 @@ class MicSoundInputStream : AbstractSoundInputStream()  {
          */
         if (audioRecord?.state== STATE_UNINITIALIZED)
              throw IOException ("Cannot init recording")
-        prepared=true
+        isReady=true
 
+        return this
          // todo - возможно нужны коллбэки на готовность, инициализация микрофона может быть не быстрой
     }
 
@@ -88,14 +99,6 @@ class MicSoundInputStream : AbstractSoundInputStream()  {
        throw IllegalArgumentException("Not  implemented, use read(....)")
    }
 
-   @Throws(IllegalArgumentException::class,NullPointerException::class)
-   override fun read(b: ByteArray?): Int {
-       if (b==null) throw NullPointerException ("Null array passed")
-       return read(b,0,b.size)
-   }
-
-   @Volatile
-   override var bytesSent: Long = 0
 
    /**
     * Return -1 when there is no estimated stream length (for example,for endless streams)
@@ -141,32 +144,45 @@ class MicSoundInputStream : AbstractSoundInputStream()  {
      */
 
 
+
     @Synchronized
-    @Throws(NullPointerException::class,IllegalStateException::class)
+    @Throws(NullPointerException::class)
+    override fun read(b: ByteArray?): Int {
+        if (b==null) throw NullPointerException ("Null array passed")
+        return read(b,0,b.size)
+    }
+
+    @Synchronized
+    @Throws(NullPointerException::class)
     override fun read(b: ByteArray?, off: Int, len: Int): Int {
         if (b==null) throw NullPointerException ("Null array passed")
+        if (!isRecording()||isPaused) return ERROR_INVALID_OPERATION
         if (audioRecord==null) return -1
         val bytes = audioRecord!!.read(b, off, len)
-        if (bytes== ERROR_DEAD_OBJECT) close() //Конец потока
-        bytesSent+=bytes.coerceAtLeast(0)
+        //конец потока
+        if (bytes == ERROR_DEAD_OBJECT) close()
+        if (bytes>0) bytesSent += bytes
         onReadCallback?.invoke(bytesSent)
         return bytes
-   }
+    }
 
 
     @Synchronized
-    @Throws(NullPointerException::class,IllegalStateException::class)
+    @Throws(NullPointerException::class)
     fun read(b: ByteArray?, off: Int, len: Int,
              onReady:((samples:Int,dataBytes: ByteArray) -> Unit)?): Int {
         if (b==null) throw NullPointerException ("Null array passed")
+        if (!isRecording()||isPaused) return ERROR_INVALID_OPERATION
         if (audioRecord==null) return -1
         val bytes = audioRecord!!.read(b, off, len)
-        var data = ByteArray(0)
-        if (bytes>0) data=b.copyOf(bytes)
-        if (onReady != null)
-            onReady(bytes,data)
-        if (bytes== ERROR_DEAD_OBJECT) close() //Конец потока
-        bytesSent+=bytes.coerceAtLeast(0)
+        //Конец потока
+        if (bytes == ERROR_DEAD_OBJECT) close()
+        if (bytes>0) {
+            val data = b.copyOf(bytes)
+            if (onReady != null)
+                onReady(bytes, data)
+            bytesSent += bytes
+        }
         onReadCallback?.invoke(bytesSent)
         return bytes
     }
@@ -187,28 +203,32 @@ class MicSoundInputStream : AbstractSoundInputStream()  {
      * The dead object error code is not returned if some data was successfully transferred.
      * In this case, the error is returned at the next read() ERROR in case of other error
      */
+
     @JvmOverloads
     @Synchronized
     fun readShorts(b: ShortArray, off: Int, len: Int,
-                   onReady:((samples:Int,dataSamples: ShortArray) -> Unit)? =
-        null): Int {
+                   onReady:((samples:Int,dataSamples: ShortArray) -> Unit)? =null): Int {
+        if (!isRecording()||isPaused) return ERROR_INVALID_OPERATION
         if (audioRecord==null) return -1
         val samples = audioRecord!!.read(b, off, len)
         if (samples== ERROR_DEAD_OBJECT) close() //Конец потока
-        var data = ShortArray(0)
-        if (samples>0) data=b.copyOf(samples)
-        if(onReady!=null)
-            onReady(samples,data)
-        bytesSent+=samples.coerceAtLeast(0)*2
-        onReadCallback?.invoke(bytesSent)
+        if (samples>0){
+            val data=b.copyOf(samples)
+            if(onReady!=null)
+                onReady(samples,data)
+            bytesSent+=samples.coerceAtLeast(0)*2
+            onReadCallback?.invoke(bytesSent)
+        }
         return samples
     }
+
 
     @Synchronized
     @Throws(NullPointerException::class,IllegalStateException::class)
     fun readShorts(buffer: ShortArray): Int {
          return readShorts(buffer,0,buffer.size)
     }
+
 
 
     //todo - как идея - можно унифицировать поведение скип и клоуз с filestream - то есть для
@@ -218,13 +238,14 @@ class MicSoundInputStream : AbstractSoundInputStream()  {
        if (audioRecord==null) return
        audioRecord?.release()
        recordingIsOn=false
-       prepared=false
+       isReady=false
        audioRecord=null
     }
 
     fun isRecording(): Boolean {
-        return (audioRecord?.state==STATE_INITIALIZED &&
+        recordingIsOn= (audioRecord?.state==STATE_INITIALIZED &&
                 audioRecord?.recordingState==RECORDSTATE_RECORDING)
+        return recordingIsOn
     }
 
     @Synchronized
@@ -242,6 +263,58 @@ class MicSoundInputStream : AbstractSoundInputStream()  {
             else return
         recordingIsOn=false
    }
+
+
+    @RequiresApi(Build.VERSION_CODES.P)
+    fun getAudioDeviceList(context: Context): List<AudioDeviceInfo> {
+        val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager?
+        if (audioManager==null) return ArrayList()
+        val audioDeviceInfo = audioManager.getDevices(AudioManager.GET_DEVICES_INPUTS)
+        return audioDeviceInfo!!.asList()
+
+        /*
+        головные микрофоны=
+            case TYPE_BLUETOOTH_SCO:
+            case TYPE_BLUETOOTH_A2DP:
+            case TYPE_WIRED_HEADSET:
+         */
+    }
+
+    @RequiresApi(Build.VERSION_CODES.P)
+    fun chooseWiredMicIfAvailable(context: Context){
+        val micList=getAudioDeviceList(context)
+        val device = micList.firstOrNull { it.type == TYPE_WIRED_HEADSET
+        }
+        if (device!=null) audioRecord?.preferredDevice = device
+    }
+
+    @RequiresApi(Build.VERSION_CODES.P)
+    fun isBLSCOMicAvailable(context: Context): Boolean {
+        val micList=getAudioDeviceList(context)
+        val device = micList.firstOrNull { it.type == TYPE_BLUETOOTH_SCO}
+        return device != null
+    }
+
+
+    fun getPreferredDevice(): AudioDeviceInfo? {
+        if (audioRecord==null) return null
+
+        else return audioRecord!!.preferredDevice
+    }
+
+    fun currentBufferSize(): Int {
+        if (audioRecord==null) return 0
+        return try {
+            audioRecord?.bufferSizeInFrames!!.div(frameSize)
+        } catch (e:IllegalStateException){
+            0
+        }
+    }
+
+
 }
+
+
+
 
 
