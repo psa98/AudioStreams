@@ -20,7 +20,7 @@ public class MonitoredAudioInputStream  extends AbstractSoundInputStream {
 
 
     private AbstractSoundInputStream inputStream;
-    private AbstractSoundInputStream monitorStream;
+    private AbstractSoundInputStream monitoringStream;
     private final  int bufferInitialSize = 1024*16;
     private  ByteArrayOutputStream monitorBuffer= new ByteArrayOutputStream(bufferInitialSize);
     private final Semaphore mutex = new Semaphore(1);
@@ -34,6 +34,7 @@ public class MonitoredAudioInputStream  extends AbstractSoundInputStream {
 
     public MonitoredAudioInputStream(AbstractSoundInputStream inStream) {
         inputStream=inStream;
+        monitoringStream = new MonitoringAudioInputStream();
     }
 
     private MonitoredAudioInputStream(long streamDuration, int channels,
@@ -222,9 +223,51 @@ public class MonitoredAudioInputStream  extends AbstractSoundInputStream {
     }
 
 
+    public AbstractSoundInputStream getMonitoringStream() {
+        return monitoringStream;
+    }
 
     public AbstractSoundInputStream getInputStream() {
         return inputStream;
     }
 
+    private class MonitoringAudioInputStream extends MonitoredAudioInputStream {
+
+        //todo - переопределяем это все на блокирующее чтение из буфера
+
+        public MonitoringAudioInputStream() {
+            super();
+
+        }
+
+        @Override
+        public int read() throws IOException {
+            return 0;
+        }
+
+        @Override
+        public int read(@Nullable byte[] b, int off, int len) throws IOException {
+            return 0;
+        }
+
+
+        @Override
+        public int readShorts(@NonNull short[] b, int off, int len) throws IOException {
+
+            return 0;
+        }
+
+        @Override
+        public int readShorts(@NonNull short[] b) throws IOException {
+
+            return 0;
+        }
+
+    }
+
+
+
+
+
 }
+
