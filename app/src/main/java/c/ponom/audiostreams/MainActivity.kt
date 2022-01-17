@@ -2,6 +2,8 @@ package c.ponom.audiostreams
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.media.AudioFormat.CHANNEL_OUT_STEREO
+import android.media.AudioFormat.ENCODING_PCM_16BIT
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -14,10 +16,11 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.PermissionChecker
 import androidx.navigation.ui.AppBarConfiguration
-import c.ponom.audiostreams.audio_streams.ShortArrayUtils.byteToShortArrayLittleEndian
+import c.ponom.audiostreams.audio_streams.MicSoundInputStream
+import c.ponom.audiostreams.audio_streams.MonitoredAudioInputStream
 import c.ponom.audiostreams.audio_streams.SoundProcessingUtils.getRMS
 import c.ponom.audiostreams.databinding.ActivityMainBinding
-import c.ponom.recorder2.audio_streams.MicSoundInputStream
+import c.ponom.recorder2.audio_streams.AudioOutputSteam
 import c.ponom.recorder2.audio_streams.TestSoundInputStream
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.CoroutineScope
@@ -34,8 +37,7 @@ class MainActivity : AppCompatActivity() {
     private var permissionGranted: Boolean=false
     private lateinit var appBarConfiguration: AppBarConfiguration
     private lateinit var binding: ActivityMainBinding
-    var microphoneStream:MicSoundInputStream =MicSoundInputStream()
-        .getMicSoundStream(16000,0)
+    var microphoneStream: MicSoundInputStream = MicSoundInputStream(16000)
     private var lastVolumeTimestamp = 0L
 
     @SuppressLint("SetTextI18n")
@@ -46,17 +48,15 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         checkPermission()
-        Log.e("TAG", microphoneStream.isBLSCOMicAvailable(this).toString())
-        microphoneStream.getAudioDeviceList(this).forEach {
+        Log.e("TAG", microphoneStream.isBluetoothSCOMicAvailable(this).toString())
+        microphoneStream.getInputDeviceList(this).forEach {
             Log.e("Type=", it.type.toString()) }
         val preferred = microphoneStream.getPreferredDevice().toString()
         Log.e("TAG",  preferred)
         binding.micData.text=preferred
         binding.micData.text=  "BT mic present="+
-                microphoneStream.isBLSCOMicAvailable(this).toString()
-        val testSoundInputStream=TestSoundInputStream(400,2000)
-        val data=ShortArray(100000)
-        testSoundInputStream.readShorts(data)
+            microphoneStream.isBluetoothSCOMicAvailable(this).toString()
+
     }
 
     private fun checkPermission() {
@@ -113,16 +113,16 @@ class MainActivity : AppCompatActivity() {
     }
 
     private suspend fun testMic() {
-        if (!microphoneStream.isReady) microphoneStream= MicSoundInputStream()
-        .getMicSoundStream(16000,0)
+        if (!microphoneStream.isReady) microphoneStream= MicSoundInputStream(16000)
+        val monitoredStream=MonitoredAudioInputStream(microphoneStream)
         recordingIsOn=true
         var prevVol:Short =0
         val micData = binding.micData
         microphoneStream.startRecordingSession()
         val bufferSize =microphoneStream.currentBufferSize()
-        val soundRawData = ByteArray(bufferSize)
+        val soundRawData = ShortArray(bufferSize)
             do {
-                val bytes = microphoneStream.read(soundRawData, 0, bufferSize)
+                val bytes = monitoredStream.readShorts(soundRawData)
                 if (bytes >= 0) {
                     withContext(Dispatchers.Main) {
                         run {
@@ -130,17 +130,19 @@ class MainActivity : AppCompatActivity() {
                             val meteringFreq = 300
                             if (timeNow - lastVolumeTimestamp > meteringFreq) {
                                 lastVolumeTimestamp = timeNow
-                                val vol  = (getRMS(byteToShortArrayLittleEndian(soundRawData))+prevVol)/2
+                                val vol =
+                                    (getRMS(soundRawData) + prevVol) / 2
                                 micData.text = "$vol"
-                                Log.e("Vol=", "$vol")
-                                prevVol =vol.toShort()
+                                val dataArr = ByteArray(100)
+                                monitoredStream.read(dataArr)
+                                Log.e("Vol=", "$vol, time=${monitoredStream.timestamp}")
+                                prevVol = vol.toShort()
                             }
                         }
-
                     }
                 }
             } while (bytes>=0&&recordingIsOn)
-            micData.text="0"
+            withContext(Dispatchers.Main){micData.text="0"}
             microphoneStream.stopRecordingSession()
             microphoneStream.close()
     }
@@ -155,4 +157,35 @@ class MainActivity : AppCompatActivity() {
         }
 
     }
+
+    fun playSound(view: View) {
+        val testSoundInputStream=TestSoundInputStream(440,32000, CHANNEL_OUT_STEREO)
+        val data=ShortArray(32000)
+        testSoundInputStream.readShorts(data)
+        val out  =AudioOutputSteam(16000,CHANNEL_OUT_STEREO,ENCODING_PCM_16BIT,500)
+        out.play()
+        out.writeShorts(data)
+        out.close()
+    }
+/*todo
+   разобраться с размером буфера для  вывода звука, подсократить буфер у файла
+   (вероятно надо секунд -надцать сделать)
+   наладить и протестировать пересчет таймстемпов всех классов
+   писать классы  на базе фильтрстрима - мониторный, приеобразование в байты и обратно,
+   автоперегоняющий.
+   писать энкодер.
+   для всех выводных потоков - метод отдающий ему входной поток и команду играть до его завершения
+   или команды стоп.
+   для НЕКОТОРЫХ классов которые попроще - написать поддержку 8 битного звука и пометить их отдельно.
+   для всех остальных добавть возможность отдавать  readShorts.
+
+   ! временно это на холде кроме всего что не требуется для выкладки оснвоного приложения.
+
+   Для него требуется потенциально:
+   Микрофоннный вводной поток ПЛЮС мониторный поток с буферизацией
+   либо приделка выводного потока с буферизацией в основную записывалку, со кольцевым буфером.
+
+
+
+ */
 }

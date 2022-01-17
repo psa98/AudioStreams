@@ -1,8 +1,6 @@
 
 
-@file:Suppress("unused")
-
-package c.ponom.recorder2.audio_streams
+package c.ponom.audiostreams.audio_streams
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -14,22 +12,20 @@ import android.media.AudioManager
 import android.media.AudioRecord
 import android.media.AudioRecord.*
 import android.media.MediaRecorder
-import android.os.Build
-import androidx.annotation.RequiresApi
+import c.ponom.recorder2.audio_streams.AbstractSoundInputStream
+import java.io.ByteArrayOutputStream
 import java.io.IOException
-import java.lang.Integer.max
+import java.lang.Integer.min
 
 
-private const val BUFFER_SIZE__MULT: Int=4 //переделать под мс
-class MicSoundInputStream : AbstractSoundInputStream()  {
+private const val BUFFER_SIZE__MULT: Int=4 //todo переделать под мс
+class MicSoundInputStream private constructor(): AbstractSoundInputStream()  {
 
     private var recordingIsOn: Boolean=false
-    private var realBufferSize =0
-    var audioRecord:AudioRecord?=null
+    private var audioRecord:AudioRecord?=null
+    private var buffer=ByteArrayOutputStream(1024*16)
 
     var isReady=false
-    var bufferSizeMs = 0
-
     var isPaused: Boolean=false
         set(value) {
             if (isRecording()) field=value
@@ -40,15 +36,16 @@ class MicSoundInputStream : AbstractSoundInputStream()  {
     @JvmOverloads
     @SuppressLint("MissingPermission")
     @Throws(IllegalArgumentException::class,IOException::class)
-    fun getMicSoundStream(freq:Int, bufferSize:Int=0, channelConfig:Int= CHANNEL_IN_MONO,
+    constructor(freq:Int, channelConfig:Int= CHANNEL_IN_MONO,
                           encoding:Int= ENCODING_PCM_16BIT,
-                          mic:Int= MediaRecorder.AudioSource.VOICE_COMMUNICATION): MicSoundInputStream {
+                          mic:Int= MediaRecorder.AudioSource.VOICE_COMMUNICATION): this() {
         if (!(channelConfig== CHANNEL_IN_MONO ||channelConfig== CHANNEL_IN_STEREO))
             throw IllegalArgumentException("Only CHANNEL_IN_MONO and CHANNEL_IN_STEREO supported")
         if (!(encoding== ENCODING_PCM_8BIT ||encoding== ENCODING_PCM_16BIT))
             throw IllegalArgumentException("Only 16 and 8 bit encodings supported")
         val minBuffer= getMinBufferSize(freq,channelConfig,encoding)
-        audioRecord= AudioRecord(mic,freq ,channelConfig,encoding,max(minBuffer*BUFFER_SIZE__MULT,minBuffer))
+            //todo - разбираться
+        audioRecord= AudioRecord(mic,freq ,channelConfig,encoding,minBuffer)
          if (audioRecord==null) throw IllegalArgumentException("Audio record init error - wrong params? ")
         channelsCount = audioRecord!!.channelCount
         sampleRate = audioRecord!!.sampleRate
@@ -57,38 +54,14 @@ class MicSoundInputStream : AbstractSoundInputStream()  {
         bytesPerSample = if (encoding== ENCODING_PCM_16BIT) 2  else 1
 
         frameSize=bytesPerSample*channelsCount
-        realBufferSize=audioRecord!!.bufferSizeInFrames*frameSize
-        //val dev = audioRecord!!.preferredDevice
-        //val audioManager = App.appContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager?
-        //val adi = audioManager!!.getDevices(AudioManager.GET_DEVICES_INPUTS)
-        bufferSizeMs=(audioRecord!!.bufferSizeInFrames.toFloat()/sampleRate*1000).toInt()
 
-         //audioManager.mode
-       //audioRecord.preferredDevice=AudioDeviceInfo()
-        /**
-         * для будущего развития можно будет выставить наружу методы сообщающие удобым образом:
-         * - имеется ли в системе доступный блютуз микрофон
-         * - надо ли подключаться к нему при попытке создать поток.
-         * что делать при его физ.отключении - сбросить поток через -1, через исключение, или молча
-         * переключиться на другой микрофон
-         *
-         * в принципе следует исходить из того что есть всегда основной (фронт) и почти всегда шумодавный (бэк)
-         * микрофоны, SCO блютуз может быть как подключен так и отключен в любой момент, как и проводная
-         * гарнтитура, замещение основного микрофона гарнитурным проводным может производиться и
-         * авто (тестировать надо)
-         *
-         */
-        //val list = audioRecord.activeMicrophones
-        /// это на  посмотреть не будет ли в списке микрофонов от гарнитур  и прочего и что вообще есть
+        //bufferSizeMs=(audioRecord!!.bufferSizeInFrames.toFloat()/sampleRate*1000).toInt()
 
-        /**
-         * д
-         */
-        if (audioRecord?.state== STATE_UNINITIALIZED)
-             throw IOException ("Cannot init recording")
+
+        //if (audioRecord?.state== STATE_UNINITIALIZED)
+        //     throw IOException ("Cannot init recording")
         isReady=true
 
-        return this
          // todo - возможно нужны коллбэки на готовность, инициализация микрофона может быть не быстрой
     }
 
@@ -159,14 +132,21 @@ class MicSoundInputStream : AbstractSoundInputStream()  {
         if (!isRecording()||isPaused) return ERROR_INVALID_OPERATION
         if (audioRecord==null) return -1
         val bytes = audioRecord!!.read(b, off, len)
-        //конец потока
         if (bytes == ERROR_DEAD_OBJECT) close()
-        if (bytes>0) bytesSent += bytes
+        //конец потока
+        if (bytes>0) {
+            // потестить варианты с ростом буфера и с его исчерпанием - тогда возвращаем нули
+            //val data = b.copyOf(bytes)
+            //bufferPutShorts(ShortArrayUtils.byteToShortArray(data))
+            //val buff=ByteArray(1000)
+            //val len =bufferReadBytes(buff,0,1000)
+            bytesSent += bytes
+        }
         onReadCallback?.invoke(bytesSent)
         return bytes
     }
 
-
+/*
     @Synchronized
     @Throws(NullPointerException::class)
     fun read(b: ByteArray?, off: Int, len: Int,
@@ -186,6 +166,8 @@ class MicSoundInputStream : AbstractSoundInputStream()  {
         onReadCallback?.invoke(bytesSent)
         return bytes
     }
+
+ */
     /**
      * Params:
      * audioData – the array to which the recorded audio data is written.
@@ -204,17 +186,17 @@ class MicSoundInputStream : AbstractSoundInputStream()  {
      * In this case, the error is returned at the next read() ERROR in case of other error
      */
 
-    @JvmOverloads
+
     @Synchronized
     fun readShorts(b: ShortArray, off: Int, len: Int,
-                   onReady:((samples:Int,dataSamples: ShortArray) -> Unit)? =null): Int {
+                   onReady:((samples:Int,dataSamples: ShortArray) -> Unit)?): Int {
         if (!isRecording()||isPaused) return ERROR_INVALID_OPERATION
         if (audioRecord==null) return -1
         val samples = audioRecord!!.read(b, off, len)
         if (samples== ERROR_DEAD_OBJECT) close() //Конец потока
         if (samples>0){
             val data=b.copyOf(samples)
-            if(onReady!=null)
+                if(onReady!=null)
                 onReady(samples,data)
             bytesSent+=samples.coerceAtLeast(0)*2
             onReadCallback?.invoke(bytesSent)
@@ -224,9 +206,20 @@ class MicSoundInputStream : AbstractSoundInputStream()  {
 
 
     @Synchronized
-    @Throws(NullPointerException::class,IllegalStateException::class)
-    fun readShorts(buffer: ShortArray): Int {
-         return readShorts(buffer,0,buffer.size)
+    override fun readShorts(b: ShortArray, off: Int, len: Int): Int {
+        if (!isRecording()||isPaused) return ERROR_INVALID_OPERATION
+        if (audioRecord==null) return -1
+        val samples = audioRecord!!.read(b, off, len)
+        if (samples== ERROR_DEAD_OBJECT) close() //Конец потока
+        if (samples>0)
+                     bytesSent+=samples.coerceAtLeast(0)*2
+
+        return samples
+    }
+
+    @Synchronized
+    override fun readShorts(b: ShortArray): Int {
+         return readShorts(b,0,b.size)
     }
 
 
@@ -265,8 +258,7 @@ class MicSoundInputStream : AbstractSoundInputStream()  {
    }
 
 
-    @RequiresApi(Build.VERSION_CODES.P)
-    fun getAudioDeviceList(context: Context): List<AudioDeviceInfo> {
+    fun getInputDeviceList(context: Context): List<AudioDeviceInfo> {
         val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager?
         if (audioManager==null) return ArrayList()
         val audioDeviceInfo = audioManager.getDevices(AudioManager.GET_DEVICES_INPUTS)
@@ -280,17 +272,17 @@ class MicSoundInputStream : AbstractSoundInputStream()  {
          */
     }
 
-    @RequiresApi(Build.VERSION_CODES.P)
+
     fun chooseWiredMicIfAvailable(context: Context){
-        val micList=getAudioDeviceList(context)
+        val micList=getInputDeviceList(context)
         val device = micList.firstOrNull { it.type == TYPE_WIRED_HEADSET
         }
         if (device!=null) audioRecord?.preferredDevice = device
     }
 
-    @RequiresApi(Build.VERSION_CODES.P)
-    fun isBLSCOMicAvailable(context: Context): Boolean {
-        val micList=getAudioDeviceList(context)
+
+    fun isBluetoothSCOMicAvailable(context: Context): Boolean {
+        val micList=getInputDeviceList(context)
         val device = micList.firstOrNull { it.type == TYPE_BLUETOOTH_SCO}
         return device != null
     }
@@ -298,7 +290,6 @@ class MicSoundInputStream : AbstractSoundInputStream()  {
 
     fun getPreferredDevice(): AudioDeviceInfo? {
         if (audioRecord==null) return null
-
         else return audioRecord!!.preferredDevice
     }
 
@@ -310,8 +301,41 @@ class MicSoundInputStream : AbstractSoundInputStream()  {
             0
         }
     }
+    @Synchronized
+    fun bufferPutShorts(dataSamples: ShortArray){
+        buffer.write(ShortArrayUtils.shortToByteArrayLittleEndian(dataSamples))
+    }
+
+    @Synchronized
+    fun bufferReadBytes(b:ByteArray,off:Int,len:Int):Int{
+    val length =min(len,b.size)
+    if (length==0)return 0
+    if (buffer.size()==0) waitForData()
+    val fullBuffer=buffer.toByteArray()
+    val returnBuffer=fullBuffer.copyOf(min(length,fullBuffer.size)) //todo  - с офсетом разобраться потом
+    returnBuffer.copyInto(b)
+    val restBufferSize=fullBuffer.size-returnBuffer.size
+    if (restBufferSize==0){
+        buffer=ByteArrayOutputStream(0)
+
+    }else{ // todo с единичками что не то
+    val restBuffer=fullBuffer.copyOfRange(length,fullBuffer.size)
+    buffer=ByteArrayOutputStream(restBuffer.size)
+    buffer.write(restBuffer)
+    }
+    return length
+    }
+
+    override fun canReturnShorts():Boolean = true
 
 
+    private fun waitForData() {
+    // тут надо блокировать поток до:
+    // его закрытия close()
+    // Любого успешного пополнения буфера
+
+    // TODO("Not yet implemented")
+    }
 }
 
 

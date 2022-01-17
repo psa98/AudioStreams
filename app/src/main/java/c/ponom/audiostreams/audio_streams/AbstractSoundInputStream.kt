@@ -1,7 +1,10 @@
 package c.ponom.recorder2.audio_streams
 
 import android.media.MediaFormat
+import java.io.IOException
 import java.io.InputStream
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 
 
 /**
@@ -57,6 +60,9 @@ abstract class AbstractSoundInputStream :    InputStream {
     // переделать в будущем под поддержку 8 битных
     open var bytesPerSample: Int =0
 
+
+    @Volatile
+    open var timestamp=0L //todo  пересчет выведенных байтов в мс.
     @Volatile
     open var bytesSent = 0L
 
@@ -119,26 +125,68 @@ abstract class AbstractSoundInputStream :    InputStream {
         return 0
     }
 
-
+    @Throws(IOException::class)
     abstract override fun read(): Int
 
+    @Throws(IOException::class)
     abstract override fun read(b: ByteArray?, off: Int, len: Int): Int
 
-    @Throws(IllegalArgumentException::class)
+    @Throws(IOException::class)
     override fun skip(n: Long): Long {
         throw IllegalArgumentException("Skip not supported ")
     }
-    @Throws(IllegalArgumentException::class)
+
     override fun mark(readlimit: Int) {
         throw IllegalArgumentException("Mark/reset not supported ")
 
     }
-    @Throws(IllegalArgumentException::class)
+    @Throws(IOException::class)
     override fun reset() {
         throw IllegalArgumentException("Mark/reset not supported ")
     }
     override fun markSupported(): Boolean {
         return false
+    }
+
+    open fun canReturnShorts():Boolean =false
+
+    @Throws(IOException::class)
+    open fun readShorts(b: ShortArray, off: Int, len: Int): Int {
+        throw NoSuchMethodException("Check canReturnShorts() before = implementing class  must override " +
+                "readShorts(b: ShortArray, off: Int, len: Int) and canReturnShorts()")
+    }
+
+    @Throws(IOException::class)
+    open fun readShorts(b: ShortArray): Int {
+        throw NoSuchMethodException("Check canReturnShorts() before = implementing class  must override " +
+                "readShorts(b: ShortArray) and canReturnShorts()")
+    }
+
+
+    fun shortToByteArray(arr: ShortArray): ByteArray {
+        val byteBuffer = ByteBuffer.allocate(arr.size * 2)
+        byteBuffer.asShortBuffer().put(arr)
+        return byteBuffer.array()
+    }
+
+
+    fun byteToShortArray(bytes: ByteArray): ShortArray {
+        val shorts = ShortArray(bytes.size / 2)
+        ByteBuffer.wrap(bytes).asShortBuffer()[shorts]
+        return shorts
+    }
+
+    fun byteToShortArrayLittleEndian(bytes: ByteArray): ShortArray {
+        val shorts = ShortArray(bytes.size / 2)
+        ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer()[shorts]
+        return shorts
+    }
+
+
+    fun shortToByteArrayLittleEndian(shorts: ShortArray): ByteArray {
+        val byteBuffer = ByteBuffer.allocate(shorts.size * 2).order(ByteOrder.LITTLE_ENDIAN)
+        byteBuffer.asShortBuffer().put(shorts)
+        return byteBuffer.array()
     }
 
 

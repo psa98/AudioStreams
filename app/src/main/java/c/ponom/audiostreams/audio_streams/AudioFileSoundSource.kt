@@ -40,7 +40,7 @@ private const val LOG_TAG: String = "Decoder"
 @Suppress("unused")
 open class AudioFileSoundSource {
     private var maxChunkSize = 0
-    lateinit var codec: MediaCodec
+    private lateinit var codec: MediaCodec
     private var bufferReady: Boolean = false
     private var maxPos = MAX_BUFFER_SIZE - RESERVE_BUFFER_SIZE
     private val extractor: MediaExtractor = MediaExtractor()
@@ -83,12 +83,13 @@ open class AudioFileSoundSource {
         return createStream()
     }
 
+    @JvmOverloads
     @Throws(IOException::class,IllegalArgumentException::class,MediaCodec.CodecException::class)
-    fun getStream(context: Context, uri: Uri): SoundInputStream {
+    fun getStream(context: Context, uri: Uri, headers: MutableMap<String, String>? =null): SoundInputStream {
         if (prepared || released)
             throw IllegalStateException("The extractor was already started or released, create new instance")
         this.uri = uri
-        extractor.setDataSource(context, uri, null)
+        extractor.setDataSource(context, uri, headers)
         return createStream()
     }
 
@@ -217,7 +218,7 @@ open class AudioFileSoundSource {
             codecOutputBuffers = codec.outputBuffers
         } else if (res == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
             val format = codec.outputFormat
-            // ничего не делаем, не ожидается такое посреди трека
+            // todo? ничего не делаем, не ожидается такое посреди трека
             // mAudioTrack.setPlaybackRate(oformat.getInteger(MediaFormat.KEY_SAMPLE_RATE))
         }
     }
@@ -268,7 +269,7 @@ open class AudioFileSoundSource {
             // todo - реализовать
             if (bytesSent >= bytesFinalCount && bytesFinalCount != 0)
                 return -1
-            val bytes =  getBytesFromBuffer(b, off, len)
+            val bytes =  getBytesFromBuffer(b, len)
             bytesSent += bytes
             onReadCallback?.invoke(bytesSent)
             return  bytes
@@ -326,7 +327,7 @@ open class AudioFileSoundSource {
 
 
 
-        private fun getBytesFromBuffer(b: ByteArray, off: Int, len: Int): Int {
+        private fun getBytesFromBuffer(b: ByteArray, len: Int): Int {
             if (!bufferReady && !eofReached) fillBuffer()
             var length = len
             if (len >= mainBuffer.remaining()) {

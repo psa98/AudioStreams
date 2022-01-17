@@ -54,7 +54,7 @@ class TestSoundInputStream private constructor() : AbstractSoundInputStream()  {
        throw IllegalArgumentException("Not  implemented, use read(....)")
    }
 
-   @Throws(IllegalArgumentException::class,NullPointerException::class)
+   @Throws(NullPointerException::class)
    override fun read(b: ByteArray?): Int {
        if (b==null) throw NullPointerException ("Null array passed")
        return read(b,0,b.size)
@@ -131,7 +131,8 @@ class TestSoundInputStream private constructor() : AbstractSoundInputStream()  {
      */
 
     @Synchronized
-    fun readShorts(b: ShortArray, off: Int, len: Int): Int {
+    @Throws(NullPointerException::class)
+    override fun readShorts(b: ShortArray, off: Int, len: Int): Int {
         if (closed) return -1
         if (off != 0) throw IllegalArgumentException("Non zero offset currently not implemented")
         val length = min(b.size,len)
@@ -145,11 +146,11 @@ class TestSoundInputStream private constructor() : AbstractSoundInputStream()  {
     }
 
     @Synchronized
-    @Throws(NullPointerException::class,IllegalStateException::class)
-    fun readShorts(buffer: ShortArray): Int {
-         return readShorts(buffer,0,buffer.size)
+    override fun readShorts(b: ShortArray): Int {
+         return readShorts(b,0,b.size)
     }
 
+    override fun canReturnShorts():Boolean =true
 
     //todo - как идея - можно унифицировать поведение скип и клоуз с filestream - то есть для
     // закрытых потоков кидать исключение а не игнорить
