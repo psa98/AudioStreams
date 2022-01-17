@@ -9,6 +9,7 @@ import android.media.AudioFormat.*
 import android.media.AudioTrack
 import android.media.AudioTrack.WRITE_BLOCKING
 import android.media.AudioTrack.getMinBufferSize
+import java.io.IOException
 
 
 private  const val MAX_BUFFER_SIZE = 1024 * 1024
@@ -24,7 +25,6 @@ class AudioOutputSteam private constructor() :AbstractSoundOutputStream(){
     private var prepared = false
 
 
-
     @JvmOverloads
     @Throws(IllegalArgumentException::class, UnsupportedOperationException::class)
     constructor( sampleRate: Int, channelConfig: Int,encoding:Int, minBufferInMs:Int=0) : this() {
@@ -32,10 +32,13 @@ class AudioOutputSteam private constructor() :AbstractSoundOutputStream(){
         // todo тут будет проверка на законные значения из списка, варнинг для всех законных кроме
         //  8, 16,22, 32 и 44 - 48к
         //  и исключение для совсем левых
-        channelsCount = if (channelConfig== CHANNEL_OUT_MONO)
-            1 else if (channelConfig== CHANNEL_OUT_STEREO) 2 else 0
-        if (channelsCount==0)
+        if (!(channelConfig== CHANNEL_OUT_MONO ||channelConfig== CHANNEL_OUT_STEREO))
             throw IllegalArgumentException("Only CHANNEL_OUT_MONO and CHANNEL_OUT_STEREO supported")
+        channelsCount = when (channelConfig) {
+            CHANNEL_OUT_MONO -> 1
+            CHANNEL_OUT_STEREO -> 2
+            else -> 0
+        }
         if (!(encoding== ENCODING_PCM_8BIT ||encoding== ENCODING_PCM_16BIT))
             throw IllegalArgumentException("Only 16 and 8 bit encodings supported")
         this.encoding=encoding
@@ -44,15 +47,12 @@ class AudioOutputSteam private constructor() :AbstractSoundOutputStream(){
             ENCODING_PCM_16BIT-> frameSize= channelsCount*2
         }
 
-        val bufferForTime = (frameTimeMs(encoding,sampleRate)*minBufferInMs/frameSize).toInt()
+        //val bufferForTime = (frameTimeMs(encoding,sampleRate)*minBufferInMs/frameSize).toInt()
         audioFormat= Builder()
             .setEncoding(encoding)
             .setSampleRate(sampleRate)
             .setChannelMask(channelsCount)
             .build()
-        val bufferSize= getMinBufferSize(sampleRate, channelConfig, encoding)
-        // todo - запарился с буфером че то
-
         audioOut=AudioTrack.Builder()
             .setAudioFormat(audioFormat)
             .setBufferSizeInBytes(getMinBufferSize(sampleRate, channelConfig, encoding))
@@ -61,7 +61,6 @@ class AudioOutputSteam private constructor() :AbstractSoundOutputStream(){
             // - смотри доки как там устроен подбор буфера для этой штуки,
             // думаю без нее никаких гарантий дать нельзя
             .build()
-
     }
 
 
@@ -70,7 +69,6 @@ class AudioOutputSteam private constructor() :AbstractSoundOutputStream(){
     fun play(){
         if (audioOut == null) throw IllegalStateException("Stream closed or in error")
         audioOut?.play()
-
     }
 
     @Synchronized
@@ -92,15 +90,15 @@ class AudioOutputSteam private constructor() :AbstractSoundOutputStream(){
     In static buffer mode, copies the data to the buffer starting at offset 0. Note that the actual playback of this data might occur after this function returns.
      */
 
-    //этот метод использовать не рекомендуется вообще, для 16 битных у нас есть writeShorts
-    @Throws(IllegalArgumentException::class,NullPointerException::class, IllegalStateException::class)
+
+    @Throws(IllegalArgumentException::class,NullPointerException::class,
+        IllegalStateException::class,IOException::class)
     @Synchronized
     override fun write(b: ByteArray?, off: Int, len: Int){
         if (audioOut == null) throw IllegalStateException("Stream closed or in error state")
-        if (b == null) throw NullPointerException("Null byte array passed")
-        val size=b.size
-        if (off > len ||len>size||off>size||off<0||len<0)
-            throw IllegalArgumentException("Wrong parameters")
+        if (b == null) throw NullPointerException ("Null array passed")
+        if (off < 0 || len < 0 || len > b.size - off)
+            throw IndexOutOfBoundsException("Wrong read(...) params")
         val result:Int = audioOut!!.write(b, off, len)
         bytesSent += result.coerceAtLeast(0)
         if (result<0)
@@ -109,14 +107,14 @@ class AudioOutputSteam private constructor() :AbstractSoundOutputStream(){
 
 
     @Synchronized
-    @Throws(IllegalArgumentException::class,IllegalStateException::class)
+    @Throws(IllegalArgumentException::class,IllegalStateException::class,IOException::class)
     fun writeShorts(b: ShortArray) {
         writeShorts(b,0,b.size)
     }
 
 
     @Synchronized
-    @Throws(IllegalArgumentException::class,IllegalStateException::class)
+    @Throws(IllegalArgumentException::class,IllegalStateException::class,IOException::class)
     fun writeShorts(b: ShortArray, off: Int, len: Int) {
         if (audioOut == null) throw IllegalStateException("Stream closed or in error state")
         val size=b.size
@@ -127,7 +125,7 @@ class AudioOutputSteam private constructor() :AbstractSoundOutputStream(){
         if (result<0)
             throw IllegalStateException ("Error code $result - see codes for AudioTrack write(byte []..)")
    }
-
+    @Synchronized
     override fun close() {
         stopAndClear()
         audioOut?.release()
@@ -135,6 +133,8 @@ class AudioOutputSteam private constructor() :AbstractSoundOutputStream(){
 
     }
 
+    @Synchronized
+    @Throws(IOException::class)
     override fun write(b: Int) {
         val byteArray=ByteArray(1){b.toByte()}
         write(byteArray,0,1)

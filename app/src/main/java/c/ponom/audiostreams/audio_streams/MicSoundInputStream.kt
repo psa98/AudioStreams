@@ -69,7 +69,7 @@ class MicSoundInputStream private constructor(): AbstractSoundInputStream()  {
 
 
    override fun read(): Int {
-       throw IllegalArgumentException("Not  implemented, use read(....)")
+       throw NotImplementedError("Not  implemented, use read(....)")
    }
 
 
@@ -122,15 +122,21 @@ class MicSoundInputStream private constructor(): AbstractSoundInputStream()  {
     @Throws(NullPointerException::class)
     override fun read(b: ByteArray?): Int {
         if (b==null) throw NullPointerException ("Null array passed")
+        if (b.isEmpty()) return 0
+        if (audioRecord==null) return -1
+
         return read(b,0,b.size)
     }
 
     @Synchronized
-    @Throws(NullPointerException::class)
+    @Throws(NullPointerException::class,IOException::class,IndexOutOfBoundsException::class)
     override fun read(b: ByteArray?, off: Int, len: Int): Int {
-        if (b==null) throw NullPointerException ("Null array passed")
-        if (!isRecording()||isPaused) return ERROR_INVALID_OPERATION
+        if (b == null) throw NullPointerException ("Null array passed")
+        if (off < 0 || len < 0 || len > b.size - off)
+            throw IndexOutOfBoundsException("Wrong read(...) params")
+        if (len == 0) return 0
         if (audioRecord==null) return -1
+        if (!isRecording()||isPaused) return ERROR_INVALID_OPERATION
         val bytes = audioRecord!!.read(b, off, len)
         if (bytes == ERROR_DEAD_OBJECT) close()
         //конец потока
@@ -190,8 +196,11 @@ class MicSoundInputStream private constructor(): AbstractSoundInputStream()  {
     @Synchronized
     fun readShorts(b: ShortArray, off: Int, len: Int,
                    onReady:((samples:Int,dataSamples: ShortArray) -> Unit)?): Int {
-        if (!isRecording()||isPaused) return ERROR_INVALID_OPERATION
+        if (off < 0 || len < 0 || len > b.size - off)
+            throw IndexOutOfBoundsException("Wrong read(...) params")
+        if (len == 0) return 0
         if (audioRecord==null) return -1
+        if (!isRecording()||isPaused) return ERROR_INVALID_OPERATION
         val samples = audioRecord!!.read(b, off, len)
         if (samples== ERROR_DEAD_OBJECT) close() //Конец потока
         if (samples>0){
@@ -207,13 +216,14 @@ class MicSoundInputStream private constructor(): AbstractSoundInputStream()  {
 
     @Synchronized
     override fun readShorts(b: ShortArray, off: Int, len: Int): Int {
-        if (!isRecording()||isPaused) return ERROR_INVALID_OPERATION
+        if (off < 0 || len < 0 || len > b.size - off)
+            throw IndexOutOfBoundsException("Wrong read(...) params")
+        if (len == 0) return 0
         if (audioRecord==null) return -1
+        if (!isRecording()||isPaused) return ERROR_INVALID_OPERATION
         val samples = audioRecord!!.read(b, off, len)
         if (samples== ERROR_DEAD_OBJECT) close() //Конец потока
-        if (samples>0)
-                     bytesSent+=samples.coerceAtLeast(0)*2
-
+        if (samples>0)bytesSent+=samples.coerceAtLeast(0)*2
         return samples
     }
 

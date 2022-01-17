@@ -24,10 +24,12 @@ class TestSoundInputStream private constructor() : AbstractSoundInputStream()  {
 
     @JvmOverloads
     @Throws(IllegalArgumentException::class,IOException::class)
-    constructor (testFreq: Short, volume:Short,
-                 sampleRate:Int=16000,
-                 channelConfig:Int= CHANNEL_IN_MONO,
-                 encoding:Int= ENCODING_PCM_16BIT,) : this() {
+    constructor (
+        testFreq: Short, volume: Short,
+        sampleRate: Int = 16000,
+        channelConfig: Int = CHANNEL_IN_MONO,
+        encoding: Int = ENCODING_PCM_16BIT,
+    ) : this() {
         if (!(channelConfig== CHANNEL_IN_MONO ||channelConfig== CHANNEL_IN_STEREO))
             throw IllegalArgumentException("Only CHANNEL_IN_MONO and CHANNEL_IN_STEREO supported")
         if (!(encoding== ENCODING_PCM_8BIT ||encoding== ENCODING_PCM_16BIT))
@@ -49,9 +51,11 @@ class TestSoundInputStream private constructor() : AbstractSoundInputStream()  {
 
     //доработать вызов после закрытия потока -
 
-
+    // тестить
    override fun read(): Int {
-       throw IllegalArgumentException("Not  implemented, use read(....)")
+       val b=ByteArray(1)
+       if (closed) return -1
+       return read(b)+128
    }
 
    @Throws(NullPointerException::class)
@@ -109,9 +113,11 @@ class TestSoundInputStream private constructor() : AbstractSoundInputStream()  {
      */
 
     @Synchronized
-    @Throws(NullPointerException::class,java.lang.IllegalArgumentException::class)
+    @Throws(NullPointerException::class,IllegalArgumentException::class)
     override fun read(b: ByteArray?, off: Int, len: Int): Int {
-        if (b==null) throw NullPointerException ("Null array passed")
+        if (b == null) throw NullPointerException("Null array passed")
+        if (off < 0 || len < 0 || len > b.size - off) throw IndexOutOfBoundsException("Wrong read(...) params")
+        if (len == 0) return 0
         if (off != 0) throw IllegalArgumentException("Non zero offset currently not implemented")
         if (closed) return -1
         val newBytes = readNextBytes(min(len,b.size))
@@ -133,6 +139,8 @@ class TestSoundInputStream private constructor() : AbstractSoundInputStream()  {
     @Synchronized
     @Throws(NullPointerException::class)
     override fun readShorts(b: ShortArray, off: Int, len: Int): Int {
+        if (off < 0 || len < 0 || len > b.size - off) throw IndexOutOfBoundsException("Wrong read(...) params")
+        if (len == 0) return 0
         if (closed) return -1
         if (off != 0) throw IllegalArgumentException("Non zero offset currently not implemented")
         val length = min(b.size,len)
@@ -147,7 +155,8 @@ class TestSoundInputStream private constructor() : AbstractSoundInputStream()  {
 
     @Synchronized
     override fun readShorts(b: ShortArray): Int {
-         return readShorts(b,0,b.size)
+        if (closed) return -1
+        return if (b.isEmpty()) 0 else readShorts(b, 0, b.size)
     }
 
     override fun canReturnShorts():Boolean =true

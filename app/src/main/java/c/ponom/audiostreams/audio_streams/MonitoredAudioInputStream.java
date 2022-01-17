@@ -123,7 +123,7 @@ public class MonitoredAudioInputStream  extends AbstractSoundInputStream {
 
     @Override
     public int readShorts(@NonNull short[] b, int off, int len) throws IOException {
-        bufferPutShorts(b);
+        //bufferPutShorts(b);
         return inputStream.readShorts(b, off, len);
     }
 
@@ -161,7 +161,11 @@ public class MonitoredAudioInputStream  extends AbstractSoundInputStream {
 
     @Override //протестить что будет если отмониторенный поток кинет другое исключение
     public int read(@Nullable byte[] b, int off, int len) throws IOException {
-        bufferPutBytes(b);
+        if (b == null) throw new NullPointerException("Null array passed");
+        if (off < 0 || len < 0 || len > b.length - off)
+            throw new IndexOutOfBoundsException("Wrong read(...) params");
+        if (len == 0) return 0;
+        //bufferPutBytes(b);
         return inputStream.read(b, off, len);
     }
 
@@ -173,32 +177,30 @@ public class MonitoredAudioInputStream  extends AbstractSoundInputStream {
 
 
     synchronized void bufferPutShorts(short[] dataSamples) throws IOException {
-
         monitorBuffer.write(shortToByteArrayLittleEndian(dataSamples));
-
     }
 
 
-    synchronized int  bufferReadBytes(byte[] b,int off, int len) throws IOException {
+    synchronized int  bufferReadBytes(byte[] b, int off, int len) throws IOException {
+        if (b == null) throw new NullPointerException("Null array passed");
+        if (off < 0 || len < 0 || len > b.length - off)
+            throw new IndexOutOfBoundsException("Wrong read(...) params");
+        if (len == 0) return 0;
         int length =min(len,b.length);
         if (length==0)return 0;
-        if (monitorBuffer.size()==0) waitForData();
         byte[] fullBuffer=monitorBuffer.toByteArray();
         byte[] returnBuffer=Arrays.copyOf(fullBuffer,(min(length,fullBuffer.length)));
         //todo  - с офсетом разобраться потом
-        b= Arrays.copyOf(returnBuffer,returnBuffer.length);
-
+        System.arraycopy(returnBuffer,0,b,0,returnBuffer.length);
         int restBufferSize=fullBuffer.length-returnBuffer.length;
-        if (restBufferSize==0){
-            clearBuffer();
 
-
-        }else{ // todo с единичками что не то
+        if (restBufferSize==0) monitorBuffer.reset();
+        else{
             byte[] restBuffer=Arrays.copyOfRange(fullBuffer,returnBuffer.length,fullBuffer.length);
-            monitorBuffer=new ByteArrayOutputStream(restBuffer.length);
+            monitorBuffer.reset(); //были проблемы решившиеся заменой бцфера на статик
             monitorBuffer.write(restBuffer);
         }
-        return length;
+        return returnBuffer.length;
     }
 
     private void clearBuffer() {
@@ -247,20 +249,27 @@ public class MonitoredAudioInputStream  extends AbstractSoundInputStream {
 
         @Override
         public int read(@Nullable byte[] b, int off, int len) throws IOException {
+            if (b == null) throw new NullPointerException("Null array passed");
+            if (off < 0 || len < 0 || len > b.length - off)
+                throw new IndexOutOfBoundsException("Wrong read(...) params");
+            if (len == 0) return 0;
             return 0;
         }
 
 
         @Override
         public int readShorts(@NonNull short[] b, int off, int len) throws IOException {
-
+              if (off < 0 || len < 0 || len > b.length - off)
+                throw new IndexOutOfBoundsException("Wrong read(...) params");
+            if (len == 0) return 0;
             return 0;
         }
 
         @Override
         public int readShorts(@NonNull short[] b) throws IOException {
 
-            return 0;
+
+            return readShorts(b,0,b.length);
         }
 
     }

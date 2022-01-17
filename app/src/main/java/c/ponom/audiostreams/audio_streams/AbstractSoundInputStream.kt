@@ -1,5 +1,7 @@
 package c.ponom.recorder2.audio_streams
 
+import android.media.AudioFormat
+import android.media.AudioFormat.ENCODING_PCM_16BIT
 import android.media.MediaFormat
 import java.io.IOException
 import java.io.InputStream
@@ -60,11 +62,16 @@ abstract class AbstractSoundInputStream :    InputStream {
     // переделать в будущем под поддержку 8 битных
     open var bytesPerSample: Int =0
 
-
+    var encoding:Int= ENCODING_PCM_16BIT
     @Volatile
     open var timestamp=0L //todo  пересчет выведенных байтов в мс.
     @Volatile
     open var bytesSent = 0L
+        set(value) {
+            field=value
+            timestamp=(frameTimeMs(this.encoding,this.sampleRate)*value).toLong()
+        }
+
 
     /**
      * Override the method to return -1 if there is no estimated stream length (for example,for endless
@@ -125,11 +132,30 @@ abstract class AbstractSoundInputStream :    InputStream {
         return 0
     }
 
+
+
     @Throws(IOException::class)
     abstract override fun read(): Int
 
+
     @Throws(IOException::class)
     abstract override fun read(b: ByteArray?, off: Int, len: Int): Int
+
+
+
+    @Throws(IOException::class)
+    open fun readShorts(b: ShortArray, off: Int, len: Int): Int {
+        throw NoSuchMethodException("Check canReturnShorts() before = implementing class  must override " +
+                "readShorts(b: ShortArray, off: Int, len: Int) and canReturnShorts()")
+    }
+
+    @Throws(IOException::class)
+    open fun readShorts(b: ShortArray): Int {
+        throw NoSuchMethodException("Check canReturnShorts() before = implementing class  must override " +
+                "readShorts(b: ShortArray) and canReturnShorts()")
+    }
+
+
 
     @Throws(IOException::class)
     override fun skip(n: Long): Long {
@@ -150,17 +176,6 @@ abstract class AbstractSoundInputStream :    InputStream {
 
     open fun canReturnShorts():Boolean =false
 
-    @Throws(IOException::class)
-    open fun readShorts(b: ShortArray, off: Int, len: Int): Int {
-        throw NoSuchMethodException("Check canReturnShorts() before = implementing class  must override " +
-                "readShorts(b: ShortArray, off: Int, len: Int) and canReturnShorts()")
-    }
-
-    @Throws(IOException::class)
-    open fun readShorts(b: ShortArray): Int {
-        throw NoSuchMethodException("Check canReturnShorts() before = implementing class  must override " +
-                "readShorts(b: ShortArray) and canReturnShorts()")
-    }
 
 
     fun shortToByteArray(arr: ShortArray): ByteArray {
@@ -189,5 +204,14 @@ abstract class AbstractSoundInputStream :    InputStream {
         return byteBuffer.array()
     }
 
+
+    private fun frameTimeMs(encoding:Int, rate:Int):Double{
+        val bytesInFrame:Int = when (encoding){
+            AudioFormat.ENCODING_PCM_8BIT -> channelsCount
+            ENCODING_PCM_16BIT -> channelsCount*2
+            else-> 0
+        }
+        return 1.0/(rate*bytesInFrame.toDouble())
+    }
 
 }

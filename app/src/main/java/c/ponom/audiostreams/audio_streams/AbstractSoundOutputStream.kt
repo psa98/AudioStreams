@@ -12,6 +12,8 @@ abstract class AbstractSoundOutputStream() :
     var sampleRate: Int=0
     var channelsCount:Int=0 // 1 or 2 only
     var frameSize: Int=0 // посчитать размер в конструкторе
+
+
     var encoding:Int=0 //ENCODING_PCM_8BIT  или  ENCODING_PCM_16BIT)
 
     @Volatile
@@ -36,14 +38,14 @@ abstract class AbstractSoundOutputStream() :
     }
 
 
-    fun frameTimeMs(encoding:Int,rate:Int):Double{
-        val bytesInFrame:Int = when (encoding){
-            ENCODING_PCM_8BIT -> channelsCount
-            ENCODING_PCM_16BIT -> channelsCount*2
-            else-> 0
-        }
-        return 1.0/(rate*bytesInFrame.toDouble())
+
+    abstract override fun write(b: ByteArray?, off: Int, len: Int)
+
+    override fun write(b: ByteArray) {
+        write(b,0,b.size)
     }
+
+
 
     open fun setRecommendedBufferSizeMs(ms:Int){
 
@@ -77,5 +79,15 @@ abstract class AbstractSoundOutputStream() :
         val byteBuffer = ByteBuffer.allocate(shorts.size * 2).order(ByteOrder.LITTLE_ENDIAN)
         byteBuffer.asShortBuffer().put(shorts)
         return byteBuffer.array()
+    }
+
+
+    private fun frameTimeMs(encoding:Int, rate:Int):Double{
+        val bytesInFrame:Int = when (encoding){
+            ENCODING_PCM_8BIT -> channelsCount
+            ENCODING_PCM_16BIT -> channelsCount*2
+            else-> 0
+        }
+        return 1.0/(rate*bytesInFrame.toDouble())
     }
 }

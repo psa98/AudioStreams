@@ -242,7 +242,7 @@ open class AudioFileSoundSource {
         @Throws(IllegalArgumentException::class,NullPointerException::class,MediaCodec.CodecException::class)
         @Synchronized
         override fun read(): Int {
-            if (bytesSent >= bytesFinalCount)
+            if ((bytesSent >= bytesFinalCount && bytesFinalCount != 0)||released)
                 return -1
             //это ситуация =  отдан последний байт через return mainBuffer.get() ниже
             if (mainBuffer.remaining() == 0) fillBuffer()
@@ -266,9 +266,10 @@ open class AudioFileSoundSource {
         override fun read(b: ByteArray?, off: Int, len: Int): Int {
             if (b == null) throw NullPointerException("Null byte array passed")
             if (off != 0) throw IllegalArgumentException("Non zero offset currently not implemented")
-            // todo - реализовать
-            if (bytesSent >= bytesFinalCount && bytesFinalCount != 0)
+            // todo - реализовать работу с офсетом потом
+            if ((bytesSent >= bytesFinalCount && bytesFinalCount != 0)||released)
                 return -1
+            if (b.isEmpty() ||len==0) return 0
             val bytes =  getBytesFromBuffer(b, len)
             bytesSent += bytes
             onReadCallback?.invoke(bytesSent)
