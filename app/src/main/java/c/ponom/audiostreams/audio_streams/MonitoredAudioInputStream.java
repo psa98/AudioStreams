@@ -10,22 +10,20 @@ import androidx.annotation.Nullable;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.concurrent.Semaphore;
 
 import c.ponom.recorder2.audio_streams.AbstractSoundInputStream;
+import kotlin.NotImplementedError;
 import kotlin.Unit;
 import kotlin.jvm.functions.Function1;
 
 public class MonitoredAudioInputStream  extends AbstractSoundInputStream {
 
-
+    final int BLOCKING_PAUSE = 5; //период запроса о появлении данныз в буфере, мс
     private AbstractSoundInputStream inputStream;
-    private AbstractSoundInputStream monitoringStream;
+    private MonitoringAudioInputStream monitoringStream;
     private final  int bufferInitialSize = 1024*16;
-    private  ByteArrayOutputStream monitorBuffer= new ByteArrayOutputStream(bufferInitialSize);
-    private final Semaphore mutex = new Semaphore(1);
-
-
+    private  ByteArrayOutputStream monitorBuffer;
+    private boolean closedMain=false;
 
 
     private MonitoredAudioInputStream(){
@@ -35,8 +33,9 @@ public class MonitoredAudioInputStream  extends AbstractSoundInputStream {
     public MonitoredAudioInputStream(AbstractSoundInputStream inStream) {
         inputStream=inStream;
         monitoringStream = new MonitoringAudioInputStream();
-    }
+        monitorBuffer=monitoringStream.monitorBuffer;
 
+    }
     private MonitoredAudioInputStream(long streamDuration, int channels,
                                      int samplingRate) {
 
@@ -123,7 +122,7 @@ public class MonitoredAudioInputStream  extends AbstractSoundInputStream {
 
     @Override
     public int readShorts(@NonNull short[] b, int off, int len) throws IOException {
-        //bufferPutShorts(b);
+        bufferPutShorts(b);
         return inputStream.readShorts(b, off, len);
     }
 
@@ -140,17 +139,10 @@ public class MonitoredAudioInputStream  extends AbstractSoundInputStream {
         return read(b,0,b.length);
     }
 
-    /**
-     * Closes this input stream and releases any system resources associated
-     * with the stream.,b
-     *
-     * <p> The <code>close</code> method of <code>InputStream</code> does
-     * nothing.
-     *
-     * @throws IOException if an I/O error occurs.
-     */
     @Override
     public void close() throws IOException {
+        closedMain=true;
+        monitoringStream.close();
         inputStream.close();
     }
 
@@ -161,11 +153,12 @@ public class MonitoredAudioInputStream  extends AbstractSoundInputStream {
 
     @Override //протестить что будет если отмониторенный поток кинет другое исключение
     public int read(@Nullable byte[] b, int off, int len) throws IOException {
+        if (closedMain) return -1;
         if (b == null) throw new NullPointerException("Null array passed");
         if (off < 0 || len < 0 || len > b.length - off)
             throw new IndexOutOfBoundsException("Wrong read(...) params");
         if (len == 0) return 0;
-        //bufferPutBytes(b);
+        bufferPutBytes(b);
         return inputStream.read(b, off, len);
     }
 
@@ -186,6 +179,7 @@ public class MonitoredAudioInputStream  extends AbstractSoundInputStream {
         if (off < 0 || len < 0 || len > b.length - off)
             throw new IndexOutOfBoundsException("Wrong read(...) params");
         if (len == 0) return 0;
+        if (closedMain) return -1;
         int length =min(len,b.length);
         if (length==0)return 0;
         byte[] fullBuffer=monitorBuffer.toByteArray();
@@ -193,39 +187,21 @@ public class MonitoredAudioInputStream  extends AbstractSoundInputStream {
         //todo  - с офсетом разобраться потом
         System.arraycopy(returnBuffer,0,b,0,returnBuffer.length);
         int restBufferSize=fullBuffer.length-returnBuffer.length;
-
         if (restBufferSize==0) monitorBuffer.reset();
         else{
             byte[] restBuffer=Arrays.copyOfRange(fullBuffer,returnBuffer.length,fullBuffer.length);
-            monitorBuffer.reset(); //были проблемы решившиеся заменой бцфера на статик
+            monitorBuffer.reset();
             monitorBuffer.write(restBuffer);
+
+            //monitoringStream.askingThread.interrupt();
+            // не тестил, может быть надежнее
+
         }
         return returnBuffer.length;
     }
 
-    private void clearBuffer() {
-        monitorBuffer=new ByteArrayOutputStream(0);
 
-        //mutex.acquireUninterruptibly(); - это надо выставить в том потоке где у нас сторонний
-        // read()
-
-        // тут выставляем мутекс
-    }
-
-    private void waitForData() {
-
-        // тут тормозим если семафор занят.
-
-
-        // тут надо блокировать поток до:
-        // его закрытия close()
-        // Любого успешного пополнения буфера
-
-        // TODO("Not yet implemented")
-    }
-
-
-    public AbstractSoundInputStream getMonitoringStream() {
+    public MonitoringAudioInputStream getMonitoringStream() {
         return monitoringStream;
     }
 
@@ -233,9 +209,15 @@ public class MonitoredAudioInputStream  extends AbstractSoundInputStream {
         return inputStream;
     }
 
+
+
+
     private class MonitoringAudioInputStream extends MonitoredAudioInputStream {
 
-        //todo - переопределяем это все на блокирующее чтение из буфера
+        Thread askingThread = Thread.currentThread();
+        private boolean closedMonitor =false;
+
+        private  ByteArrayOutputStream monitorBuffer= new ByteArrayOutputStream(bufferInitialSize);
 
         public MonitoringAudioInputStream() {
             super();
@@ -244,33 +226,55 @@ public class MonitoredAudioInputStream  extends AbstractSoundInputStream {
 
         @Override
         public int read() throws IOException {
-            return 0;
+            throw new NotImplementedError("Not implemented, use read(b[]....)");
         }
 
         @Override
-        public int read(@Nullable byte[] b, int off, int len) throws IOException {
-            if (b == null) throw new NullPointerException("Null array passed");
-            if (off < 0 || len < 0 || len > b.length - off)
-                throw new IndexOutOfBoundsException("Wrong read(...) params");
-            if (len == 0) return 0;
-            return 0;
+        public int read(byte[] b) throws IOException {
+            return read(b,0,b.length);
+        }
+
+        @Override
+        synchronized public int read(@Nullable byte[] b, int off, int len) throws IOException {
+            if (b==null)throw new NullPointerException("Null buffer presented");
+            if (len==0||b.length==0) return 0;
+            if (closedMonitor) return -1;
+            askingThread=Thread.currentThread();
+            while (monitorBuffer.size() == 0&&!closedMonitor&&!closedMain) {
+                try {
+                    Thread.sleep(BLOCKING_PAUSE);
+                } catch (InterruptedException e) {
+                    //
+                }
+            }
+            return bufferReadBytes(b,off,len);
         }
 
 
         @Override
         public int readShorts(@NonNull short[] b, int off, int len) throws IOException {
-              if (off < 0 || len < 0 || len > b.length - off)
-                throw new IndexOutOfBoundsException("Wrong read(...) params");
-            if (len == 0) return 0;
-            return 0;
+            byte[] byteArray = new byte[b.length*2];
+            int bytes = read(byteArray,off*2,len*2);
+            short[]  resultArray = ShortArrayUtils.INSTANCE.byteToShortArray(byteArray);
+            int resultLen = min(bytes/2,b.length);
+            System.arraycopy(resultArray,0,b,0,resultLen);
+            return resultLen;
+       }
+
+        @Override
+        public void close() throws IOException {
+            super.close();
+            monitorBuffer.reset();
+            monitorBuffer =new ByteArrayOutputStream(0);
+            closedMonitor =true;
+
         }
 
         @Override
         public int readShorts(@NonNull short[] b) throws IOException {
-
-
             return readShorts(b,0,b.length);
         }
+
 
     }
 

@@ -22,9 +22,7 @@ class Mp3OutputAudioStream private constructor() : AbstractSoundOutputStream(){
     constructor(outStream:OutputStream, inSampleRate: Int, channelConfig: Int,encoding:Int, minBufferInMs:Int=0) : this() {
         sampleRate = inSampleRate
         outputStream=outStream
-        // todo тут будет проверка на законные значения из списка, варнинг для всех законных кроме
-        //  8, 16,22, 32 и 44 - 48к
-        //  и исключение для совсем левых
+
         if (!(channelConfig== AudioFormat.CHANNEL_OUT_MONO ||channelConfig== AudioFormat.CHANNEL_OUT_STEREO))
             throw IllegalArgumentException("Only CHANNEL_OUT_MONO and CHANNEL_OUT_STEREO supported")
         channelsCount = when (channelConfig) {
@@ -43,19 +41,24 @@ class Mp3OutputAudioStream private constructor() : AbstractSoundOutputStream(){
 
 
 
-    /**Важно! OutBitrate - это уровень сжатого потока и он задается  в килобитах/сек! то есть
-     * стандартные значения от 32 до 320, а не от 8000 до 48000
-     *
-     */
-
-    constructor(inSampleRate:Int, outBitrate:Int, outStereoMode: LameBuilder.Mode, outChannelsNum:Int) : this() {
-
+    constructor(outStream:OutputStream,inSampleRate:Int, outBitrate:Int, outStereoMode: LameBuilder.Mode, outChannelsNum:Int) : this() {
+        outputStream=outStream
         androidLame= LameBuilder()
             .setInSampleRate(inSampleRate)
             .setMode(outStereoMode )
             .setOutChannels(outChannelsNum)
             .setOutBitrate(outBitrate)
             .build()
+
+        //реализовать так - доп. параметр в конструкторе - это моно стрим или интерливед
+
+        /**Важно! OutBitrate - это уровень сжатого потока и он задается  в килобитах/сек! то есть
+         * стандартные значения от 32 до 320, а не от 8000 до 48000
+         *
+         */
+        // todo тут будет проверка на законные значения из списка, варнинг для всех законных кроме
+        //  8, 16,22, 32 и 44 - 48к
+        //  и исключение для совсем левых
     }
 
 

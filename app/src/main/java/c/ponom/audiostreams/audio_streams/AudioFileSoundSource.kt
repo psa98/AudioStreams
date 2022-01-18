@@ -97,7 +97,6 @@ open class AudioFileSoundSource {
     private fun createStream(): SoundInputStream {
         extractor.selectTrack(0)
         var mediaFormat:MediaFormat = extractor.getTrackFormat(0)
-
         var mimeString =""
         try {
             for (i:Int in 0 until extractor.trackCount) {
@@ -111,13 +110,14 @@ open class AudioFileSoundSource {
             sampleRate = mediaFormat.getInteger("sample-rate")
             channelsCount = mediaFormat.getInteger("channel-count")
         } catch (e:ClassCastException){
-            // ничего не делаем, очень битый файл. todo - надо бы вернуть сразу -1
+            // ничего не делаем, очень битый файл.
+            throw IllegalArgumentException("Wrong file format")
+            // todo документация андроида так же обещает что это три параметра декодер добудет
+            // из потока с почти любым audio. Но я бы ограничил список разумным количеством
+            // и документировал расширения, из raw ничего не добыть к примеру
         }
-        // todo документация андроида так же обещает что это три параметра декодер добудет
-        // из потока с почти любым audio. Но я бы ограничил список разумным количеством
-        // и документировал расширения, из raw ничего не добыть к примеру
         codec = MediaCodec.createDecoderByType(mimeString)
-        // todo если тут могут таки бросить исклюение - надо их все обработать. И IO в процессе работы,
+        // todo если тут могут таки бросить исключение - надо их все обработать. И IO в процессе работы,
         //типа "внезапно стерли файл" - лучше просто выдать конец потока
         codec.configure(mediaFormat, null, null, 0)
         codec.start()
@@ -242,7 +242,10 @@ open class AudioFileSoundSource {
         @Throws(IllegalArgumentException::class,NullPointerException::class,MediaCodec.CodecException::class)
         @Synchronized
         override fun read(): Int {
-            if ((bytesSent >= bytesFinalCount && bytesFinalCount != 0)||released)
+            // были проблемы после вставки  ||released непонятные
+            if ((bytesSent >= bytesFinalCount && bytesFinalCount != 0)
+                    //||released
+            )
                 return -1
             //это ситуация =  отдан последний байт через return mainBuffer.get() ниже
             if (mainBuffer.remaining() == 0) fillBuffer()
@@ -266,10 +269,11 @@ open class AudioFileSoundSource {
         override fun read(b: ByteArray?, off: Int, len: Int): Int {
             if (b == null) throw NullPointerException("Null byte array passed")
             if (off != 0) throw IllegalArgumentException("Non zero offset currently not implemented")
-            // todo - реализовать работу с офсетом потом
-            if ((bytesSent >= bytesFinalCount && bytesFinalCount != 0)||released)
-                return -1
-            if (b.isEmpty() ||len==0) return 0
+            if ((bytesSent >= bytesFinalCount && bytesFinalCount != 0)
+                ||released
+            ) return -1
+            //    странно, но добавление проверки на released давало ранний -1 в поток
+            if (len==0) return 0
             val bytes =  getBytesFromBuffer(b, len)
             bytesSent += bytes
             onReadCallback?.invoke(bytesSent)
@@ -334,7 +338,8 @@ open class AudioFileSoundSource {
             if (len >= mainBuffer.remaining()) {
                 length = mainBuffer.remaining()
                 bufferReady = false
-            }
+            } // интересно, не может ли это случайно дать запрос на получение 0 если мы
+            // считали последний байт после EOF? и потом цикл?
             mainBuffer.get(b, 0, length)
             return length
         }

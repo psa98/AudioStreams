@@ -68,6 +68,7 @@ class MainActivity : AppCompatActivity() {
                 ), PERMISSION_REQUEST_CODE
             )
         }
+
         updateUi()
     }
 
@@ -113,6 +114,8 @@ class MainActivity : AppCompatActivity() {
 
     private suspend fun testMic() {
         if (!microphoneStream.isReady) microphoneStream= MicSoundInputStream(16000)
+        val askingThread = Thread.currentThread()
+        askingThread.interrupt()
         //val monitoredStream=MonitoredAudioInputStream(microphoneStream)
         recordingIsOn=true
         var prevVol:Short =0

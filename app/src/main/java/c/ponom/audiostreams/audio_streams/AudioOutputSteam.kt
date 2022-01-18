@@ -12,8 +12,8 @@ import android.media.AudioTrack.getMinBufferSize
 import java.io.IOException
 
 
-private  const val MAX_BUFFER_SIZE = 1024 * 1024
-private const val RESERVE_BUFFER_SIZE = 16 * 1024
+private  const val MAX_BUFFER_SIZE = 512 * 1024
+private const val RESERVE_BUFFER_SIZE = 24 * 1024
 
 
 class AudioOutputSteam private constructor() :AbstractSoundOutputStream(){

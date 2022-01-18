@@ -13,9 +13,7 @@ import android.media.AudioRecord
 import android.media.AudioRecord.*
 import android.media.MediaRecorder
 import c.ponom.recorder2.audio_streams.AbstractSoundInputStream
-import java.io.ByteArrayOutputStream
 import java.io.IOException
-import java.lang.Integer.min
 
 
 private const val BUFFER_SIZE__MULT: Int=4 //todo переделать под мс
@@ -23,13 +21,9 @@ class MicSoundInputStream private constructor(): AbstractSoundInputStream()  {
 
     private var recordingIsOn: Boolean=false
     private var audioRecord:AudioRecord?=null
-    private var buffer=ByteArrayOutputStream(1024*16)
 
     var isReady=false
-    var isPaused: Boolean=false
-        set(value) {
-            if (isRecording()) field=value
-    }
+
 
     // если разрешения нет - данные от микрофона будут пустыми. Описать в доках,
     // это проблема програмиста, а не повод бросать исключение
@@ -122,9 +116,7 @@ class MicSoundInputStream private constructor(): AbstractSoundInputStream()  {
     @Throws(NullPointerException::class)
     override fun read(b: ByteArray?): Int {
         if (b==null) throw NullPointerException ("Null array passed")
-        if (b.isEmpty()) return 0
         if (audioRecord==null) return -1
-
         return read(b,0,b.size)
     }
 
@@ -136,18 +128,11 @@ class MicSoundInputStream private constructor(): AbstractSoundInputStream()  {
             throw IndexOutOfBoundsException("Wrong read(...) params")
         if (len == 0) return 0
         if (audioRecord==null) return -1
-        if (!isRecording()||isPaused) return ERROR_INVALID_OPERATION
+        if (!isRecording()) return ERROR_INVALID_OPERATION
         val bytes = audioRecord!!.read(b, off, len)
         if (bytes == ERROR_DEAD_OBJECT) close()
         //конец потока
-        if (bytes>0) {
-            // потестить варианты с ростом буфера и с его исчерпанием - тогда возвращаем нули
-            //val data = b.copyOf(bytes)
-            //bufferPutShorts(ShortArrayUtils.byteToShortArray(data))
-            //val buff=ByteArray(1000)
-            //val len =bufferReadBytes(buff,0,1000)
-            bytesSent += bytes
-        }
+        if (bytes>0) bytesSent += bytes
         onReadCallback?.invoke(bytesSent)
         return bytes
     }
@@ -200,9 +185,12 @@ class MicSoundInputStream private constructor(): AbstractSoundInputStream()  {
             throw IndexOutOfBoundsException("Wrong read(...) params")
         if (len == 0) return 0
         if (audioRecord==null) return -1
-        if (!isRecording()||isPaused) return ERROR_INVALID_OPERATION
+        if (!isRecording()) return ERROR_INVALID_OPERATION
         val samples = audioRecord!!.read(b, off, len)
-        if (samples== ERROR_DEAD_OBJECT) close() //Конец потока
+        if (samples== ERROR_DEAD_OBJECT) {
+            close()
+            return  -1
+        }
         if (samples>0){
             val data=b.copyOf(samples)
                 if(onReady!=null)
@@ -220,10 +208,14 @@ class MicSoundInputStream private constructor(): AbstractSoundInputStream()  {
             throw IndexOutOfBoundsException("Wrong read(...) params")
         if (len == 0) return 0
         if (audioRecord==null) return -1
-        if (!isRecording()||isPaused) return ERROR_INVALID_OPERATION
+        if (!isRecording()) return ERROR_INVALID_OPERATION
         val samples = audioRecord!!.read(b, off, len)
-        if (samples== ERROR_DEAD_OBJECT) close() //Конец потока
-        if (samples>0)bytesSent+=samples.coerceAtLeast(0)*2
+        if (samples== ERROR_DEAD_OBJECT) {
+            close()
+            return  -1
+        }
+            //Конец потока
+        if (samples>0)bytesSent+=samples*2
         return samples
     }
 
@@ -231,8 +223,6 @@ class MicSoundInputStream private constructor(): AbstractSoundInputStream()  {
     override fun readShorts(b: ShortArray): Int {
          return readShorts(b,0,b.size)
     }
-
-
 
     //todo - как идея - можно унифицировать поведение скип и клоуз с filestream - то есть для
     // закрытых потоков кидать исключение а не игнорить
@@ -246,6 +236,10 @@ class MicSoundInputStream private constructor(): AbstractSoundInputStream()  {
     }
 
     fun isRecording(): Boolean {
+        if (audioRecord==null){
+            recordingIsOn=false
+            return false
+        }
         recordingIsOn= (audioRecord?.state==STATE_INITIALIZED &&
                 audioRecord?.recordingState==RECORDSTATE_RECORDING)
         return recordingIsOn
@@ -273,13 +267,6 @@ class MicSoundInputStream private constructor(): AbstractSoundInputStream()  {
         if (audioManager==null) return ArrayList()
         val audioDeviceInfo = audioManager.getDevices(AudioManager.GET_DEVICES_INPUTS)
         return audioDeviceInfo!!.asList()
-
-        /*
-        головные микрофоны=
-            case TYPE_BLUETOOTH_SCO:
-            case TYPE_BLUETOOTH_A2DP:
-            case TYPE_WIRED_HEADSET:
-         */
     }
 
 
@@ -311,41 +298,10 @@ class MicSoundInputStream private constructor(): AbstractSoundInputStream()  {
             0
         }
     }
-    @Synchronized
-    fun bufferPutShorts(dataSamples: ShortArray){
-        buffer.write(ShortArrayUtils.shortToByteArrayLittleEndian(dataSamples))
-    }
-
-    @Synchronized
-    fun bufferReadBytes(b:ByteArray,off:Int,len:Int):Int{
-    val length =min(len,b.size)
-    if (length==0)return 0
-    if (buffer.size()==0) waitForData()
-    val fullBuffer=buffer.toByteArray()
-    val returnBuffer=fullBuffer.copyOf(min(length,fullBuffer.size)) //todo  - с офсетом разобраться потом
-    returnBuffer.copyInto(b)
-    val restBufferSize=fullBuffer.size-returnBuffer.size
-    if (restBufferSize==0){
-        buffer=ByteArrayOutputStream(0)
-
-    }else{ // todo с единичками что не то
-    val restBuffer=fullBuffer.copyOfRange(length,fullBuffer.size)
-    buffer=ByteArrayOutputStream(restBuffer.size)
-    buffer.write(restBuffer)
-    }
-    return length
-    }
 
     override fun canReturnShorts():Boolean = true
 
 
-    private fun waitForData() {
-    // тут надо блокировать поток до:
-    // его закрытия close()
-    // Любого успешного пополнения буфера
-
-    // TODO("Not yet implemented")
-    }
 }
 
 

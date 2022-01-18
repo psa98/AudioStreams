@@ -69,7 +69,7 @@ abstract class AbstractSoundInputStream :    InputStream {
     open var bytesSent = 0L
         set(value) {
             field=value
-            timestamp=(frameTimeMs(this.encoding,this.sampleRate)*value).toLong()
+            timestamp=(frameTimeMs(encoding,sampleRate,channelsCount)*value).toLong()
         }
 
 
@@ -145,13 +145,13 @@ abstract class AbstractSoundInputStream :    InputStream {
 
     @Throws(IOException::class)
     open fun readShorts(b: ShortArray, off: Int, len: Int): Int {
-        throw NoSuchMethodException("Check canReturnShorts() before = implementing class  must override " +
+        throw NoSuchMethodException("Check canReturnShorts() before. Implementing class  must override " +
                 "readShorts(b: ShortArray, off: Int, len: Int) and canReturnShorts()")
     }
 
     @Throws(IOException::class)
     open fun readShorts(b: ShortArray): Int {
-        throw NoSuchMethodException("Check canReturnShorts() before = implementing class  must override " +
+        throw NoSuchMethodException("Check canReturnShorts() before. Implementing class  must override " +
                 "readShorts(b: ShortArray) and canReturnShorts()")
     }
 
@@ -177,27 +177,6 @@ abstract class AbstractSoundInputStream :    InputStream {
     open fun canReturnShorts():Boolean =false
 
 
-
-    fun shortToByteArray(arr: ShortArray): ByteArray {
-        val byteBuffer = ByteBuffer.allocate(arr.size * 2)
-        byteBuffer.asShortBuffer().put(arr)
-        return byteBuffer.array()
-    }
-
-
-    fun byteToShortArray(bytes: ByteArray): ShortArray {
-        val shorts = ShortArray(bytes.size / 2)
-        ByteBuffer.wrap(bytes).asShortBuffer()[shorts]
-        return shorts
-    }
-
-    fun byteToShortArrayLittleEndian(bytes: ByteArray): ShortArray {
-        val shorts = ShortArray(bytes.size / 2)
-        ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer()[shorts]
-        return shorts
-    }
-
-
     fun shortToByteArrayLittleEndian(shorts: ShortArray): ByteArray {
         val byteBuffer = ByteBuffer.allocate(shorts.size * 2).order(ByteOrder.LITTLE_ENDIAN)
         byteBuffer.asShortBuffer().put(shorts)
@@ -205,13 +184,13 @@ abstract class AbstractSoundInputStream :    InputStream {
     }
 
 
-    private fun frameTimeMs(encoding:Int, rate:Int):Double{
+    private fun frameTimeMs(encoding:Int, rate:Int,channels: Int):Double{
         val bytesInFrame:Int = when (encoding){
-            AudioFormat.ENCODING_PCM_8BIT -> channelsCount
-            ENCODING_PCM_16BIT -> channelsCount*2
+            AudioFormat.ENCODING_PCM_8BIT -> channels
+            ENCODING_PCM_16BIT -> channels*2
             else-> 0
         }
-        return 1.0/(rate*bytesInFrame.toDouble())
+        return 1000.0/(rate*bytesInFrame.toDouble())
     }
 
 }
