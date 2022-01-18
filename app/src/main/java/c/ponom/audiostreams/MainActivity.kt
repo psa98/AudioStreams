@@ -17,7 +17,6 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.PermissionChecker
 import androidx.navigation.ui.AppBarConfiguration
 import c.ponom.audiostreams.audio_streams.MicSoundInputStream
-import c.ponom.audiostreams.audio_streams.MonitoredAudioInputStream
 import c.ponom.audiostreams.audio_streams.SoundProcessingUtils.getRMS
 import c.ponom.audiostreams.databinding.ActivityMainBinding
 import c.ponom.recorder2.audio_streams.AudioOutputSteam
@@ -114,15 +113,16 @@ class MainActivity : AppCompatActivity() {
 
     private suspend fun testMic() {
         if (!microphoneStream.isReady) microphoneStream= MicSoundInputStream(16000)
-        val monitoredStream=MonitoredAudioInputStream(microphoneStream)
+        //val monitoredStream=MonitoredAudioInputStream(microphoneStream)
         recordingIsOn=true
         var prevVol:Short =0
+        //val mp3Encoder=Mp3Encoder(16000,32,LameBuilder.Mode.MONO,1)
         val micData = binding.micData
         microphoneStream.startRecordingSession()
         val bufferSize =microphoneStream.currentBufferSize()
         val soundRawData = ShortArray(bufferSize)
             do {
-                val bytes = monitoredStream.readShorts(soundRawData)
+                val bytes = microphoneStream.readShorts(soundRawData)
                 if (bytes >= 0) {
                     withContext(Dispatchers.Main) {
                         run {
@@ -134,8 +134,9 @@ class MainActivity : AppCompatActivity() {
                                     (getRMS(soundRawData) + prevVol) / 2
                                 micData.text = "$vol"
                                 val dataArr = ByteArray(100)
-                                monitoredStream.read(dataArr)
-                                Log.e("Vol=", "$vol, time=${monitoredStream.timestamp}")
+                                //monitoredStream.read(dataArr)
+                                Log.e("Vol=", "$vol, time=${microphoneStream.timestamp}")
+                                //val mp3=mp3Encoder.encodeMonoStream(soundRawData)
                                 prevVol = vol.toShort()
                             }
                         }

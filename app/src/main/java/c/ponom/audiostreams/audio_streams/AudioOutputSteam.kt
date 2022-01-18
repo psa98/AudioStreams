@@ -98,7 +98,7 @@ class AudioOutputSteam private constructor() :AbstractSoundOutputStream(){
         if (audioOut == null) throw IllegalStateException("Stream closed or in error state")
         if (b == null) throw NullPointerException ("Null array passed")
         if (off < 0 || len < 0 || len > b.size - off)
-            throw IndexOutOfBoundsException("Wrong read(...) params")
+            throw IndexOutOfBoundsException("Wrong write(...) params")
         val result:Int = audioOut!!.write(b, off, len)
         bytesSent += result.coerceAtLeast(0)
         if (result<0)
@@ -119,7 +119,7 @@ class AudioOutputSteam private constructor() :AbstractSoundOutputStream(){
         if (audioOut == null) throw IllegalStateException("Stream closed or in error state")
         val size=b.size
         if (off > len ||len>size||off>size||off<0||len<0)
-            throw IllegalArgumentException("Wrong parameters")
+            throw IllegalArgumentException("Wrong write(....) parameters")
         val result = audioOut!!.write(b, off, len, WRITE_BLOCKING)
         bytesSent += result.coerceAtLeast(0)*2
         if (result<0)

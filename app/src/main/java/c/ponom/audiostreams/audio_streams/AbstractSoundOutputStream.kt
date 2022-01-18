@@ -14,10 +14,16 @@ abstract class AbstractSoundOutputStream() :
     var frameSize: Int=0 // посчитать размер в конструкторе
 
 
+
+
+
     var encoding:Int=0 //ENCODING_PCM_8BIT  или  ENCODING_PCM_16BIT)
 
     @Volatile
     var timestamp=0L // пересчет выведенных байтов в мс.
+
+
+    // todo - добавить коллбэк на завершение записи?
     @Volatile
     var bytesSent: Long = 0
     set(value) {
