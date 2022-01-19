@@ -121,7 +121,7 @@ public class Recording {
         };
     }
 
-    // Return's the bluetooth state
+    // Return'TAG the bluetooth state
     private static boolean isBluetoothON() {
 
         BluetoothAdapter bluetoothAdapter = BluetoothAdapter
@@ -129,7 +129,7 @@ public class Recording {
         return bluetoothAdapter.isEnabled();
     }
 
-    // Return's the bluetoothFlag state
+    // Return'TAG the bluetoothFlag state
     private static boolean getBluetoothFlag(Context context) {
         // shared pref
         SharedPreferences sp = context.getSharedPreferences(Shared,

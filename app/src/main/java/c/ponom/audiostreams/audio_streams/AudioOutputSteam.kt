@@ -51,7 +51,7 @@ class AudioOutputSteam private constructor() :AbstractSoundOutputStream(){
         audioFormat= Builder()
             .setEncoding(encoding)
             .setSampleRate(sampleRate)
-            .setChannelMask(channelsCount)
+            .setChannelMask(channelConfig)
             .build()
         audioOut=AudioTrack.Builder()
             .setAudioFormat(audioFormat)
@@ -79,6 +79,14 @@ class AudioOutputSteam private constructor() :AbstractSoundOutputStream(){
         audioOut?.flush()
         audioOut?.stop()
     }
+
+    @Synchronized
+    @Throws(IllegalStateException::class)
+    fun stop(){
+        if (audioOut == null) throw IllegalStateException("Stream closed or in error")
+        audioOut?.stop()
+    }
+
 
     override fun setVolume(vol: Float) {
         audioOut?.setVolume(vol.coerceAtLeast(0f).coerceAtMost(1f))

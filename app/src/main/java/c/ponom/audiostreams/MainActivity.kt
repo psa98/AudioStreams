@@ -2,8 +2,7 @@ package c.ponom.audiostreams
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.media.AudioFormat.CHANNEL_OUT_STEREO
-import android.media.AudioFormat.ENCODING_PCM_16BIT
+import android.media.AudioFormat.*
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -162,15 +161,48 @@ class MainActivity : AppCompatActivity() {
 
     }
 
-    fun playSound(view: View) {
-        val testSoundInputStream=TestSoundInputStream(440,32000, CHANNEL_OUT_STEREO)
-        val data=ShortArray(32000)
+
+    fun playSoundStereo(view: View) {
+        val testSoundInputStream=TestSoundInputStream(440.0,480.0,
+            8000,7000,16000, CHANNEL_IN_STEREO, ENCODING_PCM_16BIT)
+        val data=ShortArray(64000)
         testSoundInputStream.readShorts(data)
-        val out  =AudioOutputSteam(16000,CHANNEL_OUT_STEREO,ENCODING_PCM_16BIT,500)
-        out.play()
-        out.writeShorts(data)
-        out.close()
+
+        CoroutineScope(IO).launch{
+            val out  =AudioOutputSteam(16000, CHANNEL_OUT_STEREO,ENCODING_PCM_16BIT,500)
+            out.play()
+            //testMic()
+            out.writeShorts(data)
+            out.close()
+        }
     }
+
+
+
+
+    fun playSoundMono(view: View) {
+        val testSoundInputStream=TestSoundInputStream(440.0,32000,
+            16000, CHANNEL_IN_MONO, ENCODING_PCM_16BIT)
+        val data=ShortArray(128000)
+        testSoundInputStream.readShorts(data)
+
+        CoroutineScope(IO).launch{
+            val out  =AudioOutputSteam(16000, CHANNEL_OUT_STEREO,ENCODING_PCM_16BIT,500)
+            out.play()
+            //testMic()
+            out.writeShorts(data)
+            out.close()
+        }
+    }
+
+
+    fun playSound(view: View) {
+        playSoundStereo(view)
+    }
+
+
+
+
 /*todo
    разобраться с размером буфера для  вывода звука, подсократить буфер у файла
    (вероятно надо секунд -надцать сделать)

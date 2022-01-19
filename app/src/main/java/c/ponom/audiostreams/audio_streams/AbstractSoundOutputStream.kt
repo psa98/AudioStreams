@@ -7,7 +7,7 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 abstract class AbstractSoundOutputStream() :
-    OutputStream() {
+    OutputStream(),  AutoCloseable{
 
     var sampleRate: Int=0
     var channelsCount:Int=0 // 1 or 2 only
@@ -32,6 +32,32 @@ abstract class AbstractSoundOutputStream() :
     }
 
     constructor(channelMask: Int, sampleRate: Int,encoding:Int) : this()
+
+
+        /**
+         * Closes this resource, relinquishing any underlying resources.
+         * This method is invoked automatically on objects managed by the
+         * {@code try}-with-resources statement.
+         *
+         * <p>While this interface method is declared to throw {@code
+         * Exception}, implementers are <em>strongly</em> encouraged to
+         * declare concrete implementations of the {@code close} method to
+         * throw more specific exceptions, or to throw no exception at all
+         * if the close operation cannot fail.
+         *
+         * <p> Cases where the close operation may fail require careful
+         * attention by implementers. It is strongly advised to relinquish
+         * the underlying resources and to internally <em>mark</em> the
+         * resource as closed, prior to throwing the exception. The {@code
+         * close} method is unlikely to be invoked more than once and so
+         * this ensures that the resources are released in a timely manner.
+         * Furthermore it reduces problems that could arise when the resource
+         * wraps, or is wrapped, by another resource.
+         *
+         *
+         * @throws Exception if this resource cannot be closed
+         */
+
 
     //вызов обязателен, должно освобождать аппаратуру
     abstract override fun close()

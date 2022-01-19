@@ -28,7 +28,7 @@ import java.nio.ByteOrder
  */
 
 
-abstract class AbstractSoundInputStream :    InputStream {
+abstract class AbstractSoundInputStream :    InputStream, AutoCloseable {
 
 
     /**Sampling rate measured in samples|sec, sound stream durationString if known, for example, when we
@@ -59,10 +59,11 @@ abstract class AbstractSoundInputStream :    InputStream {
 
     }
 
-    // переделать в будущем под поддержку 8 битных
-    open var bytesPerSample: Int =0
 
+    open var bytesPerSample: Int =0
     var encoding:Int= ENCODING_PCM_16BIT
+    private set
+
     @Volatile
     open var timestamp=0L //todo  пересчет выведенных байтов в мс.
     @Volatile
@@ -92,7 +93,7 @@ abstract class AbstractSoundInputStream :    InputStream {
 
     var sampleRate:Int =0
 
-    var frameSize: Int=0 // посчитать размер в конструкторе
+    var frameSize: Int=0 // всегда считать размер в конструкторе
 
 
     /**
@@ -132,7 +133,13 @@ abstract class AbstractSoundInputStream :    InputStream {
         return 0
     }
 
-
+    /**
+     * Closes this input stream and releases any system resources associated
+     * переопределение обязательно - поскольку надо освободить все ресурсы
+     * @exception  IOException  if an I/O error occurs.
+     */
+    @Throws(IOException::class)
+    abstract override fun close()
 
     @Throws(IOException::class)
     abstract override fun read(): Int
