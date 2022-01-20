@@ -55,17 +55,26 @@
 
 
     <Button
-        android:id="@+id/playTest"
+        android:id="@+id/playTestStereo"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textAllCaps="false"
-        android:onClick="playSound"
-        android:text="Play Sound"
+        android:onClick="playSoundStereo"
+        android:text="Play Stereo Sound"
         android:layout_margin="16dp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/stopMic" />
 
-
+    <Button
+        android:id="@+id/playTestMono"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAllCaps="false"
+        android:onClick="playSoundMono"
+        android:text="Play Mono Sound"
+        android:layout_margin="16dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/playTestStereo" />
 
 
 

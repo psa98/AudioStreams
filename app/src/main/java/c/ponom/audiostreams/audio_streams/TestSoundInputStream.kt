@@ -7,6 +7,7 @@ package c.ponom.recorder2.audio_streams
 import android.media.AudioFormat.*
 import android.util.Log
 import androidx.annotation.IntRange
+import c.ponom.audiostreams.audio_streams.ShortArrayUtils
 import c.ponom.recorder2.audio_streams.TestSoundInputStream.TestSignalType.MONO
 import c.ponom.recorder2.audio_streams.TestSoundInputStream.TestSignalType.STEREO
 import java.io.IOException
@@ -102,11 +103,9 @@ class TestSoundInputStream private constructor() : AbstractSoundInputStream()  {
         if (sampleRate<16000||sampleRate>48000)
             Log.v(TAG, "Non standard sampling rate of $sampleRate can by problematic for testing" +
                     "of sound encoders or players")
-        this.sampleRate = sampleRate //сделать частью конструктора, а то глюкнуло красиво
+        this.sampleRate = sampleRate
         monoParams=MonoSoundParameters(volume,testFrequencyMono)
         this.testMode= MONO
-        //установка обязательных параметров AudioInputStream. Todo  Надо будет тестовую функцию для них
-        // сделать и совать ее в конец конструктора каждого
         channelsCount = 1
         bytesPerSample = if (encoding== ENCODING_PCM_16BIT) 2 else  1
         frameSize=bytesPerSample*channelsCount
@@ -140,11 +139,9 @@ class TestSoundInputStream private constructor() : AbstractSoundInputStream()  {
         if (sampleRate<16000||sampleRate>48000)
             Log.v(TAG, "Non standard sampling rate of $sampleRate can by problematic for testing" +
                     "of sound encoders or players")
-        this.sampleRate = sampleRate //сделать частью конструктора, а то глюкнуло красиво
+        this.sampleRate = sampleRate
         stereoParams=StereoSoundParameters(testFrequencyLeft,testFrequencyRight,volumeLeft,volumeRight)
         testMode=STEREO
-        //установка обязательных параметров AudioInputStream. Todo  Надо будет тестовую функцию для них
-        // сделать и совать ее в конец конструктора каждого
         channelsCount = 2
         bytesPerSample = if (encoding== ENCODING_PCM_16BIT) 2 else  1
         frameSize=bytesPerSample*channelsCount
@@ -154,21 +151,6 @@ class TestSoundInputStream private constructor() : AbstractSoundInputStream()  {
 
 
 
-    // не реализвано пока
-
-   override fun read(): Int {
-       val b=ByteArray(1)
-       if (closed) return -1
-       return read(b)+128
-   }
-
-    // не реализовано пока
-
-   @Throws(NullPointerException::class)
-   override fun read(b: ByteArray?): Int {
-       if (b==null) throw NullPointerException ("Null array passed")
-       return read(b,0,b.size)
-   }
 
 
 
@@ -199,8 +181,22 @@ class TestSoundInputStream private constructor() : AbstractSoundInputStream()  {
    }
 
 
+    // не тестровано пока
+    override fun read(): Int {
+        val b=ByteArray(1)
+        if (closed) return -1
+        return read(b)+128
+    }
 
-    //сделать из шортов
+
+    @Throws(NullPointerException::class)
+    override fun read(b: ByteArray?): Int {
+        if (b==null) throw NullPointerException ("Null array passed")
+        if (closed) return -1
+        return read(b,0,b.size)
+    }
+
+
     /**
      *
      */
@@ -209,23 +205,19 @@ class TestSoundInputStream private constructor() : AbstractSoundInputStream()  {
     @Throws(NullPointerException::class,IllegalArgumentException::class)
     override fun read(b: ByteArray?, off: Int, len: Int): Int {
         if (b == null) throw NullPointerException("Null array passed")
-        if (off < 0 || len < 0 || len > b.size - off) throw IndexOutOfBoundsException("Wrong read(...) params")
+        if (off < 0 || len < 0 || len > b.size - off)
+            throw IndexOutOfBoundsException("Wrong read(...) params")
         if (len == 0) return 0
         if (off != 0) throw IllegalArgumentException("Non zero offset currently not implemented")
         if (closed) return -1
-        val newBytes = readNextBytes(min(len,b.size))
-        newBytes.copyInto(b)
-        val bytes= newBytes.size
+        val shortArray=ShortArray(min(len/2,b.size/2))
+        val bytes= readShorts(shortArray,0,len/2)*2
+        ShortArrayUtils.shortToByteArrayLittleEndian(shortArray).copyInto(b)
         bytesSent+=bytes
         onReadCallback?.invoke(bytesSent)
         return bytes
    }
 
-    // не реализвано пока
-    @Synchronized
-    private fun readNextBytes(len: Int): ByteArray {
-        return ByteArray(len)
-    }
 
 
 
@@ -236,26 +228,19 @@ class TestSoundInputStream private constructor() : AbstractSoundInputStream()  {
         if (off < 0 || len < 0 || len > b.size - off) throw IndexOutOfBoundsException("Wrong read(...) params")
         if (len == 0) return 0
         if (off != 0) throw IllegalArgumentException("Non zero offset currently not implemented")
-
-
-
         val length = min(b.size,len)
         val dataArray=ShortArray(length)
-        if (testMode== MONO) {
-            dataArray.forEachIndexed { index, _ ->
-                dataArray[index] = calculateSampleValueMono(index.toLong())
-            }
+        if (testMode== MONO) dataArray.forEachIndexed { index, _ ->
+            dataArray[index] = calculateSampleValueMono(index.toLong())
         }
-
-        if (testMode== STEREO) { //todo если убрать -2 - будет превышение?
+        if (testMode== STEREO) {
+            //todo если убрать -2 в конце - будет превышение? или это перестраховка
             for (index in 0..dataArray.size-2 step 2 ){
             val samplesPair= calculateSampleValueStereo(index.toLong())
             dataArray[index] =samplesPair.first
             dataArray[index+1] =samplesPair.second
             }
         }
-
-
         dataArray.copyInto(b)
         bytesSent+=len*2
         return len
@@ -288,7 +273,6 @@ class TestSoundInputStream private constructor() : AbstractSoundInputStream()  {
         return (sin(x)*monoParams.volumeMono).toInt().toShort()
     }
 
-
     private fun calculateSampleValueStereo(sampleNum:Long):Pair<Short,Short>{
         val xLeft =(sampleNum/stereoParams.samplesInPeriodLeft*2*PI)
         val xRight =((sampleNum+1)/stereoParams.samplesInPeriodRight*2*PI)
@@ -296,7 +280,6 @@ class TestSoundInputStream private constructor() : AbstractSoundInputStream()  {
         val right =(sin(xRight)*stereoParams.volumeRight).toInt().toShort()
         return Pair(left,right)
     }
-
 
 }
 

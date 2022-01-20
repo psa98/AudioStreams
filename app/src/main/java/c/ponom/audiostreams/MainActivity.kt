@@ -163,17 +163,18 @@ class MainActivity : AppCompatActivity() {
 
 
     fun playSoundStereo(view: View) {
+        val sampleRate = 48000
         val testSoundInputStream=TestSoundInputStream(440.0,480.0,
-            8000,7000,16000, CHANNEL_IN_STEREO, ENCODING_PCM_16BIT)
-        val data=ShortArray(64000)
-        testSoundInputStream.readShorts(data)
-
+            8000,7000,sampleRate, CHANNEL_IN_STEREO, ENCODING_PCM_16BIT)
+        val data=ByteArray(sampleRate*4*2*2) //4 секунды, 2 байта, 2 канала
+        // тут тестируется передача и отправка данных в байтах, не в shorts
+        testSoundInputStream.read(data)
         CoroutineScope(IO).launch{
-            val out  =AudioOutputSteam(16000, CHANNEL_OUT_STEREO,ENCODING_PCM_16BIT,500)
-            out.play()
-            //testMic()
-            out.writeShorts(data)
-            out.close()
+            val outChannel  =AudioOutputSteam(sampleRate,
+                CHANNEL_OUT_STEREO,ENCODING_PCM_16BIT,500)
+            outChannel.play()
+            outChannel.write(data)
+            outChannel.close()
         }
     }
 
@@ -181,24 +182,22 @@ class MainActivity : AppCompatActivity() {
 
 
     fun playSoundMono(view: View) {
-        val testSoundInputStream=TestSoundInputStream(440.0,32000,
-            16000, CHANNEL_IN_MONO, ENCODING_PCM_16BIT)
-        val data=ShortArray(128000)
+        val sampleRate = 48000
+        val testSoundInputStream=TestSoundInputStream(520.0,10000,
+            sampleRate, CHANNEL_IN_MONO, ENCODING_PCM_16BIT)
+        val data=ShortArray(sampleRate*4)//4 секунды, 1 16-битовый отчет , 1 канал
         testSoundInputStream.readShorts(data)
-
+        // тут тестируется передача и отправка данных в shorts
         CoroutineScope(IO).launch{
-            val out  =AudioOutputSteam(16000, CHANNEL_OUT_STEREO,ENCODING_PCM_16BIT,500)
-            out.play()
-            //testMic()
-            out.writeShorts(data)
-            out.close()
+            val outChannel  =AudioOutputSteam(sampleRate,
+                CHANNEL_OUT_MONO,ENCODING_PCM_16BIT,500)
+            outChannel.play()
+            outChannel.writeShorts(data)
+            outChannel.close()
         }
     }
 
 
-    fun playSound(view: View) {
-        playSoundStereo(view)
-    }
 
 
 

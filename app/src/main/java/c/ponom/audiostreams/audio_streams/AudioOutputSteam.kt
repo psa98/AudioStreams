@@ -19,7 +19,7 @@ private const val RESERVE_BUFFER_SIZE = 24 * 1024
 class AudioOutputSteam private constructor() :AbstractSoundOutputStream(){
 
 
-
+    private var currentVolume: Float=1f
     lateinit var audioFormat: AudioFormat
     var audioOut:AudioTrack?=null
     private var prepared = false
@@ -31,6 +31,7 @@ class AudioOutputSteam private constructor() :AbstractSoundOutputStream(){
         this.sampleRate = sampleRate
         // todo тут будет проверка на законные значения из списка, варнинг для всех законных кроме
         //  8, 16,22, 32 и 44 - 48к
+        // доделать буфер!
         //  и исключение для совсем левых
         if (!(channelConfig== CHANNEL_OUT_MONO ||channelConfig== CHANNEL_OUT_STEREO))
             throw IllegalArgumentException("Only CHANNEL_OUT_MONO and CHANNEL_OUT_STEREO supported")
@@ -75,21 +76,31 @@ class AudioOutputSteam private constructor() :AbstractSoundOutputStream(){
     @Throws(IllegalStateException::class)
     fun stopAndClear(){
         if (audioOut == null) throw IllegalStateException("Stream closed or in error")
+        audioOut?.setVolume(0.02f)         //это позволяет  убрать клик в конце
+        Thread.sleep(50)
+        //время подобрано на слух, меньше 30 дает клик на частоте 440 гц 16000 сэмплов
         audioOut?.pause()
         audioOut?.flush()
         audioOut?.stop()
+        audioOut?.setVolume(currentVolume)
     }
 
     @Synchronized
     @Throws(IllegalStateException::class)
     fun stop(){
         if (audioOut == null) throw IllegalStateException("Stream closed or in error")
+        audioOut?.setVolume(0.02f)         //это позволяет  убрать клик в конце
         audioOut?.stop()
+        Thread.sleep(30)
+        // пересчитать время так что бы за него заведомо произошло исчерпание текущего буфера + неск.мс
+        audioOut?.setVolume(currentVolume)
+
     }
 
 
     override fun setVolume(vol: Float) {
         audioOut?.setVolume(vol.coerceAtLeast(0f).coerceAtMost(1f))
+        currentVolume =vol
     }
 
     /**
