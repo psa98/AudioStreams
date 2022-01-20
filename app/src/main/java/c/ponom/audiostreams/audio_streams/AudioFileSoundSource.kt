@@ -3,12 +3,12 @@
 package c.ponom.recorder2.audio_streams
 
 import android.content.Context
-import android.content.res.AssetFileDescriptor
 import android.media.MediaCodec
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.net.Uri
 import android.util.Log
+import java.io.FileDescriptor
 import java.io.IOException
 import java.lang.Integer.max
 import java.nio.ByteBuffer
@@ -68,7 +68,7 @@ open class AudioFileSoundSource {
      * файл должен иметь строго один трек!
      */
     @Throws(IOException::class,IllegalArgumentException::class,MediaCodec.CodecException::class)
-    fun getStream(fd: AssetFileDescriptor): SoundInputStream {
+    fun getStream(fd: FileDescriptor): SoundInputStream {
         if (prepared || released)
             throw IllegalStateException("The extractor was already started or released, create new instance")
         extractor.setDataSource(fd)

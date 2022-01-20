@@ -2,7 +2,9 @@ package c.ponom.audiostreams
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.media.AudioFormat.*
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -19,6 +21,7 @@ import c.ponom.audiostreams.audio_streams.MicSoundInputStream
 import c.ponom.audiostreams.audio_streams.SoundProcessingUtils.getRMS
 import c.ponom.audiostreams.databinding.ActivityMainBinding
 import c.ponom.recorder2.audio_streams.AudioOutputSteam
+import c.ponom.recorder2.audio_streams.TAG
 import c.ponom.recorder2.audio_streams.TestSoundInputStream
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.CoroutineScope
@@ -26,10 +29,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.FileInputStream
 import java.lang.System.currentTimeMillis
 
+private const val ASKING_FOR_FILE=2
 private const val PERMISSION_REQUEST_CODE: Int =1
 class MainActivity : AppCompatActivity() {
+
 
     private var recordingIsOn: Boolean=false
     private var permissionGranted: Boolean=false
@@ -97,6 +103,50 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateUi() {
     }
+
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+
+        if (requestCode == ASKING_FOR_FILE && resultCode == RESULT_OK) {
+            val uri: Uri? = data?.data
+            val path = uri?.encodedPath
+            if (path.isNullOrBlank()) return // добавить тосты
+            val mediaFileUri: Uri = uri //это начинается с content
+            val name = uri.lastPathSegment.toString().substringAfterLast("/")
+            // грубоватый способ, надо разобраться со структурой контент имен, там last segment мрак
+
+            Log.e(TAG, "onActivityResult: $path")
+
+            Log.e(TAG, "getTextInputStreamIfExist: find file start")
+            val stream=getMediaStreamIfExist(uri)
+            if (stream!=null)
+            Log.e(TAG, "getTextInputStreamIfExist: find file end"+stream.toString())
+        }
+        super.onActivityResult(requestCode, resultCode, data)
+    }
+
+
+
+
+    private fun getMediaStreamIfExist(uri: Uri): FileInputStream? {
+        if (uri == Uri.EMPTY) return null //todo потом вернем поток из data
+        val fd =this.contentResolver.openAssetFileDescriptor(uri,"r")
+        //if (fd!=null) val inputStream= AudioFileSoundSource(fd.createInputStream())
+
+        //val outStream=AudioOutputSteam()
+        return if (fd==null) null else
+            fd.createInputStream()
+    }
+
+    fun playExternalFile(view: View) {
+        val intent = Intent()
+        intent.apply {
+            action = Intent.ACTION_OPEN_DOCUMENT
+            type = "audio/*"
+        }
+        startActivityForResult(intent, ASKING_FOR_FILE)
+    }
+
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.menu_main, menu)
