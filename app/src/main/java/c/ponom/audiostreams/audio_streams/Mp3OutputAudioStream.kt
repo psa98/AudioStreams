@@ -1,103 +1,141 @@
 package c.ponom.audiostreams.audio_streams
 
-import android.media.AudioFormat
-import c.ponom.recorder2.audio_streams.AbstractSoundOutputStream
+import android.media.AudioFormat.ENCODING_PCM_16BIT
+import c.ponom.recorder2.audio_streams.AudioOutputStream
 import com.naman14.androidlame.AndroidLame
 import com.naman14.androidlame.LameBuilder
 import java.io.IOException
 import java.io.OutputStream
 
-class Mp3OutputAudioStream private constructor() : AbstractSoundOutputStream(){
+class Mp3OutputAudioStream private constructor() : AudioOutputStream(){
 
 
 
     lateinit var androidLame: AndroidLame
     private var finished = false
-    private val channelsNumber:Int=1
-    lateinit var  outputStream:OutputStream
+    private lateinit var  outputStream:OutputStream
+    private lateinit var stereoMode:LameBuilder.Mode
 
 
+
+    /**Важно! OutBitrate - это уровень сжатого потока и он задается  в килобитах/сек! то есть
+     * стандартные значения надо указывать в килобитах от 32  до 320, а не от 32 000  до 320 000
+     * Mp3 формат поддерживает только 16 битную кодировку, левый канал - нечетные сэмплы (signed Short)
+     * outChannelsNum - 1 или 2.
+     * допустимые входные частоты дискретизации - от 8000 до 48000 <BR>
+     * qualityMode = режим высокого качества оптимален для офлайн-сжатия потоков при сохранении
+     * итоговых звуковых файлов. Быстрый режим -  для онлайн сжатия с минимальными задержаками и
+     * минимальным задействованием процессора
+     * Для всех последующих операций используется последнее по времени создания энкодера установленное
+     * значение качества, при создании нескольких потоков установление отличающегося от базового
+     * качества сжатия  меняет его значение и для созданных ранее но еще не закрытых потоков
+     */
     @JvmOverloads
-    @Throws(IllegalArgumentException::class, UnsupportedOperationException::class)
-    constructor(outStream:OutputStream, inSampleRate: Int, channelConfig: Int,encoding:Int, minBufferInMs:Int=0) : this() {
+    constructor(
+        outStream: OutputStream,
+        inSampleRate: Int,
+        outBitrate: Int,
+        outStereoMode: LameBuilder.Mode,
+        qualityMode: EncodingQuality=EncodingQuality.BALANCED) : this() {
         sampleRate = inSampleRate
+        stereoMode=outStereoMode
         outputStream=outStream
-
-        if (!(channelConfig== AudioFormat.CHANNEL_OUT_MONO ||channelConfig== AudioFormat.CHANNEL_OUT_STEREO))
-            throw IllegalArgumentException("Only CHANNEL_OUT_MONO and CHANNEL_OUT_STEREO supported")
-        channelsCount = when (channelConfig) {
-            AudioFormat.CHANNEL_OUT_MONO -> 1
-            AudioFormat.CHANNEL_OUT_STEREO -> 2
-            else -> 0
+        channelsCount = when (outStereoMode) {
+            LameBuilder.Mode.MONO -> 1
+            LameBuilder.Mode.STEREO -> 2
+            LameBuilder.Mode.JSTEREO -> 2
+            LameBuilder.Mode.DEFAULT -> 2
         }
-        if (!(encoding== AudioFormat.ENCODING_PCM_8BIT ||encoding== AudioFormat.ENCODING_PCM_16BIT))
-            throw IllegalArgumentException("Only 16 and 8 bit encodings supported")
-        this.encoding=encoding
-        when (encoding){
-            AudioFormat.ENCODING_PCM_8BIT -> frameSize = channelsCount
-            AudioFormat.ENCODING_PCM_16BIT -> frameSize= channelsCount*2
+        channelConfig=channelConfig(channelsCount)
+        encoding = ENCODING_PCM_16BIT
+        frameSize= channelsCount*2
+        //Only 16 bit  encoding supported
+        // when (encoding){
+
+
+        /**
+         *
+        internal algorithm selection.  True quality is determined by the bitrate
+        but this variable will effect quality by selecting expensive or cheap algorithms.
+        quality=0..9.  0=best (very slow).  9=worst.
+        recommended:  2     near-best quality, not too slow
+        5     good quality, fast
+        7     ok quality, really fast
+
+         */
+
+        val quality:Int = when (qualityMode){
+            EncodingQuality.HIGH_AND_SLOW -> 1
+            EncodingQuality.BALANCED -> 5
+            EncodingQuality.FAST_ENCODING -> 7
         }
-    }
-
-
-
-    constructor(outStream:OutputStream,inSampleRate:Int, outBitrate:Int, outStereoMode: LameBuilder.Mode, outChannelsNum:Int) : this() {
         outputStream=outStream
         androidLame= LameBuilder()
+            .setQuality(quality)
             .setInSampleRate(inSampleRate)
             .setMode(outStereoMode )
-            .setOutChannels(outChannelsNum)
-            .setOutBitrate(outBitrate)
+            .setOutChannels(channelsCount)
+            .setOutBitrate(outBitrate.coerceAtMost(320).coerceAtLeast(32))
             .build()
-
-        //реализовать так - доп. параметр в конструкторе - это моно стрим или интерливед
-
-        /**Важно! OutBitrate - это уровень сжатого потока и он задается  в килобитах/сек! то есть
-         * стандартные значения от 32 до 320, а не от 8000 до 48000
-         *
-         */
-        // todo тут будет проверка на законные значения из списка, варнинг для всех законных кроме
-        //  8, 16,22, 32 и 44 - 48к
-        //  и исключение для совсем левых
     }
 
 
-    @Throws(IllegalArgumentException::class,NullPointerException::class,
-        IllegalStateException::class, IOException::class)
+    @Throws(IndexOutOfBoundsException::class,NullPointerException::class,IllegalStateException::class,
+        IOException::class)
     @Synchronized
+
+    // синхронизацию всех пишущих методов делать надо на один объект.
+    // Плюс все ж переделать на атомики
     override fun write(b: ByteArray?, off: Int, len: Int){
         if (finished) throw IllegalStateException("Stream closed or in error state")
         if (b == null) throw NullPointerException ("Null array passed")
         if (off < 0 || len < 0 || len > b.size - off)
             throw IndexOutOfBoundsException("Wrong write(...) params")
-        val interleavedFrames=0
-        //посчитать - должно быть для 16 bit (меньшее из размера b,len)-off /2 вероятно
+        //!!! todo ---короче со стерео тут разбиратья
 
-        val result=encodeInterleavedStream(byteToShortArrayLittleEndian(b))
+        val samplesShorts = byteToShortArrayLittleEndian(b)
+        val samples=samplesShorts.copyOf(len/2)
+        val result = if (channelsCount==2)
+            encodeInterleavedStream(samples)
+        else encodeMonoStream(samples)
         outputStream.write(result)
         bytesSent += result.size
+        onWriteCallback?.invoke(bytesSent)
+    }
 
+
+    override fun canReturnShorts(): Boolean {
+        return true
+    }
+
+    @Synchronized
+    @Throws(IllegalArgumentException::class,IllegalStateException::class, IOException::class)
+    override fun writeShorts(b: ShortArray) {
+        writeShorts(b,0,b.size)
     }
 
 
     @Synchronized
     @Throws(IllegalArgumentException::class,IllegalStateException::class, IOException::class)
-    fun writeShorts(b: ShortArray) {
-        write(shortToByteArrayLittleEndian(b),0,b.size*2)
+    override fun writeShorts(b: ShortArray, off: Int, len: Int) {
+        val samples=b.copyOf(len)
+        val result:ByteArray
+        if (channelsCount==1) result =  encodeMonoStream(samples)
+        else result =  encodeInterleavedStream(samples)
+        bytesSent += result.size
+        onWriteCallback?.invoke(bytesSent)
+        outputStream.write(result)
     }
 
-
-    @Synchronized
-    @Throws(IllegalArgumentException::class,IllegalStateException::class, IOException::class)
-    fun writeShorts(b: ShortArray, off: Int, len: Int) {
-        write(shortToByteArrayLittleEndian(b),off,b.size*2)
-    }
-
+    /**
+     * не закрывает подлежащий поток автоматически
+     */
     @Synchronized
     override fun close() {
         val result=encodeEofFrame()
         outputStream.write(result)
         finished=true
+
     }
 
     @Synchronized
@@ -106,14 +144,15 @@ class Mp3OutputAudioStream private constructor() : AbstractSoundOutputStream(){
         throw NoSuchMethodException("Not implemented-use write (byte[]....)")
     }
 
-    fun encodeMonoStream(inArray: ShortArray): ByteArray {
+
+    private fun encodeMonoStream(inArray: ShortArray): ByteArray {
         if (finished) throw IllegalStateException("Already finished, create new encoder")
         val outBuff = ByteArray(inArray.size)
         val resultBytes = androidLame.encode(inArray, inArray, inArray.size, outBuff)
         return outBuff.sliceArray(0 until resultBytes)
     }
 
-    fun encodeStereoStream(leftArray: ShortArray, rightArray: ShortArray): ByteArray {
+    private fun encodeStereoStream(leftArray: ShortArray, rightArray: ShortArray): ByteArray {
         if (finished) throw IllegalStateException("Already finished, create new encoder")
         if (leftArray.size != rightArray.size) throw IllegalStateException("Both samples have  same length")
         val outBuff = ByteArray(leftArray.size)
@@ -122,22 +161,19 @@ class Mp3OutputAudioStream private constructor() : AbstractSoundOutputStream(){
     }
 
     // убедиться что оно берет little ended  shorts
-    fun encodeInterleavedStream(samples: ShortArray): ByteArray {
+    private fun encodeInterleavedStream(samples: ShortArray): ByteArray {
         if (finished) throw IllegalStateException("Already finished, create new encoder")
         val size = samples.size
         val outBuff = ByteArray(size)
-        val resultBytes = androidLame.encodeBufferInterLeaved(samples, size, outBuff)
+        val resultBytes = androidLame.encodeBufferInterLeaved(samples, size/2, outBuff)
+            // sample here =  L+R pair
         return outBuff.sliceArray(0 until resultBytes)
     }
 
 
-    //todo надо сначала убедиться что encodeBufferInterLeaved в принципе для входного МОНО понимает
-    // что его надо жать как моно и жмет его ровно так же как МОНО до байта.
-    // в противном случае придется если у нас на входе шорты моно -
-    // отдавать их в оба канала одинаковые, если стерео левый правый - то использовать
-    // encodeBufferInterLeaved
 
-    fun encodeEofFrame(): ByteArray {
+
+    private fun encodeEofFrame(): ByteArray {
         if (finished) throw IllegalStateException("Already finished")
         finished = true
         val outBuff = ByteArray(16 * 1024)
@@ -147,5 +183,8 @@ class Mp3OutputAudioStream private constructor() : AbstractSoundOutputStream(){
     }
 
 
+    enum class EncodingQuality {
+        HIGH_AND_SLOW, BALANCED, FAST_ENCODING
+    }
 }
 

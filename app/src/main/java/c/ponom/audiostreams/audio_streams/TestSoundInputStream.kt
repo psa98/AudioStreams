@@ -11,13 +11,14 @@ import c.ponom.audiostreams.audio_streams.ShortArrayUtils
 import c.ponom.recorder2.audio_streams.TestSoundInputStream.TestSignalType.MONO
 import c.ponom.recorder2.audio_streams.TestSoundInputStream.TestSignalType.STEREO
 import java.io.IOException
-import java.lang.Integer.min
+import java.lang.Math.min
+
 import kotlin.math.PI
 import kotlin.math.sin
 
 const val TAG = "Test Sound Stream"
 
-class TestSoundInputStream private constructor() : AbstractSoundInputStream()  {
+class TestSoundInputStream private constructor() : AudioInputStream()  {
 
 
     private lateinit var testMode: TestSignalType
@@ -82,7 +83,7 @@ class TestSoundInputStream private constructor() : AbstractSoundInputStream()  {
     /**
      *This constructor usable only for CHANNEL_IN_MONO and encoding ENCODING_PCM_16BIT. Only 16 bit
      * encoding currently supported <BR>
-     *Test frequency below 32 or above 16000 Hz can be inaudible. Non standard sampling rate below
+     *Test frequency below 32 or above 16000 Hz can be inaudible. Non standard sampling rates below
      * 16000 or over 48000 can by problematic for testing of media encoders or players"
      */
 
@@ -119,7 +120,7 @@ class TestSoundInputStream private constructor() : AbstractSoundInputStream()  {
      *Test frequency below 32 or above 16000 Hz can be inaudible. Non standard sampling rate below
      * 16000 or over 48000 can by problematic for testing of media encoders or players"
      */
-    @Throws(IllegalArgumentException::class,IOException::class)
+    @Throws(IllegalArgumentException::class, IOException::class)
     constructor (
         testFrequencyLeft: Double,testFrequencyRight: Double,
         volumeLeft: Short,volumeRight: Short,

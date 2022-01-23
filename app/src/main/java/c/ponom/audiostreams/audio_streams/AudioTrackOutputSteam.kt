@@ -16,30 +16,29 @@ private  const val MAX_BUFFER_SIZE = 512 * 1024
 private const val RESERVE_BUFFER_SIZE = 24 * 1024
 
 
-class AudioOutputSteam private constructor() :AbstractSoundOutputStream(){
+class AudioOutputSteam private constructor() :AudioOutputStream(){
 
 
     private var currentVolume: Float=1f
     lateinit var audioFormat: AudioFormat
-    var audioOut:AudioTrack?=null
+    private var audioOut:AudioTrack?=null
     private var prepared = false
 
 
     @JvmOverloads
     @Throws(IllegalArgumentException::class, UnsupportedOperationException::class)
-    constructor( sampleRate: Int, channelConfig: Int,encoding:Int, minBufferInMs:Int=0) : this() {
+    constructor( sampleRate: Int, channelCount: Int,encoding:Int, minBufferInMs:Int=0) : this() {
         this.sampleRate = sampleRate
+        //todo -- переделать под число каналов на входе, нечего тут
+        channelConfig=channelConfig(channelCount)
+
         // todo тут будет проверка на законные значения из списка, варнинг для всех законных кроме
         //  8, 16,22, 32 и 44 - 48к
         // доделать буфер!
         //  и исключение для совсем левых
         if (!(channelConfig== CHANNEL_OUT_MONO ||channelConfig== CHANNEL_OUT_STEREO))
-            throw IllegalArgumentException("Only CHANNEL_OUT_MONO and CHANNEL_OUT_STEREO supported")
-        channelsCount = when (channelConfig) {
-            CHANNEL_OUT_MONO -> 1
-            CHANNEL_OUT_STEREO -> 2
-            else -> 0
-        }
+            throw IllegalArgumentException("Only 1 or 2 channels(CHANNEL_OUT_MONO " +
+                    "and CHANNEL_OUT_STEREO) supported")
         if (!(encoding== ENCODING_PCM_8BIT ||encoding== ENCODING_PCM_16BIT))
             throw IllegalArgumentException("Only 16 and 8 bit encodings supported")
         this.encoding=encoding
@@ -127,14 +126,17 @@ class AudioOutputSteam private constructor() :AbstractSoundOutputStream(){
 
     @Synchronized
     @Throws(IllegalArgumentException::class,IllegalStateException::class,IOException::class)
-    fun writeShorts(b: ShortArray) {
+    override fun writeShorts(b: ShortArray) {
         writeShorts(b,0,b.size)
     }
 
+    override fun canReturnShorts(): Boolean {
+        return true
+    }
 
     @Synchronized
     @Throws(IllegalArgumentException::class,IllegalStateException::class,IOException::class)
-    fun writeShorts(b: ShortArray, off: Int, len: Int) {
+    override fun writeShorts(b: ShortArray, off: Int, len: Int) {
         if (audioOut == null) throw IllegalStateException("Stream closed or in error state")
         val size=b.size
         if (off > len ||len>size||off>size||off<0||len<0)

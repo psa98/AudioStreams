@@ -12,12 +12,12 @@ import android.media.AudioManager
 import android.media.AudioRecord
 import android.media.AudioRecord.*
 import android.media.MediaRecorder
-import c.ponom.recorder2.audio_streams.AbstractSoundInputStream
+import c.ponom.recorder2.audio_streams.AudioInputStream
 import java.io.IOException
 
 
 private const val BUFFER_SIZE__MULT: Int=4 //todo переделать под мс
-class MicSoundInputStream private constructor(): AbstractSoundInputStream()  {
+class MicSoundInputStream private constructor(): AudioInputStream()  {
 
     private var recordingIsOn: Boolean=false
     private var audioRecord:AudioRecord?=null
@@ -30,18 +30,20 @@ class MicSoundInputStream private constructor(): AbstractSoundInputStream()  {
     @JvmOverloads
     @SuppressLint("MissingPermission")
     @Throws(IllegalArgumentException::class,IOException::class)
-    constructor(freq:Int, channelConfig:Int= CHANNEL_IN_MONO,
+    constructor(freq:Int, channelsCount:Int=1,
                           encoding:Int= ENCODING_PCM_16BIT,
                           mic:Int= MediaRecorder.AudioSource.VOICE_COMMUNICATION): this() {
+        channelConfig=channelConfig(channelsCount)
         if (!(channelConfig== CHANNEL_IN_MONO ||channelConfig== CHANNEL_IN_STEREO))
-            throw IllegalArgumentException("Only CHANNEL_IN_MONO and CHANNEL_IN_STEREO supported")
-        if (!(encoding== ENCODING_PCM_8BIT ||encoding== ENCODING_PCM_16BIT))
-            throw IllegalArgumentException("Only 16 and 8 bit encodings supported")
+            throw IllegalArgumentException("Only 1 and 2 channels (CHANNEL_IN_MONO " +
+                    "and CHANNEL_IN_STEREO) supported")
+            require(encoding== ENCODING_PCM_8BIT ||
+                    encoding== ENCODING_PCM_16BIT) { "Only 16 and 8 bit encodings supported"}
         val minBuffer= getMinBufferSize(freq,channelConfig,encoding)
             //todo - разбираться
         audioRecord= AudioRecord(mic,freq ,channelConfig,encoding,minBuffer)
          if (audioRecord==null) throw IllegalArgumentException("Audio record init error - wrong params? ")
-        channelsCount = audioRecord!!.channelCount
+
         sampleRate = audioRecord!!.sampleRate
         // todo тут будет проверка на законные значения из списка, варнинг для всех законных кроме 16,22 и 44к
         //  и исключение для совсем левых

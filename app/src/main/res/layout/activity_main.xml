@@ -85,7 +85,29 @@
         android:text="Open Media File"
         android:layout_margin="16dp"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/playTestStereo" />
+        app:layout_constraintTop_toBottomOf="@id/playTestMono" />
+
+    <Button
+        android:id="@+id/stopPlayer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAllCaps="false"
+        android:onClick="stopPlayer"
+        android:text="Stop player"
+        android:layout_margin="16dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/openFile" />
+
+    <Button
+        android:id="@+id/generateMp3Files"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAllCaps="false"
+        android:onClick="makeMp3"
+        android:text="Make mp3 files"
+        android:layout_margin="16dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/stopPlayer" />
 
 
 

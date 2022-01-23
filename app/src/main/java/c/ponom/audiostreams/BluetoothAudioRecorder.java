@@ -47,8 +47,6 @@ public class BluetoothAudioRecorder extends AppCompatActivity {
         buttonStopRecording = (Button) findViewById(R.id.button2);
         buttonPlayLastRecordAudio = (Button) findViewById(R.id.button3);
         buttonStopPlayingRecording = (Button) findViewById(R.id.button4);
-
-
         buttonStopRecording.setEnabled(false);
         buttonPlayLastRecordAudio.setEnabled(false);
         buttonStopPlayingRecording.setEnabled(false);

@@ -2,11 +2,10 @@ package c.ponom.recorder2.audio_streams
 
 import android.media.AudioFormat
 import android.media.AudioFormat.ENCODING_PCM_16BIT
+import android.media.AudioFormat.ENCODING_PCM_8BIT
 import android.media.MediaFormat
 import java.io.IOException
 import java.io.InputStream
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
 
 
 /**
@@ -28,7 +27,7 @@ import java.nio.ByteOrder
  */
 
 
-abstract class AbstractSoundInputStream :    InputStream, AutoCloseable {
+abstract class AudioInputStream :    InputStream, AutoCloseable {
 
 
     /**Sampling rate measured in samples|sec, sound stream durationString if known, for example, when we
@@ -40,6 +39,7 @@ abstract class AbstractSoundInputStream :    InputStream, AutoCloseable {
         duration=streamDuration
         channelsCount=channels
         sampleRate=samplingRate
+        channelConfig=channelConfig(channels)
 
     }
 
@@ -55,20 +55,25 @@ abstract class AbstractSoundInputStream :    InputStream, AutoCloseable {
         val channelsCount = mediaFormat?.getInteger("channel-count")
         if (duration != null) this.duration=duration
         if (sampleRate != null) this.sampleRate=sampleRate
-        if (channelsCount != null) this.channelsCount=channelsCount
+        if (channelsCount != null) {
+            this.channelsCount=channelsCount
+            channelConfig=channelConfig(channelsCount)
+        }
 
     }
 
 
-    open var bytesPerSample: Int =0
+    var bytesPerSample: Int =2 // для 16 бит всегда 2
+        protected set
     var encoding:Int= ENCODING_PCM_16BIT
-    private set
+        protected set
 
     @Volatile
     open var timestamp=0L //todo  пересчет выведенных байтов в мс.
+        protected set
     @Volatile
     open var bytesSent = 0L
-        set(value) {
+        protected set(value) {
             field=value
             timestamp=(frameTimeMs(encoding,sampleRate,channelsCount)*value).toLong()
         }
@@ -84,25 +89,34 @@ abstract class AbstractSoundInputStream :    InputStream, AutoCloseable {
 
     }
 
-
+    // будет содержать валидное значение если это возможно, к примеру для потока из файла
     var mediaFormat:MediaFormat?=null
-
+        protected set
+    // будет содержать валидное значение если это возможно, к примеру для потока из файла
     var duration: Long = 0
-
+        protected set
+    // значение 0 не валидно, его использование указывает на незавершенность инциализации
     var channelsCount:Int = 0
+        protected set
 
+    // не путать с числом каналов! см. channelConfig(channels: Int)
+    // одно из законных значений - CHANNEL_IN_MONO,CHANNEL_IN_STEREO.
+    //должно быть выставлено при создании канала
+    var channelConfig:Int= AudioFormat.CHANNEL_INVALID
+        protected set
+    // типичный поддерживаемый аппаратурой диапазон - 16000 - 48000, стандартные значения:
+    // 8000,11025,12000,16000,22050,24000,32000,44100,48000, гарантированно
+    // поддерживается 44100
     var sampleRate:Int =0
+        protected set
 
     var frameSize: Int=0 // всегда считать размер в конструкторе
+        protected set
 
 
-    /**
-     * todo Кривоват мой английский. Перевести перед выкладкой остальное в реальном классе?
-     * call function before returning from read (...) methods in realisation of your classes to
-     * return bytesSend or other info for getting callback method for updating info on stream
-     * state and about new data after blocking reading operations
-     */
-    open var onReadCallback: ((alreadySent:Long) -> Unit)? ={  }
+    // переопределите коллбэк для возможности учета вызовов методов чтения из стороннего API,
+    // к примеру для реализации индиктора прогресса
+    open var onReadCallback: ((sentBytes:Long) -> Unit)? ={  }
 
 
     /**
@@ -152,13 +166,13 @@ abstract class AbstractSoundInputStream :    InputStream, AutoCloseable {
 
     @Throws(IOException::class)
     open fun readShorts(b: ShortArray, off: Int, len: Int): Int {
-        throw NoSuchMethodException("Check canReturnShorts() before. Implementing class  must override " +
+        throw NoSuchMethodException("Check canReturnShorts() value. Implementing class  must override " +
                 "readShorts(b: ShortArray, off: Int, len: Int) and canReturnShorts()")
     }
 
     @Throws(IOException::class)
     open fun readShorts(b: ShortArray): Int {
-        throw NoSuchMethodException("Check canReturnShorts() before. Implementing class  must override " +
+        throw NoSuchMethodException("Check canReturnShorts() value. Implementing class  must override " +
                 "readShorts(b: ShortArray) and canReturnShorts()")
     }
 
@@ -184,20 +198,20 @@ abstract class AbstractSoundInputStream :    InputStream, AutoCloseable {
     open fun canReturnShorts():Boolean =false
 
 
-    fun shortToByteArrayLittleEndian(shorts: ShortArray): ByteArray {
-        val byteBuffer = ByteBuffer.allocate(shorts.size * 2).order(ByteOrder.LITTLE_ENDIAN)
-        byteBuffer.asShortBuffer().put(shorts)
-        return byteBuffer.array()
-    }
-
-
     private fun frameTimeMs(encoding:Int, rate:Int,channels: Int):Double{
         val bytesInFrame:Int = when (encoding){
-            AudioFormat.ENCODING_PCM_8BIT -> channels
+            ENCODING_PCM_8BIT -> channels
             ENCODING_PCM_16BIT -> channels*2
             else-> 0
         }
         return 1000.0/(rate*bytesInFrame.toDouble())
     }
 
+    fun channelConfig(channels: Int) = when (channels) {
+        1-> AudioFormat.CHANNEL_IN_MONO
+        2-> AudioFormat.CHANNEL_IN_STEREO
+        else ->{
+            AudioFormat.CHANNEL_INVALID
+        }
+    }
 }

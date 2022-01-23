@@ -4,32 +4,38 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.media.AudioFormat.*
+import android.media.MediaScannerConnection
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
+import android.os.Environment
+import android.os.Environment.getExternalStoragePublicDirectory
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
-import androidx.annotation.RequiresApi
+import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.PermissionChecker
 import androidx.navigation.ui.AppBarConfiguration
 import c.ponom.audiostreams.audio_streams.MicSoundInputStream
+import c.ponom.audiostreams.audio_streams.Mp3OutputAudioStream
 import c.ponom.audiostreams.audio_streams.SoundProcessingUtils.getRMS
 import c.ponom.audiostreams.databinding.ActivityMainBinding
+import c.ponom.recorder2.audio_streams.AudioFileSoundSource
 import c.ponom.recorder2.audio_streams.AudioOutputSteam
 import c.ponom.recorder2.audio_streams.TAG
 import c.ponom.recorder2.audio_streams.TestSoundInputStream
 import com.google.android.material.snackbar.Snackbar
+import com.naman14.androidlame.LameBuilder
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Dispatchers.IO
+import kotlinx.coroutines.Dispatchers.Main
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.FileInputStream
+import java.io.File
 import java.lang.System.currentTimeMillis
 
 private const val ASKING_FOR_FILE=2
@@ -39,19 +45,20 @@ class MainActivity : AppCompatActivity() {
 
     private var recordingIsOn: Boolean=false
     private var permissionGranted: Boolean=false
+    private lateinit var stopButton: Button
     private lateinit var appBarConfiguration: AppBarConfiguration
     private lateinit var binding: ActivityMainBinding
     var microphoneStream: MicSoundInputStream = MicSoundInputStream(16000)
     private var lastVolumeTimestamp = 0L
 
     @SuppressLint("SetTextI18n")
-    @RequiresApi(Build.VERSION_CODES.P)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         checkPermission()
+        stopButton=binding.stopPlayer
+        stopButton.isEnabled=false
         Log.e("TAG", microphoneStream.isBluetoothSCOMicAvailable(this).toString())
         microphoneStream.getInputDeviceList(this).forEach {
             Log.e("Type=", it.type.toString()) }
@@ -115,12 +122,10 @@ class MainActivity : AppCompatActivity() {
             val name = uri.lastPathSegment.toString().substringAfterLast("/")
             // грубоватый способ, надо разобраться со структурой контент имен, там last segment мрак
 
-            Log.e(TAG, "onActivityResult: $path")
+            Log.e(TAG, "onActivityResult: path $path, name $name, uri $uri")
 
-            Log.e(TAG, "getTextInputStreamIfExist: find file start")
-            val stream=getMediaStreamIfExist(uri)
-            if (stream!=null)
-            Log.e(TAG, "getTextInputStreamIfExist: find file end"+stream.toString())
+            playUri(uri)
+
         }
         super.onActivityResult(requestCode, resultCode, data)
     }
@@ -128,15 +133,73 @@ class MainActivity : AppCompatActivity() {
 
 
 
-    private fun getMediaStreamIfExist(uri: Uri): FileInputStream? {
-        if (uri == Uri.EMPTY) return null //todo потом вернем поток из data
-        val fd =this.contentResolver.openAssetFileDescriptor(uri,"r")
-        //if (fd!=null) val inputStream= AudioFileSoundSource(fd.createInputStream())
+    private fun playUri(uri: Uri){
+        playing=!playing
+        if (!playing)return //повторный тык выключает
 
-        //val outStream=AudioOutputSteam()
-        return if (fd==null) null else
-            fd.createInputStream()
+        if (uri == Uri.EMPTY) return
+        val fd =this.contentResolver.openAssetFileDescriptor(uri,"r")
+        val assetStream =this.contentResolver.openInputStream(uri)
+        val canonical =this.contentResolver.canonicalize(uri)
+        Log.e(TAG, "play uri: canonical: $canonical, fd len ${fd?.length}")
+
+        //val assetStream =this.contentResolver.openTypedAssetFileDescriptor()
+        // Это вроде дает вариант открыть файл с допданными из контент провайлдера для медиа
+        // - надо разбраться
+
+        val audioIn =AudioFileSoundSource().getStream(this,uri)
+        audioIn.onReadCallback = {pos-> Log.e(TAG, "playUri: pos=$pos")}
+        val audioOut=AudioOutputSteam(audioIn.sampleRate,audioIn.channelsCount,
+            audioIn.encoding,0)
+        Log.e(TAG, "playUri: ="+audioIn.mediaFormat.toString())
+        playing=true
+        stopButton.isEnabled=true
+        CoroutineScope(IO).launch{
+            audioOut.play()
+            val samplesArray = ShortArray(10000)
+            //val byteArray = ByteArray(4096*16)
+
+            do {
+            try {
+                if (!playing) break
+                val samples = audioIn.readShorts(samplesArray)
+
+                //val bytes = audioIn.read(byteArray)
+                //if (bytes > 0) audioOut.writeShorts(byteToShortArrayLittleEndian(byteArray),0, bytes/2)
+
+                if (samples > 0) audioOut.writeShorts(samplesArray)
+                else break
+            } catch (e:Exception){
+                e.printStackTrace()
+             break
+            }
+            finally {
+
+            }
+            }
+            while(true)
+            playing=false
+            audioOut.close()
+            audioIn.close()
+            launch(CoroutineScope(Main).coroutineContext){
+                stopButton.isEnabled=false
+
+            }
+            }
+
     }
+
+
+    fun stopPlayer(view: View){
+        playing=false
+
+    }
+
+
+
+
+
+
 
     fun playExternalFile(view: View) {
         val intent = Intent()
@@ -215,41 +278,102 @@ class MainActivity : AppCompatActivity() {
     fun playSoundStereo(view: View) {
         val sampleRate = 48000
         val testSoundInputStream=TestSoundInputStream(440.0,480.0,
-            8000,7000,sampleRate, CHANNEL_IN_STEREO, ENCODING_PCM_16BIT)
-        val data=ByteArray(sampleRate*4*2*2) //4 секунды, 2 байта, 2 канала
+            8000,7001,sampleRate, CHANNEL_IN_STEREO, ENCODING_PCM_16BIT)
+        val data=ShortArray(sampleRate*4*2) //4 секунды, 2 байта, 2 канала
         // тут тестируется передача и отправка данных в байтах, не в shorts
-        testSoundInputStream.read(data)
-        CoroutineScope(IO).launch{
-            val outChannel  =AudioOutputSteam(sampleRate,
-                CHANNEL_OUT_STEREO,ENCODING_PCM_16BIT,500)
-            outChannel.play()
-            outChannel.write(data)
-            outChannel.close()
-        }
-    }
-
-
-
-
-    fun playSoundMono(view: View) {
-        val sampleRate = 48000
-        val testSoundInputStream=TestSoundInputStream(520.0,10000,
-            sampleRate, CHANNEL_IN_MONO, ENCODING_PCM_16BIT)
-        val data=ShortArray(sampleRate*4)//4 секунды, 1 16-битовый отчет , 1 канал
         testSoundInputStream.readShorts(data)
-        // тут тестируется передача и отправка данных в shorts
         CoroutineScope(IO).launch{
             val outChannel  =AudioOutputSteam(sampleRate,
-                CHANNEL_OUT_MONO,ENCODING_PCM_16BIT,500)
+                2,ENCODING_PCM_16BIT,500)
             outChannel.play()
             outChannel.writeShorts(data)
             outChannel.close()
         }
     }
 
+    var playing =false
+
+
+    fun playSoundMono(view: View) {
+
+        val sampleRate = 48000
+        val testSoundInputStream=TestSoundInputStream(440.0,10000,
+            sampleRate, CHANNEL_IN_MONO, ENCODING_PCM_16BIT)
+        val data=ShortArray(sampleRate*4)//4 секунды, 1 16-битовый отчет , 1 канал
+        testSoundInputStream.readShorts(data)
+        // тут тестируется передача и отправка данных в shorts
+        CoroutineScope(IO).launch{
+            val outChannel  =AudioOutputSteam(sampleRate,
+                1,ENCODING_PCM_16BIT,500)
+            outChannel.play()
+            outChannel.writeShorts(data)
+            outChannel.close()
+        }
+    }
+    @Suppress("LocalVariableName")
+
+
+        fun makeMp3(view: View) {
+        Log.e(TAG, "makeMp3: =start")
+        val MP3outBitrate = 128
+        val stereoSamplesStream = TestSoundInputStream(400.0,440.0,
+            7000, 6000,24000, CHANNEL_IN_STEREO,
+            ENCODING_PCM_16BIT)
+        val monoSamplesStream = TestSoundInputStream(430.0, 8000,
+            24000, CHANNEL_IN_MONO,ENCODING_PCM_16BIT)
+
+        val samplesCount = 48000//15 seconds
+        val monoSamples =ShortArray(samplesCount *10)
+        val stereoSamples =ShortArray(samplesCount *10*2)
+        monoSamplesStream.readShorts(monoSamples)
+        stereoSamplesStream.readShorts(stereoSamples)
+        Log.e(TAG, "makeMp3: =generated")
+        val outDirName= getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC)
+        val outDir = File("$outDirName/AudioStreams/")
+        outDir.mkdir()
+
+        val outputFileMono=File(outDir,"/TestMono.mp3")
+        val outputFileMonoStream =outputFileMono.outputStream()
+
+        val outputFileStereo=File(outDir,"/TestStereo.mp3")
+        val outputFileStereoStream=outputFileStereo.outputStream()
+
+        val mp3MonoWriter = Mp3OutputAudioStream(outputFileMonoStream,
+            monoSamplesStream.sampleRate, MP3outBitrate,LameBuilder.Mode.MONO)
+
+        Log.e(TAG, "makeMp3: =start mono")
+        mp3MonoWriter.writeShorts(monoSamples)
+        mp3MonoWriter.close()
+        outputFileMonoStream.close()
+        Log.e(TAG, "makeMp3: =monoSaved")
+
+
+        Log.e(TAG, "makeMp3: =stereo start")
+        val mp3StereoWriter = Mp3OutputAudioStream(outputFileStereoStream,
+            stereoSamplesStream.sampleRate, MP3outBitrate,LameBuilder.Mode.STEREO)
+        mp3StereoWriter.writeShorts(stereoSamples)
+        mp3StereoWriter.close()
+        outputFileStereoStream.close()
+        Log.e(TAG, "makeMp3: =stereoSaved")
+
+
+        //todo - todo - еще байтовый поток протестить, write(b), для обеих форматов
+
+        stereoSamplesStream.close()
+        monoSamplesStream.close()
+        Log.e(TAG, "makeMp3: = end")
+        runMediaScanner(arrayOf(outputFileMono.toString(),outputFileStereo.toString()))
+    }
 
 
 
+    private fun runMediaScanner(filePaths: Array<String>) {
+        MediaScannerConnection.scanFile(this,filePaths, null
+        ) { path, uri ->
+            Log.e("ExternalStorage", "Scanned $path:")
+            Log.e("ExternalStorage", "-> uri=$uri")
+        }
+    }
 
 
 /*todo

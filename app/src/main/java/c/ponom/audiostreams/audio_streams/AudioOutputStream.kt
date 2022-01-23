@@ -1,29 +1,51 @@
 package c.ponom.recorder2.audio_streams
 
-import android.media.AudioFormat.ENCODING_PCM_16BIT
-import android.media.AudioFormat.ENCODING_PCM_8BIT
+import android.media.AudioFormat
+import android.media.AudioFormat.*
+import android.media.MediaFormat
+import java.io.IOException
 import java.io.OutputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
-abstract class AbstractSoundOutputStream() :
+abstract class AudioOutputStream() :
     OutputStream(),  AutoCloseable{
 
-    var sampleRate: Int=0
-    var channelsCount:Int=0 // 1 or 2 only
-    var frameSize: Int=0 // посчитать размер в конструкторе
+
+
+    // будет содержать валидное значение если это возможно
+    var mediaFormat: MediaFormat?=null
+
+
+    // значение 0 не валидно, его наличие указывает на незавершенность инциализации
+    var channelsCount:Int = 0
+
+
+    // не путать с числом каналов! см. channelConfig(channels: Int)
+    // одно из законных значений - CHANNEL_IN_MONO,CHANNEL_IN_STEREO.
+    //должно быть выставлено при создании канала
+    var channelConfig:Int= AudioFormat.CHANNEL_INVALID
+
+    // типичный поддерживаемый аппаратурой диапазон - 16000 - 48000, стандартные значения:
+    // 8000,11025,12000,16000,22050,24000,32000,44100,48000, гарантированно
+    // поддерживается 44100
+    var sampleRate:Int =0
+
+    var frameSize: Int=0 // всегда считать размер в конструкторе
+
+
+    // переопределите коллбэк для возможности учета вызовов методов чтения из стороннего API,
+    // к примеру для реализации индиктора прогресса
+    open var onWriteCallback: ((sentBytes:Long) -> Unit)? ={  }
 
 
 
-
-
-    var encoding:Int=0 //ENCODING_PCM_8BIT  или  ENCODING_PCM_16BIT)
+    var encoding:Int= ENCODING_PCM_16BIT
 
     @Volatile
     var timestamp=0L // пересчет выведенных байтов в мс.
 
 
-    // todo - добавить коллбэк на завершение записи?
     @Volatile
     var bytesSent: Long = 0
     set(value) {
@@ -77,8 +99,6 @@ abstract class AbstractSoundOutputStream() :
         write(b,0,b.size)
     }
 
-
-
     open fun setRecommendedBufferSizeMs(ms:Int){
 
     }
@@ -86,6 +106,15 @@ abstract class AbstractSoundOutputStream() :
     open fun setVolume(vol:Float){
     }
 
+
+
+    fun channelConfig(channels: Int) = when (channels) {
+        1-> CHANNEL_OUT_MONO
+        2-> CHANNEL_OUT_STEREO
+        else ->{
+            CHANNEL_INVALID
+        }
+    }
 
     fun shortToByteArray(arr: ShortArray): ByteArray {
         val byteBuffer = ByteBuffer.allocate(arr.size * 2)
@@ -104,6 +133,22 @@ abstract class AbstractSoundOutputStream() :
         val shorts = ShortArray(bytes.size / 2)
         ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer()[shorts]
         return shorts
+    }
+
+
+    open fun canReturnShorts():Boolean =false
+
+
+    @Throws(IOException::class)
+    open fun writeShorts(b: ShortArray, off: Int, len: Int){
+        throw NoSuchMethodException("Check canReturnShorts() value. Implementing class  must override " +
+                "readShorts(b: ShortArray, off: Int, len: Int) and canReturnShorts()")
+    }
+
+    @Throws(IOException::class)
+    open fun writeShorts(b: ShortArray) {
+        throw NoSuchMethodException("Check canReturnShorts() value. Implementing class  must override " +
+                "readShorts(b: ShortArray) and canReturnShorts()")
     }
 
 

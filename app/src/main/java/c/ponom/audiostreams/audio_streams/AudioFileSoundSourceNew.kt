@@ -10,13 +10,11 @@ import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.net.Uri
 import android.util.Log
-import c.ponom.audiostreams.audio_streams.ShortArrayUtils.byteToShortArrayLittleEndian
 import java.io.FileDescriptor
 import java.io.IOException
 import java.nio.ByteBuffer
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
-import java.util.concurrent.LinkedBlockingDeque
 import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.max
@@ -46,7 +44,7 @@ private const val LOG_TAG: String = "Decoder"
 
 
 @Suppress("unused")
-open class AudioFileSoundSource { //todo - переделать под
+open class AudioFileSoundSourceNew { //todo - переделать под
     private var maxChunkSize = 0
     private lateinit var codec: MediaCodec
     private var bufferReady: Boolean = false
@@ -67,7 +65,7 @@ open class AudioFileSoundSource { //todo - переделать под
     private var lock = Any()
 
 
-    private  var bufferFutureList: LinkedBlockingDeque<Future<ByteBuffer>> = LinkedBlockingDeque(3)
+    //private  var bufferFutureList: LinkedBlockingDeque<Future<ByteBuffer>> = LinkedBlockingDeque(0)
 
     private var bytesTotalCount = 0
     private var bytesFinalCount = 0
@@ -370,23 +368,7 @@ open class AudioFileSoundSource { //todo - переделать под
             return read(ByteArray(n.toInt())).toLong()
         }
 
-        override fun readShorts(b: ShortArray, off: Int, len: Int): Int {
-            val byteArray =ByteArray(b.size*2)
-            //todo - могут вылезать интересные вещи при нечетном числе байт в невалидных файлах
-            val bytes = read(byteArray, off, len*2)
-            if (bytes==-1)return -1
-            val resultShorts= byteToShortArrayLittleEndian(byteArray)
-            resultShorts.copyInto(b,0,0,bytes/2)
-            return bytes/2
-        }
 
-        override fun readShorts(b: ShortArray): Int {
-            return readShorts(b,0,b.size)
-        }
-
-        override fun canReturnShorts(): Boolean {
-            return true
-        }
 
         private fun getBytesFromBuffer(b: ByteArray, len: Int): Int {
             if (!bufferReady && !eofReached) fillBuffer()
@@ -415,17 +397,17 @@ open class AudioFileSoundSource { //todo - переделать под
         if (!prepared || bufferReady || eofReached) throw
         IllegalStateException("Extractor not ready or already released")
 
-        //todo  if (!prepared || bufferReady || eofReached) как вариант по этом можно пройти по очереди
+        // if (!prepared || bufferReady || eofReached) как вариант по этом можно пройти по очереди
         // и удалить все задания
 
-        if (bufferFutureList.isEmpty()) bufferFutureList.add(fillInBackground())
+        //if (bufferFutureList.isEmpty()) bufferFutureList.add(fillInBackground())
 
-        if (!eofReached) bufferFutureList.add(fillInBackground())
-        val buff = bufferFutureList.takeFirst().get()
+        //if (!eofReached) bufferFutureList.add(fillInBackground())
+        //val buff = bufferFutureList.takeFirst().get()
         // блокирующе ждем ответа на предыдущий буфер с огромной вероятностью он давно расшифрован
         // при правильном размере - правильный размер это примерно секунд 7-15 звука,
         // их расшифруют за пару секунд
-        newBuffer=buff
+        //newBuffer=buff;
     }
 
     @Throws(IllegalStateException::class, CodecException::class,IllegalArgumentException::class)

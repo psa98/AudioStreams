@@ -1,6 +1,6 @@
 package c.ponom.audiostreams.audio_streams;
 
-import static java.lang.Integer.min;
+import static java.lang.Math.min;
 
 import android.media.MediaFormat;
 
@@ -11,15 +11,15 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
 
-import c.ponom.recorder2.audio_streams.AbstractSoundInputStream;
+import c.ponom.recorder2.audio_streams.AudioInputStream;
 import kotlin.NotImplementedError;
 import kotlin.Unit;
 import kotlin.jvm.functions.Function1;
 
-public class MonitoredAudioInputStream  extends AbstractSoundInputStream {
+public class MonitoredAudioInputStream  extends AudioInputStream {
 
     final int BLOCKING_PAUSE = 5; //период запроса о появлении данныз в буфере, мс
-    private AbstractSoundInputStream inputStream;
+    private AudioInputStream inputStream;
     private MonitoringAudioInputStream monitoringStream;
     private final  int bufferInitialSize = 1024*16;
     private  ByteArrayOutputStream monitorBuffer;
@@ -30,7 +30,7 @@ public class MonitoredAudioInputStream  extends AbstractSoundInputStream {
 
     }
 
-    public MonitoredAudioInputStream(AbstractSoundInputStream inStream) {
+    public MonitoredAudioInputStream(AudioInputStream inStream) {
         inputStream=inStream;
         monitoringStream = new MonitoringAudioInputStream();
         monitorBuffer=monitoringStream.monitorBuffer;
@@ -45,18 +45,16 @@ public class MonitoredAudioInputStream  extends AbstractSoundInputStream {
 
     }
 
-    @Override
-    public int getBytesPerSample() {
-        return inputStream.getBytesPerSample();
-    }
-
-
 
     @Override
     public long getTimestamp() {
         return inputStream.getTimestamp();
     }
 
+    @Override
+    protected void setBytesSent(long value) {
+        super.setBytesSent(value);
+    }
 
     @Override
     public long getBytesSent() {
@@ -170,7 +168,7 @@ public class MonitoredAudioInputStream  extends AbstractSoundInputStream {
 
 
     synchronized void bufferPutShorts(short[] dataSamples) throws IOException {
-        monitorBuffer.write(shortToByteArrayLittleEndian(dataSamples));
+        monitorBuffer.write(ShortArrayUtils.INSTANCE.shortToByteArrayLittleEndian(dataSamples));
     }
 
 
@@ -180,7 +178,7 @@ public class MonitoredAudioInputStream  extends AbstractSoundInputStream {
             throw new IndexOutOfBoundsException("Wrong read(...) params");
         if (len == 0) return 0;
         if (closedMain) return -1;
-        int length =min(len,b.length);
+        int length = min(len,b.length);
         if (length==0)return 0;
         byte[] fullBuffer=monitorBuffer.toByteArray();
         byte[] returnBuffer=Arrays.copyOf(fullBuffer,(min(length,fullBuffer.length)));
@@ -205,7 +203,7 @@ public class MonitoredAudioInputStream  extends AbstractSoundInputStream {
         return monitoringStream;
     }
 
-    public AbstractSoundInputStream getInputStream() {
+    public AudioInputStream getInputStream() {
         return inputStream;
     }
 
