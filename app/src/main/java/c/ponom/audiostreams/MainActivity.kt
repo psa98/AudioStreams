@@ -18,7 +18,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.PermissionChecker
-import androidx.navigation.ui.AppBarConfiguration
 import c.ponom.audiostreams.audio_streams.MicSoundInputStream
 import c.ponom.audiostreams.audio_streams.Mp3OutputAudioStream
 import c.ponom.audiostreams.audio_streams.ShortArrayUtils.shortToByteArrayLittleEndian
@@ -31,7 +30,6 @@ import c.ponom.recorder2.audio_streams.TestSoundInputStream
 import com.google.android.material.snackbar.Snackbar
 import com.naman14.androidlame.LameBuilder
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.Dispatchers.Main
 import kotlinx.coroutines.launch
@@ -41,15 +39,17 @@ import java.lang.System.currentTimeMillis
 
 private const val ASKING_FOR_FILE=2
 private const val PERMISSION_REQUEST_CODE: Int =1
+
+@Suppress("LocalVariableName", "PropertyName","Deprecation")
 class MainActivity : AppCompatActivity() {
 
 
     private var recordingIsOn: Boolean=false
     private var permissionGranted: Boolean=false
     private lateinit var stopButton: Button
-    private lateinit var appBarConfiguration: AppBarConfiguration
+
     private lateinit var binding: ActivityMainBinding
-    var microphoneStream: MicSoundInputStream = MicSoundInputStream(16000)
+    private var microphoneStream: MicSoundInputStream = MicSoundInputStream(16000)
     private var lastVolumeTimestamp = 0L
 
     @SuppressLint("SetTextI18n")
@@ -119,10 +119,8 @@ class MainActivity : AppCompatActivity() {
             val uri: Uri? = data?.data
             val path = uri?.encodedPath
             if (path.isNullOrBlank()) return // добавить тосты
-            val mediaFileUri: Uri = uri //это начинается с content
             val name = uri.lastPathSegment.toString().substringAfterLast("/")
             // грубоватый способ, надо разобраться со структурой контент имен, там last segment мрак
-
             Log.e(TAG, "onActivityResult: path $path, name $name, uri $uri")
 
             playUri(uri)
@@ -141,8 +139,7 @@ class MainActivity : AppCompatActivity() {
         if (uri == Uri.EMPTY) return
         val fd =this.contentResolver.openAssetFileDescriptor(uri,"r")
         val assetStream =this.contentResolver.openInputStream(uri)
-        val canonical =this.contentResolver.canonicalize(uri)
-        Log.e(TAG, "play uri: canonical: $canonical, fd len ${fd?.length}")
+        Log.e(TAG, "play uri:  fd len ${fd?.length}")
 
         //val assetStream =this.contentResolver.openTypedAssetFileDescriptor()
         // Это вроде дает вариант открыть файл с допданными из контент провайлдера для медиа
@@ -240,7 +237,7 @@ class MainActivity : AppCompatActivity() {
             do {
                 val bytes = microphoneStream.readShorts(soundRawData)
                 if (bytes >= 0) {
-                    withContext(Dispatchers.Main) {
+                    withContext(Main) {
                         run {
                             val timeNow = currentTimeMillis()
                             val meteringFreq = 300
@@ -249,17 +246,14 @@ class MainActivity : AppCompatActivity() {
                                 val vol =
                                     (getRMS(soundRawData) + prevVol) / 2
                                 micData.text = "$vol"
-                                val dataArr = ByteArray(100)
-                                //monitoredStream.read(dataArr)
-                                Log.e("Vol=", "$vol, time=${microphoneStream.timestamp}")
-                                //val mp3=mp3Encoder.encodeMonoStream(soundRawData)
+                                Log.e("Vol=", "$vol, time=${microphoneStream.timestamp/1000}")
                                 prevVol = vol.toShort()
                             }
                         }
                     }
                 }
             } while (bytes>=0&&recordingIsOn)
-            withContext(Dispatchers.Main){micData.text="0"}
+            withContext(Main){micData.text="0"}
             microphoneStream.stopRecordingSession()
             microphoneStream.close()
     }
@@ -292,11 +286,10 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    var playing =false
+    private var playing =false
 
 
     fun playSoundMono(view: View) {
-
         val sampleRate = 48000
         val testSoundInputStream=TestSoundInputStream(440.0,10000,
             sampleRate, CHANNEL_IN_MONO, ENCODING_PCM_16BIT)
@@ -311,19 +304,17 @@ class MainActivity : AppCompatActivity() {
             outChannel.close()
         }
     }
-    @Suppress("LocalVariableName")
-    val MP3outBitrate = 128
-    val sampleRate = 24000
+    @Suppress("LocalVariableName", "PropertyName", "PrivatePropertyName")
+    private val  MP3outBitrate = 128
 
+    private val sampleRate = 24000
         fun makeMp3(view: View) {
         Log.e(TAG, "makeMp3: =start")
-
         val stereoSamplesStream = TestSoundInputStream(400.0,440.0,
-            7000, 12000, sampleRate, CHANNEL_IN_STEREO,
+            7000, 12000 , sampleRate, CHANNEL_IN_STEREO,
             ENCODING_PCM_16BIT)
         val monoSamplesStream = TestSoundInputStream(430.0, 8000,
             sampleRate, CHANNEL_IN_MONO,ENCODING_PCM_16BIT)
-
         val samplesCount = 48000//15 seconds
         val monoSamples =ShortArray(samplesCount *10)
         val stereoSamples =ShortArray(samplesCount *10*2)
@@ -333,15 +324,17 @@ class MainActivity : AppCompatActivity() {
         val outDirName= getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC)
         val outDir = File("$outDirName/AudioStreams/")
         outDir.mkdir()
-
-        TestMp3ShortsWrite(outDir,monoSamples,stereoSamples)
-        testBytesMP3Write(outDir,monoSamples, stereoSamples)
+            CoroutineScope(IO).launch {
+                testMp3ShortsWrite(outDir, monoSamples, stereoSamples)
+                testBytesMP3Write(outDir, monoSamples, stereoSamples)
+            }
         stereoSamplesStream.close()
         monoSamplesStream.close()
         Log.e(TAG, "makeMp3: = end")
         }
 
-    private fun TestMp3ShortsWrite(outDir: File, monoSamples: ShortArray,stereoSamples: ShortArray) {
+
+    private fun testMp3ShortsWrite(outDir: File, monoSamples: ShortArray, stereoSamples: ShortArray) {
         val outputFileMono = File(outDir, "/TestMono.mp3")
         val outputFileMonoStream = outputFileMono.outputStream()
 
@@ -369,7 +362,7 @@ class MainActivity : AppCompatActivity() {
         mp3StereoWriter.close()
         outputFileStereoStream.close()
         Log.e(TAG, "makeMp3: =stereoSaved")
-        //runMediaScanner(arrayOf(outputFileMono.toString(), outputFileStereo.toString()))
+        runMediaScanner(arrayOf(outputFileMono.toString(), outputFileStereo.toString()))
     }
 
     private fun testBytesMP3Write(
