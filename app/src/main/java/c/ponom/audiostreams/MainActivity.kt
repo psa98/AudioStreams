@@ -319,7 +319,7 @@ class MainActivity : AppCompatActivity() {
         Log.e(TAG, "makeMp3: =start")
 
         val stereoSamplesStream = TestSoundInputStream(400.0,440.0,
-            7000, 6000, sampleRate, CHANNEL_IN_STEREO,
+            7000, 12000, sampleRate, CHANNEL_IN_STEREO,
             ENCODING_PCM_16BIT)
         val monoSamplesStream = TestSoundInputStream(430.0, 8000,
             sampleRate, CHANNEL_IN_MONO,ENCODING_PCM_16BIT)
