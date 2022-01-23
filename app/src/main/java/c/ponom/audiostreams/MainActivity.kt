@@ -21,6 +21,7 @@ import androidx.core.content.PermissionChecker
 import androidx.navigation.ui.AppBarConfiguration
 import c.ponom.audiostreams.audio_streams.MicSoundInputStream
 import c.ponom.audiostreams.audio_streams.Mp3OutputAudioStream
+import c.ponom.audiostreams.audio_streams.ShortArrayUtils.shortToByteArrayLittleEndian
 import c.ponom.audiostreams.audio_streams.SoundProcessingUtils.getRMS
 import c.ponom.audiostreams.databinding.ActivityMainBinding
 import c.ponom.recorder2.audio_streams.AudioFileSoundSource
@@ -311,16 +312,17 @@ class MainActivity : AppCompatActivity() {
         }
     }
     @Suppress("LocalVariableName")
-
+    val MP3outBitrate = 128
+    val sampleRate = 24000
 
         fun makeMp3(view: View) {
         Log.e(TAG, "makeMp3: =start")
-        val MP3outBitrate = 128
+
         val stereoSamplesStream = TestSoundInputStream(400.0,440.0,
-            7000, 6000,24000, CHANNEL_IN_STEREO,
+            7000, 6000, sampleRate, CHANNEL_IN_STEREO,
             ENCODING_PCM_16BIT)
         val monoSamplesStream = TestSoundInputStream(430.0, 8000,
-            24000, CHANNEL_IN_MONO,ENCODING_PCM_16BIT)
+            sampleRate, CHANNEL_IN_MONO,ENCODING_PCM_16BIT)
 
         val samplesCount = 48000//15 seconds
         val monoSamples =ShortArray(samplesCount *10)
@@ -332,14 +334,24 @@ class MainActivity : AppCompatActivity() {
         val outDir = File("$outDirName/AudioStreams/")
         outDir.mkdir()
 
-        val outputFileMono=File(outDir,"/TestMono.mp3")
-        val outputFileMonoStream =outputFileMono.outputStream()
+        TestMp3ShortsWrite(outDir,monoSamples,stereoSamples)
+        testBytesMP3Write(outDir,monoSamples, stereoSamples)
+        stereoSamplesStream.close()
+        monoSamplesStream.close()
+        Log.e(TAG, "makeMp3: = end")
+        }
 
-        val outputFileStereo=File(outDir,"/TestStereo.mp3")
-        val outputFileStereoStream=outputFileStereo.outputStream()
+    private fun TestMp3ShortsWrite(outDir: File, monoSamples: ShortArray,stereoSamples: ShortArray) {
+        val outputFileMono = File(outDir, "/TestMono.mp3")
+        val outputFileMonoStream = outputFileMono.outputStream()
 
-        val mp3MonoWriter = Mp3OutputAudioStream(outputFileMonoStream,
-            monoSamplesStream.sampleRate, MP3outBitrate,LameBuilder.Mode.MONO)
+        val outputFileStereo = File(outDir, "/TestStereo.mp3")
+        val outputFileStereoStream = outputFileStereo.outputStream()
+
+        val mp3MonoWriter = Mp3OutputAudioStream(
+            outputFileMonoStream,
+            sampleRate, MP3outBitrate, LameBuilder.Mode.MONO
+        )
 
         Log.e(TAG, "makeMp3: =start mono")
         mp3MonoWriter.writeShorts(monoSamples)
@@ -349,22 +361,45 @@ class MainActivity : AppCompatActivity() {
 
 
         Log.e(TAG, "makeMp3: =stereo start")
-        val mp3StereoWriter = Mp3OutputAudioStream(outputFileStereoStream,
-            stereoSamplesStream.sampleRate, MP3outBitrate,LameBuilder.Mode.STEREO)
+        val mp3StereoWriter = Mp3OutputAudioStream(
+            outputFileStereoStream,
+            sampleRate, MP3outBitrate, LameBuilder.Mode.STEREO
+        )
         mp3StereoWriter.writeShorts(stereoSamples)
         mp3StereoWriter.close()
         outputFileStereoStream.close()
         Log.e(TAG, "makeMp3: =stereoSaved")
-
-
-        //todo - todo - еще байтовый поток протестить, write(b), для обеих форматов
-
-        stereoSamplesStream.close()
-        monoSamplesStream.close()
-        Log.e(TAG, "makeMp3: = end")
-        runMediaScanner(arrayOf(outputFileMono.toString(),outputFileStereo.toString()))
+        //runMediaScanner(arrayOf(outputFileMono.toString(), outputFileStereo.toString()))
     }
 
+    private fun testBytesMP3Write(
+        outDir: File,
+        monoSamples: ShortArray,
+        stereoSamples: ShortArray
+    ) {
+        val outputMonoBytesTest = File(outDir, "/TestMonoByteWrite.mp3").outputStream()
+        val outputStereoSoundBytesTest = File(outDir, "/TestStereoBytesWrite.mp3").outputStream()
+
+        val mp3MonoWriterBytes = Mp3OutputAudioStream(
+            outputMonoBytesTest,
+            sampleRate, MP3outBitrate, LameBuilder.Mode.MONO
+        )
+        Log.e(TAG, "makeMp3: =start mono")
+        mp3MonoWriterBytes.write(shortToByteArrayLittleEndian(monoSamples))
+        mp3MonoWriterBytes.close()
+        outputMonoBytesTest.close()
+        Log.e(TAG, "makeMp3: =monoSaved")
+        Log.e(TAG, "makeMp3: =stereo start")
+        val mp3StereoWriterBytes = Mp3OutputAudioStream(
+            outputStereoSoundBytesTest,
+            sampleRate, MP3outBitrate, LameBuilder.Mode.STEREO
+        )
+
+        mp3StereoWriterBytes.write(shortToByteArrayLittleEndian(stereoSamples))
+        mp3StereoWriterBytes.close()
+        Log.e(TAG, "makeMp3: =stereoSaved")
+        outputStereoSoundBytesTest.close()
+    }
 
 
     private fun runMediaScanner(filePaths: Array<String>) {
