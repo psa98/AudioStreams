@@ -1,6 +1,7 @@
 package c.ponom.audiostreams.audio_streams
 
 import android.media.AudioFormat.ENCODING_PCM_16BIT
+import androidx.annotation.IntRange
 import c.ponom.recorder2.audio_streams.AudioOutputStream
 import com.naman14.androidlame.AndroidLame
 import com.naman14.androidlame.LameBuilder
@@ -33,8 +34,8 @@ class Mp3OutputAudioStream private constructor() : AudioOutputStream(){
     @JvmOverloads
     constructor(
         outStream: OutputStream,
-        inSampleRate: Int,
-        outBitrate: Int,
+        @IntRange(from = 8000, to= 48000)inSampleRate: Int,
+        @IntRange(from = 32, to= 320) outBitrate: Int,
         outStereoMode: LameBuilder.Mode,
         qualityMode: EncodingQuality=EncodingQuality.BALANCED) : this() {
         sampleRate = inSampleRate
@@ -42,9 +43,7 @@ class Mp3OutputAudioStream private constructor() : AudioOutputStream(){
         outputStream=outStream
         channelsCount = when (outStereoMode) {
             LameBuilder.Mode.MONO -> 1
-            LameBuilder.Mode.STEREO -> 2
-            LameBuilder.Mode.JSTEREO -> 2
-            LameBuilder.Mode.DEFAULT -> 2
+            else -> 2
         }
         channelConfig=channelConfig(channelsCount)
         encoding = ENCODING_PCM_16BIT
@@ -91,7 +90,7 @@ class Mp3OutputAudioStream private constructor() : AudioOutputStream(){
         if (b == null) throw NullPointerException ("Null array passed")
         if (off < 0 || len < 0 || len > b.size - off)
             throw IndexOutOfBoundsException("Wrong write(...) params")
-        //!!! todo ---короче со стерео тут разбиратья
+        //!!! todo доделать оффсеты
 
         val samplesShorts = byteToShortArrayLittleEndian(b)
         val samples=samplesShorts.copyOf(len/2)
@@ -128,20 +127,20 @@ class Mp3OutputAudioStream private constructor() : AudioOutputStream(){
     }
 
     /**
-     * не закрывает подлежащий поток автоматически
+     * не закрывает подлежащий поток автоматически! Мало ли что вы в него еще писать будете
+     * другим образом
      */
     @Synchronized
     override fun close() {
         val result=encodeEofFrame()
         outputStream.write(result)
         finished=true
-
     }
 
     @Synchronized
     @Throws(IOException::class)
     override fun write(b: Int) {
-        throw NoSuchMethodException("Not implemented-use write (byte[]....)")
+        throw NoSuchMethodException("Not implemented - use write (byte[]....)")
     }
 
 

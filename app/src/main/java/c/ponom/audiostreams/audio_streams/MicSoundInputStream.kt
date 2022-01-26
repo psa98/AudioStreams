@@ -32,7 +32,7 @@ class MicSoundInputStream private constructor(): AudioInputStream()  {
     @Throws(IllegalArgumentException::class,IOException::class)
     constructor(freq:Int, channelsCount:Int=1,
                           encoding:Int= ENCODING_PCM_16BIT,
-                          mic:Int= MediaRecorder.AudioSource.VOICE_COMMUNICATION): this() {
+                          mic:Int= MediaRecorder.AudioSource.DEFAULT): this() {
         channelConfig=channelConfig(channelsCount)
         if (!(channelConfig== CHANNEL_IN_MONO ||channelConfig== CHANNEL_IN_STEREO))
             throw IllegalArgumentException("Only 1 and 2 channels (CHANNEL_IN_MONO " +
