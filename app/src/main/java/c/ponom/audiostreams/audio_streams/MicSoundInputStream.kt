@@ -301,8 +301,7 @@ class MicSoundInputStream private constructor(): AudioInputStream()  {
         }
     }
 
-    override fun canReturnShorts():Boolean = true
-
+    override fun canWriteShorts():Boolean = true
 
 }
 

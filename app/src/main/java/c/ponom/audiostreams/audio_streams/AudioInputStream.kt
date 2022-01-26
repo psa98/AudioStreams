@@ -166,14 +166,14 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
 
     @Throws(IOException::class)
     open fun readShorts(b: ShortArray, off: Int, len: Int): Int {
-        throw NoSuchMethodException("Check canReturnShorts() value. Implementing class  must override " +
-                "readShorts(b: ShortArray, off: Int, len: Int) and canReturnShorts()")
+        throw NoSuchMethodException("Check canReadShorts() value. Implementing class  must override " +
+                "readShorts(b: ShortArray, off: Int, len: Int) and canReadShorts()")
     }
 
     @Throws(IOException::class)
     open fun readShorts(b: ShortArray): Int {
-        throw NoSuchMethodException("Check canReturnShorts() value. Implementing class  must override " +
-                "readShorts(b: ShortArray) and canReturnShorts()")
+        throw NoSuchMethodException("Check canReadShorts() value. Implementing class  must override " +
+                "readShorts(b: ShortArray) and canReadShorts()")
     }
 
 
@@ -195,7 +195,7 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
         return false
     }
 
-    open fun canReturnShorts():Boolean =false
+    open fun canWriteShorts():Boolean =false
 
 
     private fun frameTimeMs(encoding:Int, rate:Int,channels: Int):Double{

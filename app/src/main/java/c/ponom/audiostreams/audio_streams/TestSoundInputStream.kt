@@ -7,7 +7,7 @@ package c.ponom.recorder2.audio_streams
 import android.media.AudioFormat.*
 import android.util.Log
 import androidx.annotation.IntRange
-import c.ponom.audiostreams.audio_streams.ShortArrayUtils
+import c.ponom.audiostreams.audio_streams.Volume
 import c.ponom.recorder2.audio_streams.TestSoundInputStream.TestSignalType.MONO
 import c.ponom.recorder2.audio_streams.TestSoundInputStream.TestSignalType.STEREO
 import java.io.IOException
@@ -213,7 +213,7 @@ class TestSoundInputStream private constructor() : AudioInputStream()  {
         if (closed) return -1
         val shortArray=ShortArray(min(len/2,b.size/2))
         val bytes= readShorts(shortArray,0,len/2)*2
-        ShortArrayUtils.shortToByteArrayLittleEndian(shortArray).copyInto(b)
+        Volume.shortToByteArrayLittleEndian(shortArray).copyInto(b)
         bytesSent+=bytes
         onReadCallback?.invoke(bytesSent)
         return bytes
@@ -253,7 +253,7 @@ class TestSoundInputStream private constructor() : AudioInputStream()  {
         return if (b.isEmpty()) 0 else readShorts(b, 0, b.size)
     }
 
-    override fun canReturnShorts():Boolean =true
+    override fun canWriteShorts():Boolean =true
 
 
     @Synchronized

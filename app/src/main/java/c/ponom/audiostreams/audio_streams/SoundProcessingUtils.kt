@@ -14,7 +14,7 @@ object SoundProcessingUtils {
     fun getMaxVolumeFloat(data: ShortArray): Float = getMaxVolume(data).toFloat() / Short.MAX_VALUE
 
 
-    fun getRMS(data: ShortArray): Short {
+    fun getRMSVolume(data: ShortArray): Short {
         var sum = 0.0
         for (element in data) {
             sum += (element * element)
@@ -22,7 +22,8 @@ object SoundProcessingUtils {
         return sqrt(sum / data.size).coerceAtMost(Short.MAX_VALUE - 1.0).toInt().toShort()
     }
 
+    //from 0.0 to 1.0
     fun getRMSFloat(data: ShortArray): Float {
-        return (getRMS(data).toFloat() / Short.MAX_VALUE)
+        return (getRMSVolume(data).toFloat() / Short.MAX_VALUE)
     }
 }

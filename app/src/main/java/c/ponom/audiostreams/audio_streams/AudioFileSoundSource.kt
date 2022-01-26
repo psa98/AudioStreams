@@ -10,7 +10,7 @@ import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.net.Uri
 import android.util.Log
-import c.ponom.audiostreams.audio_streams.ShortArrayUtils.byteToShortArrayLittleEndian
+import c.ponom.audiostreams.audio_streams.Volume.byteToShortArrayLittleEndian
 import java.io.FileDescriptor
 import java.io.IOException
 import java.nio.ByteBuffer
@@ -384,9 +384,7 @@ open class AudioFileSoundSource { //todo - переделать под
             return readShorts(b,0,b.size)
         }
 
-        override fun canReturnShorts(): Boolean {
-            return true
-        }
+        override fun canWriteShorts(): Boolean = true
 
         private fun getBytesFromBuffer(b: ByteArray, len: Int): Int {
             if (!bufferReady && !eofReached) fillBuffer()

@@ -20,8 +20,8 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.PermissionChecker
 import c.ponom.audiostreams.audio_streams.MicSoundInputStream
 import c.ponom.audiostreams.audio_streams.Mp3OutputAudioStream
-import c.ponom.audiostreams.audio_streams.ShortArrayUtils.shortToByteArrayLittleEndian
-import c.ponom.audiostreams.audio_streams.SoundProcessingUtils.getRMS
+import c.ponom.audiostreams.audio_streams.SoundProcessingUtils.getRMSVolume
+import c.ponom.audiostreams.audio_streams.Volume.shortToByteArrayLittleEndian
 import c.ponom.audiostreams.databinding.ActivityMainBinding
 import c.ponom.recorder2.audio_streams.AudioFileSoundSource
 import c.ponom.recorder2.audio_streams.AudioOutputSteam
@@ -244,7 +244,7 @@ class MainActivity : AppCompatActivity() {
                             if (timeNow - lastVolumeTimestamp > meteringFreq) {
                                 lastVolumeTimestamp = timeNow
                                 val vol =
-                                    (getRMS(soundRawData) + prevVol) / 2
+                                    (getRMSVolume(soundRawData) + prevVol) / 2
                                 micData.text = "$vol"
                                 Log.e("Vol=", "$vol, time=${microphoneStream.timestamp/1000}")
                                 prevVol = vol.toShort()

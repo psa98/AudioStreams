@@ -114,8 +114,8 @@ public class MonitoredAudioInputStream  extends AudioInputStream {
     }
 
     @Override
-    public boolean canReturnShorts() {
-        return  inputStream.canReturnShorts();
+    public boolean canWriteShorts() {
+        return  inputStream.canWriteShorts();
     }
 
     @Override
@@ -168,7 +168,7 @@ public class MonitoredAudioInputStream  extends AudioInputStream {
 
 
     synchronized void bufferPutShorts(short[] dataSamples) throws IOException {
-        monitorBuffer.write(ShortArrayUtils.INSTANCE.shortToByteArrayLittleEndian(dataSamples));
+        monitorBuffer.write(Volume.INSTANCE.shortToByteArrayLittleEndian(dataSamples));
     }
 
 
@@ -253,7 +253,7 @@ public class MonitoredAudioInputStream  extends AudioInputStream {
         public int readShorts(@NonNull short[] b, int off, int len) throws IOException {
             byte[] byteArray = new byte[b.length*2];
             int bytes = read(byteArray,off*2,len*2);
-            short[]  resultArray = ShortArrayUtils.INSTANCE.byteToShortArray(byteArray);
+            short[]  resultArray = Volume.INSTANCE.byteToShortArray(byteArray);
             int resultLen = min(bytes/2,b.length);
             System.arraycopy(resultArray,0,b,0,resultLen);
             return resultLen;

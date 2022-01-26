@@ -83,8 +83,7 @@ class Mp3OutputAudioStream private constructor() : AudioOutputStream(){
         IOException::class)
     @Synchronized
 
-    // синхронизацию всех пишущих методов делать надо на один объект.
-    // Плюс все ж переделать на атомики
+
     override fun write(b: ByteArray?, off: Int, len: Int){
         if (finished) throw IllegalStateException("Stream closed or in error state")
         if (b == null) throw NullPointerException ("Null array passed")
@@ -98,14 +97,12 @@ class Mp3OutputAudioStream private constructor() : AudioOutputStream(){
             encodeInterleavedStream(samples)
         else encodeMonoStream(samples)
         outputStream.write(result)
-        bytesSent += result.size
+        bytesSent += samples.size*2
         onWriteCallback?.invoke(bytesSent)
     }
 
 
-    override fun canReturnShorts(): Boolean {
-        return true
-    }
+    override fun canWriteShorts(): Boolean = true
 
     @Synchronized
     @Throws(IllegalArgumentException::class,IllegalStateException::class, IOException::class)
@@ -121,39 +118,43 @@ class Mp3OutputAudioStream private constructor() : AudioOutputStream(){
         val result:ByteArray
         if (channelsCount==1) result =  encodeMonoStream(samples)
         else result =  encodeInterleavedStream(samples)
-        bytesSent += result.size
+        bytesSent += b.size.coerceAtMost(len) *2
+        //todo протестить, у меня в выведенных байтах теперь исходное а не сжатое, что
+        // логично - c учетом того что нужно смотреть прогресс отправки исходного потока
         onWriteCallback?.invoke(bytesSent)
         outputStream.write(result)
     }
 
     /**
      * не закрывает подлежащий поток автоматически! Мало ли что вы в него еще писать будете
-     * другим образом
+     *
      */
     @Synchronized
     override fun close() {
         val result=encodeEofFrame()
         outputStream.write(result)
+        outputStream.flush()
         finished=true
     }
 
     @Synchronized
     @Throws(IOException::class)
     override fun write(b: Int) {
-        throw NoSuchMethodException("Not implemented - use write (byte[]....)")
+        throw NoSuchMethodException("Not implemented - use write (byte[]..../ short[])")
     }
 
 
     private fun encodeMonoStream(inArray: ShortArray): ByteArray {
-        if (finished) throw IllegalStateException("Already finished, create new encoder")
+        if (finished) throw IllegalStateException("Stream closed, create new encoder")
         val outBuff = ByteArray(inArray.size)
         val resultBytes = androidLame.encode(inArray, inArray, inArray.size, outBuff)
         return outBuff.sliceArray(0 until resultBytes)
     }
 
     private fun encodeStereoStream(leftArray: ShortArray, rightArray: ShortArray): ByteArray {
-        if (finished) throw IllegalStateException("Already finished, create new encoder")
-        if (leftArray.size != rightArray.size) throw IllegalStateException("Both samples have  same length")
+        if (finished) throw IllegalStateException("Stream closed, create new encoder")
+        if (leftArray.size != rightArray.size) throw IllegalStateException("Both samples must  have" +
+                "the same  same length")
         val outBuff = ByteArray(leftArray.size)
         val resultBytes = androidLame.encode(leftArray, rightArray, leftArray.size, outBuff)
         return outBuff.sliceArray(0 until resultBytes)
@@ -161,7 +162,7 @@ class Mp3OutputAudioStream private constructor() : AudioOutputStream(){
 
     // убедиться что оно берет little ended  shorts
     private fun encodeInterleavedStream(samples: ShortArray): ByteArray {
-        if (finished) throw IllegalStateException("Already finished, create new encoder")
+        if (finished) throw IllegalStateException("Stream closed, create new encoder")
         val size = samples.size
         val outBuff = ByteArray(size)
         val resultBytes = androidLame.encodeBufferInterLeaved(samples, size/2, outBuff)
@@ -173,7 +174,7 @@ class Mp3OutputAudioStream private constructor() : AudioOutputStream(){
 
 
     private fun encodeEofFrame(): ByteArray {
-        if (finished) throw IllegalStateException("Already finished")
+        if (finished) throw IllegalStateException("Stream closed")
         finished = true
         val outBuff = ByteArray(16 * 1024)
         // вообще оно заведомо до 2048 + ограниченный размер тегов, но пусть

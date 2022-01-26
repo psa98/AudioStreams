@@ -46,6 +46,7 @@ abstract class AudioOutputStream() :
     var timestamp=0L // пересчет выведенных байтов в мс.
 
 
+    // todo переделать на атомики?
     @Volatile
     var bytesSent: Long = 0
     set(value) {
@@ -56,37 +57,12 @@ abstract class AudioOutputStream() :
     constructor(channelMask: Int, sampleRate: Int,encoding:Int) : this()
 
 
-        /**
-         * Closes this resource, relinquishing any underlying resources.
-         * This method is invoked automatically on objects managed by the
-         * {@code try}-with-resources statement.
-         *
-         * <p>While this interface method is declared to throw {@code
-         * Exception}, implementers are <em>strongly</em> encouraged to
-         * declare concrete implementations of the {@code close} method to
-         * throw more specific exceptions, or to throw no exception at all
-         * if the close operation cannot fail.
-         *
-         * <p> Cases where the close operation may fail require careful
-         * attention by implementers. It is strongly advised to relinquish
-         * the underlying resources and to internally <em>mark</em> the
-         * resource as closed, prior to throwing the exception. The {@code
-         * close} method is unlikely to be invoked more than once and so
-         * this ensures that the resources are released in a timely manner.
-         * Furthermore it reduces problems that could arise when the resource
-         * wraps, or is wrapped, by another resource.
-         *
-         *
-         * @throws Exception if this resource cannot be closed
-         */
-
 
     //вызов обязателен, должно освобождать аппаратуру
     abstract override fun close()
 
-    // класс будет стараться прочитать с буфер байт прежде чем отправить первые на устройства
-    // и не будет блокировать write(...) до достижения заданного размера буфера
-    // должно быть кратно размеру фрейма ? иначе будет подрезано вверх до ближайшего
+
+
     open fun setRecommendedBufferSize(bytes:Int){
 
     }
@@ -136,19 +112,19 @@ abstract class AudioOutputStream() :
     }
 
 
-    open fun canReturnShorts():Boolean =false
+    open fun canWriteShorts():Boolean =false
 
 
     @Throws(IOException::class)
     open fun writeShorts(b: ShortArray, off: Int, len: Int){
-        throw NoSuchMethodException("Check canReturnShorts() value. Implementing class  must override " +
-                "readShorts(b: ShortArray, off: Int, len: Int) and canReturnShorts()")
+        throw NoSuchMethodException("Check canWriteShorts() value. Implementing class  must override " +
+                "writeShorts(b: ShortArray, off: Int, len: Int) and canWriteShorts()")
     }
 
     @Throws(IOException::class)
     open fun writeShorts(b: ShortArray) {
         throw NoSuchMethodException("Check canReturnShorts() value. Implementing class  must override " +
-                "readShorts(b: ShortArray) and canReturnShorts()")
+                "writeShorts(b: ShortArray) and canWriteShorts()")
     }
 
 

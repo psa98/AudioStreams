@@ -130,9 +130,7 @@ class AudioOutputSteam private constructor() :AudioOutputStream(){
         writeShorts(b,0,b.size)
     }
 
-    override fun canReturnShorts(): Boolean {
-        return true
-    }
+    override fun canWriteShorts(): Boolean = true
 
     @Synchronized
     @Throws(IllegalArgumentException::class,IllegalStateException::class,IOException::class)
