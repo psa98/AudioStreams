@@ -10,7 +10,7 @@ import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.net.Uri
 import android.util.Log
-import c.ponom.audiostreams.audio_streams.Volume.byteToShortArrayLittleEndian
+import c.ponom.audiostreams.audio_streams.ArrayUtils.byteToShortArrayLittleEndian
 import java.io.FileDescriptor
 import java.io.IOException
 import java.nio.ByteBuffer

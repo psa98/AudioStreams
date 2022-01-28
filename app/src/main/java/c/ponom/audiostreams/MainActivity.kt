@@ -18,10 +18,10 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.PermissionChecker
+import c.ponom.audiostreams.audio_streams.ArrayUtils.shortToByteArrayLittleEndian
 import c.ponom.audiostreams.audio_streams.MicSoundInputStream
 import c.ponom.audiostreams.audio_streams.Mp3OutputAudioStream
 import c.ponom.audiostreams.audio_streams.SoundProcessingUtils.getRMSVolume
-import c.ponom.audiostreams.audio_streams.Volume.shortToByteArrayLittleEndian
 import c.ponom.audiostreams.databinding.ActivityMainBinding
 import c.ponom.recorder2.audio_streams.AudioFileSoundSource
 import c.ponom.recorder2.audio_streams.AudioOutputSteam

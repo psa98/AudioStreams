@@ -4,7 +4,7 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 
-object Volume {
+object ArrayUtils {
 
 
     fun shortToByteArray(arr: ShortArray): ByteArray {
