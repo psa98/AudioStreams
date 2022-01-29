@@ -142,10 +142,6 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
         return (totalBytesEstimate()-bytesSent).toInt().coerceAtLeast(0)
     }
 
-    //Для бесконечных потоков всегда 0
-    open fun bytesRemaining():Int{
-        return 0
-    }
 
     /**
      * Closes this input stream and releases any system resources associated

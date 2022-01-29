@@ -88,10 +88,7 @@ public class MonitoredAudioInputStream  extends AudioInputStream {
          return inputStream.available();
     }
 
-    @Override
-    public int bytesRemaining() {
-        return  inputStream.bytesRemaining();
-    }
+
 
     @Override
     public long skip(long n) throws IOException {
