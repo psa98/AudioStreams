@@ -277,9 +277,10 @@ class MainActivity : AppCompatActivity() {
         val data=ShortArray(sampleRate*4*2) //4 секунды, 2 байта, 2 канала
         // тут тестируется передача и отправка данных в байтах, не в shorts
         testSoundInputStream.readShorts(data)
+
         CoroutineScope(IO).launch{
             val outChannel  =AudioOutputSteam(sampleRate,
-                2,ENCODING_PCM_16BIT,500)
+                2, ENCODING_PCM_16BIT,500)
             outChannel.play()
             outChannel.writeShorts(data)
             outChannel.close()
