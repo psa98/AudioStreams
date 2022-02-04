@@ -4,6 +4,7 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.media.AudioFormat.*
+import android.media.MediaRecorder.AudioSource.VOICE_COMMUNICATION
 import android.media.MediaScannerConnection
 import android.net.Uri
 import android.os.Bundle
@@ -29,6 +30,7 @@ import c.ponom.recorder2.audio_streams.TAG
 import c.ponom.recorder2.audio_streams.TestSoundInputStream
 import com.google.android.material.snackbar.Snackbar
 import com.naman14.androidlame.LameBuilder
+import com.naman14.androidlame.LameBuilder.Mode.MONO
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.Dispatchers.Main
@@ -51,6 +53,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private var microphoneStream: MicSoundInputStream = MicSoundInputStream(16000)
     private var lastVolumeTimestamp = 0L
+    val meteringFreq = 300
 
     @SuppressLint("SetTextI18n")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -240,7 +243,6 @@ class MainActivity : AppCompatActivity() {
                     withContext(Main) {
                         run {
                             val timeNow = currentTimeMillis()
-                            val meteringFreq = 300
                             if (timeNow - lastVolumeTimestamp > meteringFreq) {
                                 lastVolumeTimestamp = timeNow
                                 val vol =
@@ -274,7 +276,7 @@ class MainActivity : AppCompatActivity() {
         val sampleRate = 48000
         val testSoundInputStream=TestSoundInputStream(440.0,480.0,
             8000,7001,sampleRate, CHANNEL_IN_STEREO, ENCODING_PCM_16BIT)
-        val data=ShortArray(sampleRate*4*2) //4 секунды, 2 байта, 2 канала
+        val data=ShortArray(sampleRate*10*2) //10 секунд, 2 байта, 2 канала
         // тут тестируется передача и отправка данных в байтах, не в shorts
         testSoundInputStream.readShorts(data)
 
@@ -291,10 +293,10 @@ class MainActivity : AppCompatActivity() {
 
 
     fun playSoundMono(view: View) {
-        val sampleRate = 48000
+        val sampleRate = 44100
         val testSoundInputStream=TestSoundInputStream(440.0,10000,
             sampleRate, CHANNEL_IN_MONO, ENCODING_PCM_16BIT)
-        val data=ShortArray(sampleRate*4)//4 секунды, 1 16-битовый отчет , 1 канал
+        val data=ShortArray(sampleRate*10)//10 секунд, 1 16-битовый отчет , 1 канал
         testSoundInputStream.readShorts(data)
         // тут тестируется передача и отправка данных в shorts
         CoroutineScope(IO).launch{
@@ -344,7 +346,7 @@ class MainActivity : AppCompatActivity() {
 
         val mp3MonoWriter = Mp3OutputAudioStream(
             outputFileMonoStream,
-            sampleRate, MP3outBitrate, LameBuilder.Mode.MONO
+            sampleRate, MP3outBitrate, MONO
         )
 
         Log.e(TAG, "makeMp3: =start mono")
@@ -376,7 +378,7 @@ class MainActivity : AppCompatActivity() {
 
         val mp3MonoWriterBytes = Mp3OutputAudioStream(
             outputMonoBytesTest,
-            sampleRate, MP3outBitrate, LameBuilder.Mode.MONO
+            sampleRate, MP3outBitrate, MONO
         )
         Log.e(TAG, "makeMp3: =start mono")
         mp3MonoWriterBytes.write(shortToByteArrayLittleEndian(monoSamples))
@@ -402,6 +404,66 @@ class MainActivity : AppCompatActivity() {
             Log.e("ExternalStorage", "Scanned $path:")
             Log.e("ExternalStorage", "-> uri=$uri")
         }
+    }
+
+    var testMicStream:MicSoundInputStream?=null
+    var recordingMic=false
+
+    fun micToFile(view: View) {
+        recordingMic=true
+        val shortBuffer=ShortArray(4096)
+        val outDirName= getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC)
+        val outDir = File("$outDirName/AudioStreams/")
+        val outputFileMp3 = File(outDir, "/TestMicStream.mp3")
+
+        val outputFileStream = outputFileMp3.outputStream()
+        val testMicStream=MicSoundInputStream(32000, VOICE_COMMUNICATION)
+        testMicStream.startRecordingSession()
+        val encoderStream=Mp3OutputAudioStream(outputFileStream,
+            32000,64, MONO
+
+        )
+
+        // todo - передедать это под pump потом под монитор с записью двух потоков
+        CoroutineScope(IO).launch {
+            do {
+                if (!recordingMic){
+                    testMicStream.close()
+                    encoderStream.close()
+                    break
+                }
+                var read = 0
+                try {
+                    read = testMicStream.readShorts(shortBuffer)
+                        //.. тут есть смелое допущение что поток успеет записать до
+                    // следующего потока даннызх с микрофона. в идеале все же нужен буфер
+                    encoderStream.writeShorts(shortBuffer)
+                val timeNow = currentTimeMillis()
+                if (timeNow - lastVolumeTimestamp > meteringFreq) {
+                    lastVolumeTimestamp = timeNow
+                    val vol =(getRMSVolume(shortBuffer))
+                    val t= testMicStream.timestamp / 1000.0
+                    Log.e("Vol=", "$vol, time=${testMicStream.timestamp / 1000.0}")
+                    }
+                } catch (e: Exception) {
+                    recordingMic=false
+                    // todo - добавать трайкэтч на закрытие обоих потоков, его отдельно надо
+                    e.printStackTrace()
+                    break
+                }
+            } while (read >= 0&&recordingMic)
+            testMicStream.close()
+            encoderStream.close()
+            recordingMic =false
+
+        }
+
+
+    }
+
+    fun stopRecording(view: View) {
+        recordingMic=false
+
     }
 
 

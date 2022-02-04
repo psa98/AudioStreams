@@ -258,7 +258,7 @@ class TestSoundInputStream private constructor() : AudioInputStream()  {
         return if (b.isEmpty()) 0 else readShorts(b, 0, b.size)
     }
 
-    override fun canWriteShorts():Boolean =true
+    override fun canReadShorts():Boolean =true
 
 
     @Synchronized

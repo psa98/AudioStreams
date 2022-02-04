@@ -384,7 +384,7 @@ open class AudioFileSoundSource { //todo - переделать под
             return readShorts(b,0,b.size)
         }
 
-        override fun canWriteShorts(): Boolean = true
+        override fun canReadShorts(): Boolean = true
 
         private fun getBytesFromBuffer(b: ByteArray, len: Int): Int {
             if (!bufferReady && !eofReached) fillBuffer()

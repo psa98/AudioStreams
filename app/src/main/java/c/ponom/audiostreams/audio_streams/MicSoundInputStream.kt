@@ -30,10 +30,12 @@ class MicSoundInputStream private constructor(): AudioInputStream()  {
     @JvmOverloads
     @SuppressLint("MissingPermission")
     @Throws(IllegalArgumentException::class,IOException::class)
-    constructor(freq:Int, channelsCount:Int=1,
-                          encoding:Int= ENCODING_PCM_16BIT,
-                          mic:Int= MediaRecorder.AudioSource.DEFAULT): this() {
-        channelConfig=channelConfig(channelsCount)
+    constructor(freq:Int, mic:Int= MediaRecorder.AudioSource.DEFAULT,
+                channels:Int=1,
+                encoding:Int= ENCODING_PCM_16BIT)
+                : this() {
+        channelConfig=channelConfig(channels)
+        channelsCount=channels
         if (!(channelConfig== CHANNEL_IN_MONO ||channelConfig== CHANNEL_IN_STEREO))
             throw IllegalArgumentException("Only 1 and 2 channels (CHANNEL_IN_MONO " +
                     "and CHANNEL_IN_STEREO) supported")
@@ -49,11 +51,8 @@ class MicSoundInputStream private constructor(): AudioInputStream()  {
         //  и исключение для совсем левых
         bytesPerSample = if (encoding== ENCODING_PCM_16BIT) 2  else 1
 
-        frameSize=bytesPerSample*channelsCount
-
+        frameSize=bytesPerSample*channels
         //bufferSizeMs=(audioRecord!!.bufferSizeInFrames.toFloat()/sampleRate*1000).toInt()
-
-
         //if (audioRecord?.state== STATE_UNINITIALIZED)
         //     throw IOException ("Cannot init recording")
         isReady=true
@@ -188,6 +187,14 @@ class MicSoundInputStream private constructor(): AudioInputStream()  {
         if (len == 0) return 0
         if (audioRecord==null) return -1
         if (!isRecording()) return ERROR_INVALID_OPERATION
+
+            /*
+            обработать ошибки другие: и в bytes
+            ERROR_INVALID_OPERATION if the object isn't properly initialized
+            ERROR_BAD_VALUE if the parameters don't resolve to valid data and indexes
+
+             */
+
         val samples = audioRecord!!.read(b, off, len)
         if (samples== ERROR_DEAD_OBJECT) {
             close()
@@ -301,7 +308,7 @@ class MicSoundInputStream private constructor(): AudioInputStream()  {
         }
     }
 
-    override fun canWriteShorts():Boolean = true
+    override fun canReadShorts():Boolean = true
 
 }
 

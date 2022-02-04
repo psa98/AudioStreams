@@ -75,7 +75,7 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
     open var bytesSent = 0L
         protected set(value) {
             field=value
-            timestamp=(frameTimeMs(encoding,sampleRate,channelsCount)*value).toLong()
+            timestamp=(frameTimeMs(encoding,sampleRate)*value).toLong()
         }
 
 
@@ -191,13 +191,13 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
         return false
     }
 
-    open fun canWriteShorts():Boolean =false
+    open fun canReadShorts():Boolean =false
 
 
-    private fun frameTimeMs(encoding:Int, rate:Int,channels: Int):Double{
+    private fun frameTimeMs(encoding:Int, rate:Int):Double{
         val bytesInFrame:Int = when (encoding){
-            ENCODING_PCM_8BIT -> channels
-            ENCODING_PCM_16BIT -> channels*2
+            ENCODING_PCM_8BIT -> channelsCount
+            ENCODING_PCM_16BIT -> channelsCount*2
             else-> 0
         }
         return 1000.0/(rate*bytesInFrame.toDouble())

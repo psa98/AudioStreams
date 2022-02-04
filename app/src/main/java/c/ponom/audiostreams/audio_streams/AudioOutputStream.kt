@@ -1,6 +1,5 @@
 package c.ponom.recorder2.audio_streams
 
-import android.media.AudioFormat
 import android.media.AudioFormat.*
 import android.media.MediaFormat
 import java.io.IOException
@@ -22,9 +21,9 @@ abstract class AudioOutputStream() :
 
 
     // не путать с числом каналов! см. channelConfig(channels: Int)
-    // одно из законных значений - CHANNEL_IN_MONO,CHANNEL_IN_STEREO.
+    // законые значения - CHANNEL_OUT_MONO,CHANNEL_OUT_STEREO.
     //должно быть выставлено при создании канала
-    var channelConfig:Int= AudioFormat.CHANNEL_INVALID
+    var channelConfig:Int= CHANNEL_INVALID
 
     // типичный поддерживаемый аппаратурой диапазон - 16000 - 48000, стандартные значения:
     // 8000,11025,12000,16000,22050,24000,32000,44100,48000, гарантированно
@@ -141,6 +140,6 @@ abstract class AudioOutputStream() :
             ENCODING_PCM_16BIT -> channelsCount*2
             else-> 0
         }
-        return 1.0/(rate*bytesInFrame.toDouble())
+        return 1000.0/(rate*bytesInFrame.toDouble())
     }
 }

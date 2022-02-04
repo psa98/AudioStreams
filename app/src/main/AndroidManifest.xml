@@ -10,9 +10,9 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.AudioStreams">
-        <activity
+        <!---activity
             android:name=".audio_streams.BluetoothAudioRecorder"
-            android:exported="false" />
+            android:exported="false" /-->
         <activity
             android:name=".MainActivity"
             android:exported="true"

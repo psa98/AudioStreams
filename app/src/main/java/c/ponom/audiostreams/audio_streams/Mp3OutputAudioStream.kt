@@ -105,15 +105,18 @@ class Mp3OutputAudioStream private constructor() : AudioOutputStream(){
     override fun canWriteShorts(): Boolean = true
 
     @Synchronized
-    @Throws(IllegalArgumentException::class,IllegalStateException::class, IOException::class)
+    @Throws(IllegalStateException::class, IOException::class)
     override fun writeShorts(b: ShortArray) {
         writeShorts(b,0,b.size)
     }
 
 
     @Synchronized
-    @Throws(IllegalArgumentException::class,IllegalStateException::class, IOException::class)
+    @Throws(IndexOutOfBoundsException::class,IllegalStateException::class, IOException::class)
     override fun writeShorts(b: ShortArray, off: Int, len: Int) {
+        if (finished) throw IllegalStateException("Stream closed or in error state")
+        if (off < 0 || len < 0 || len > b.size - off)
+            throw IndexOutOfBoundsException("Wrong write(...) params")
         val samples=b.copyOf(len)
         val result:ByteArray
         if (channelsCount==1) result =  encodeMonoStream(samples)
@@ -126,21 +129,22 @@ class Mp3OutputAudioStream private constructor() : AudioOutputStream(){
     }
 
     /**
-     * не закрывает подлежащий поток автоматически! Мало ли что вы в него еще писать будете
-     *
+     * закрывает выходной поток автоматически! Нет смысла писать туда что-то после финального
+     * блока  данных
      */
     @Synchronized
     override fun close() {
+        if (finished) return
         val result=encodeEofFrame()
         outputStream.write(result)
-        outputStream.flush()
+        outputStream.close()
         finished=true
     }
 
     @Synchronized
     @Throws(IOException::class)
     override fun write(b: Int) {
-        throw NoSuchMethodException("Not implemented - use write (byte[]..../ short[])")
+        throw NoSuchMethodException("Not implemented - use write (byte[]..../ short[]...)")
     }
 
 
@@ -151,14 +155,7 @@ class Mp3OutputAudioStream private constructor() : AudioOutputStream(){
         return outBuff.sliceArray(0 until resultBytes)
     }
 
-    private fun encodeStereoStream(leftArray: ShortArray, rightArray: ShortArray): ByteArray {
-        if (finished) throw IllegalStateException("Stream closed, create new encoder")
-        if (leftArray.size != rightArray.size) throw IllegalStateException("Both samples must  have" +
-                "the same  same length")
-        val outBuff = ByteArray(leftArray.size)
-        val resultBytes = androidLame.encode(leftArray, rightArray, leftArray.size, outBuff)
-        return outBuff.sliceArray(0 until resultBytes)
-    }
+
 
     // убедиться что оно берет little ended  shorts
     private fun encodeInterleavedStream(samples: ShortArray): ByteArray {

@@ -18,7 +18,7 @@ import kotlin.jvm.functions.Function1;
 
 public class MonitoredAudioInputStream  extends AudioInputStream {
 
-    final int BLOCKING_PAUSE = 5; //период запроса о появлении данныз в буфере, мс
+    final int BLOCKING_PAUSE = 5; //период запроса о появлении данных в буфере, мс
     private AudioInputStream inputStream;
     private MonitoringAudioInputStream monitoringStream;
     private final  int bufferInitialSize = 1024*16;
@@ -111,8 +111,8 @@ public class MonitoredAudioInputStream  extends AudioInputStream {
     }
 
     @Override
-    public boolean canWriteShorts() {
-        return  inputStream.canWriteShorts();
+    public boolean canReadShorts() {
+        return  inputStream.canReadShorts();
     }
 
     @Override
@@ -210,10 +210,8 @@ public class MonitoredAudioInputStream  extends AudioInputStream {
     private class MonitoringAudioInputStream extends MonitoredAudioInputStream {
 
         Thread askingThread = Thread.currentThread();
-        private boolean closedMonitor =false;
-
+        private boolean monitorClosed =false;
         private  ByteArrayOutputStream monitorBuffer= new ByteArrayOutputStream(bufferInitialSize);
-
         public MonitoringAudioInputStream() {
             super();
 
@@ -230,12 +228,13 @@ public class MonitoredAudioInputStream  extends AudioInputStream {
         }
 
         @Override
-        synchronized public int read(@Nullable byte[] b, int off, int len) throws IOException {
+        synchronized public int read(@Nullable byte[] b, int off, int len)
+                throws IOException {
             if (b==null)throw new NullPointerException("Null buffer presented");
             if (len==0||b.length==0) return 0;
-            if (closedMonitor) return -1;
+            if (monitorClosed) return -1;
             askingThread=Thread.currentThread();
-            while (monitorBuffer.size() == 0&&!closedMonitor&&!closedMain) {
+            while (monitorBuffer.size() == 0&&!monitorClosed &&!closedMain) {
                 try {
                     Thread.sleep(BLOCKING_PAUSE);
                 } catch (InterruptedException e) {
@@ -261,7 +260,7 @@ public class MonitoredAudioInputStream  extends AudioInputStream {
             super.close();
             monitorBuffer.reset();
             monitorBuffer =new ByteArrayOutputStream(0);
-            closedMonitor =true;
+            monitorClosed =true;
 
         }
 
@@ -271,8 +270,8 @@ public class MonitoredAudioInputStream  extends AudioInputStream {
         }
 
 
-    }
 
+    }
 
 
 
