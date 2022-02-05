@@ -20,7 +20,7 @@ public class MonitoredAudioInputStream  extends AudioInputStream {
 
     final int BLOCKING_PAUSE = 5; //период запроса о появлении данных в буфере, мс
     private AudioInputStream inputStream;
-    private MonitoringAudioInputStream monitoringStream;
+    private  MonitoringAudioInputStream monitoringStream;
     private final  int bufferInitialSize = 1024*16;
     private  ByteArrayOutputStream monitorBuffer;
     private boolean closedMain=false;
@@ -137,8 +137,8 @@ public class MonitoredAudioInputStream  extends AudioInputStream {
     @Override
     public void close() throws IOException {
         closedMain=true;
-        monitoringStream.close();
-        inputStream.close();
+        if (monitoringStream!=null)monitoringStream.close();
+        if (inputStream!=null) inputStream.close();
     }
 
     @Override
@@ -195,7 +195,7 @@ public class MonitoredAudioInputStream  extends AudioInputStream {
         return returnBuffer.length;
     }
 
-
+    @NonNull
     public MonitoringAudioInputStream getMonitoringStream() {
         return monitoringStream;
     }
@@ -212,10 +212,15 @@ public class MonitoredAudioInputStream  extends AudioInputStream {
         Thread askingThread = Thread.currentThread();
         private boolean monitorClosed =false;
         private  ByteArrayOutputStream monitorBuffer= new ByteArrayOutputStream(bufferInitialSize);
-        public MonitoringAudioInputStream() {
+        private MonitoringAudioInputStream() {
             super();
-
+            this.setChannelsCount(inputStream.getChannelsCount());
+            this.setEncoding(inputStream.getEncoding());
+            this.setSampleRate(inputStream.getSampleRate());
+            ///todo - прочее тоже выставить
         }
+
+
 
         @Override
         public int read() throws IOException {
@@ -228,10 +233,10 @@ public class MonitoredAudioInputStream  extends AudioInputStream {
         }
 
         @Override
-        synchronized public int read(@Nullable byte[] b, int off, int len)
+        synchronized public int read(@Nullable byte[] bytes, int off, int len)
                 throws IOException {
-            if (b==null)throw new NullPointerException("Null buffer presented");
-            if (len==0||b.length==0) return 0;
+            if (bytes==null)throw new NullPointerException("Null buffer presented");
+            if (len==0||bytes.length==0) return 0;
             if (monitorClosed) return -1;
             askingThread=Thread.currentThread();
             while (monitorBuffer.size() == 0&&!monitorClosed &&!closedMain) {
@@ -241,17 +246,18 @@ public class MonitoredAudioInputStream  extends AudioInputStream {
                     //
                 }
             }
-            return bufferReadBytes(b,off,len);
+            return bufferReadBytes(bytes,off,len);
         }
 
 
         @Override
-        public int readShorts(@NonNull short[] b, int off, int len) throws IOException {
-            byte[] byteArray = new byte[b.length*2];
+        public int readShorts(@NonNull short[] shorts, int off, int len) throws IOException {
+
+            byte[] byteArray = new byte[shorts.length*2];
             int bytes = read(byteArray,off*2,len*2);
             short[]  resultArray = ArrayUtils.INSTANCE.byteToShortArray(byteArray);
-            int resultLen = min(bytes/2,b.length);
-            System.arraycopy(resultArray,0,b,0,resultLen);
+            int resultLen = min(bytes/2,shorts.length);
+            System.arraycopy(resultArray,0,shorts,0,resultLen);
             return resultLen;
        }
 
@@ -269,8 +275,10 @@ public class MonitoredAudioInputStream  extends AudioInputStream {
             return readShorts(b,0,b.length);
         }
 
-
-
+        @Override
+        public boolean canReadShorts() {
+            return true;
+        }
     }
 
 

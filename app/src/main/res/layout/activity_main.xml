@@ -119,10 +119,12 @@
         android:layout_height="wrap_content"
         android:textAllCaps="false"
         android:onClick="micToFile"
-        android:text="Pump mic to file"
+        android:text="Record mic to file"
         android:layout_margin="16dp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/stopPlayer" />
+
+
     <Button
         android:id="@+id/stopRecording"
         android:layout_width="wrap_content"
@@ -133,6 +135,17 @@
         android:layout_margin="16dp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/pumpMicToFile" />
+
+    <Button
+        android:id="@+id/monitoredRecord"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAllCaps="false"
+        android:onClick="monitoredRecord"
+        android:text="Monitored record to file"
+        android:layout_margin="16dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/stopRecording" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
 </ScrollView>

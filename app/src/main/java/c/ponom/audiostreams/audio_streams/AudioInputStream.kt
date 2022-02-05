@@ -196,9 +196,11 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
 
     private fun frameTimeMs(encoding:Int, rate:Int):Double{
         val bytesInFrame:Int = when (encoding){
+            //TODO теоретически у меня байты во фрейме должны гарантированно быть заданы в
+            // конструкторах, и 9 битного нет, можно будет это убрать при условии покрытия тестами
             ENCODING_PCM_8BIT -> channelsCount
             ENCODING_PCM_16BIT -> channelsCount*2
-            else-> 0
+            else-> 2
         }
         return 1000.0/(rate*bytesInFrame.toDouble())
     }

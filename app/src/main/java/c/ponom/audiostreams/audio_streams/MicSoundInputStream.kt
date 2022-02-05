@@ -138,46 +138,6 @@ class MicSoundInputStream private constructor(): AudioInputStream()  {
         return bytes
     }
 
-/*
-    @Synchronized
-    @Throws(NullPointerException::class)
-    fun read(b: ByteArray?, off: Int, len: Int,
-             onReady:((samples:Int,dataBytes: ByteArray) -> Unit)?): Int {
-        if (b==null) throw NullPointerException ("Null array passed")
-        if (!isRecording()||isPaused) return ERROR_INVALID_OPERATION
-        if (audioRecord==null) return -1
-        val bytes = audioRecord!!.read(b, off, len)
-        //Конец потока
-        if (bytes == ERROR_DEAD_OBJECT) close()
-        if (bytes>0) {
-            val data = b.copyOf(bytes)
-            if (onReady != null)
-                onReady(bytes, data)
-            bytesSent += bytes
-        }
-        onReadCallback?.invoke(bytesSent)
-        return bytes
-    }
-
- */
-    /**
-     * Params:
-     * audioData – the array to which the recorded audio data is written.
-     * offsetInShorts – index in audioData to which the data is written expressed in shorts.
-     * Must not be negative, or cause the data access to go out of bounds of the array.
-     * sizeInShorts – the number of requested shorts. Must not be negative, or cause the data
-     * access to go out of bounds of the array.
-     * Returns:
-     * zero or the positive number of shorts that were read, or one of the following error codes.
-     * Minus 1 if stream is closed (ended)
-     * The number of shorts will be a multiple of the channel count not to exceed sizeInShorts.
-     *  AudioRecord.ERROR_INVALID_OPERATION if the object isn't properly initialized
-     * AudioRecord.ERROR_BAD_VALUE if the parameters don't resolve to valid data and indexes
-     * AudioRecord.ERROR_DEAD_OBJECT if the object is not valid anymore and needs to be recreated.
-     * The dead object error code is not returned if some data was successfully transferred.
-     * In this case, the error is returned at the next read() ERROR in case of other error
-     */
-
 
     @Synchronized
     fun readShorts(b: ShortArray, off: Int, len: Int,
@@ -233,8 +193,7 @@ class MicSoundInputStream private constructor(): AudioInputStream()  {
          return readShorts(b,0,b.size)
     }
 
-    //todo - как идея - можно унифицировать поведение скип и клоуз с filestream - то есть для
-    // закрытых потоков кидать исключение а не игнорить
+
     @Synchronized
     override fun close() {
        if (audioRecord==null) return
@@ -309,6 +268,8 @@ class MicSoundInputStream private constructor(): AudioInputStream()  {
     }
 
     override fun canReadShorts():Boolean = true
+
+
 
 }
 

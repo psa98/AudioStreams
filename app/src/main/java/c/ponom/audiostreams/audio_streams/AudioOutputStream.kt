@@ -136,10 +136,17 @@ abstract class AudioOutputStream() :
 
     private fun frameTimeMs(encoding:Int, rate:Int):Double{
         val bytesInFrame:Int = when (encoding){
+            //TODO теоретически у меня байты во фрейме должны гарантированно быть заданы в
+            // конструкторах, и 9 битного нет, можно будет это убрать при условии покрытия тестами
             ENCODING_PCM_8BIT -> channelsCount
             ENCODING_PCM_16BIT -> channelsCount*2
-            else-> 0
+            else-> 2
         }
         return 1000.0/(rate*bytesInFrame.toDouble())
+    // эта вещь тоже должна в конструкторе
+    // считаться один раз и не быть равной 0, лучше не перевычислять ее каждый раз
+            // когда у нас вызывется приватный конструктор абстрактного класса? туда можно
     }
+
+
 }

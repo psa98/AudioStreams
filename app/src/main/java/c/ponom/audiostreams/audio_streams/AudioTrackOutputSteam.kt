@@ -3,12 +3,13 @@
 @file:Suppress("unused")
 
 
-package c.ponom.recorder2.audio_streams
+package c.ponom.audiostreams.audio_streams
 import android.media.AudioFormat
 import android.media.AudioFormat.*
 import android.media.AudioTrack
 import android.media.AudioTrack.WRITE_BLOCKING
 import android.media.AudioTrack.getMinBufferSize
+import c.ponom.recorder2.audio_streams.AudioOutputStream
 import java.io.IOException
 
 
@@ -16,7 +17,7 @@ private  const val MAX_BUFFER_SIZE = 512 * 1024
 private const val RESERVE_BUFFER_SIZE = 24 * 1024
 
 
-class AudioOutputSteam private constructor() :AudioOutputStream(){
+class AudioTrackOutputSteam private constructor() : AudioOutputStream(){
 
 
     private var currentVolume: Float=1f

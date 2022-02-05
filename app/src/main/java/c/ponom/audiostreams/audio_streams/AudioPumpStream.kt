@@ -8,28 +8,33 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.io.IOException
 
-const val defaultBufferSizeShorts =4096
-const val defaultBufferSizeBytes =8192
 
-class AudioPumpStream(private var outputStream: AudioOutputStream,
-                      private var inputStream: AudioInputStream,
-                      var onFinish:() -> Unit ={},
-                      var onFatalError:(e:Exception) -> Unit ={},
-                      private var bufferSize:Int=0
-                      ) {
 
+
+/*
+вызов коллбэков происходит в IO потоке!
+ */
+class AudioPumpStream @JvmOverloads constructor(
+    private var outputStream: AudioOutputStream,
+    private var inputStream: AudioInputStream,
+    var onFinish: () -> Unit = {},
+    var onFatalError: (e: Exception) -> Unit = {},
+    private var bufferSize: Int = 0
+) {
+     val defaultBufferSizeShorts =4096
+      val defaultBufferSizeBytes =8192
     /*
-    поток читает (жадным образом), блокирующим чтением, все из входного потока до получения там -1,
-    либо команды stop. команда стоп передается в оба потока. Пока не определился будет ли он
-    входным, выходным или просто классом.
-    доступные методы:
-    stop, start, pause, resume, setmaxspeed, setbuffersize, getIn|Out, get state
-    идея простестить на нем откачку данных в поток распознавания  - на входе write от микрофона
-    на выходе запись в файл, и посмотреть нет ли дыр или ошибок в полученном файле
+        поток читает (жадным образом), блокирующим чтением, все из входного потока до получения там -1,
+        либо команды stop. команда стоп передается потом в оба потока как close(). Пока не определился будет ли он
+        входным, выходным или просто классом.
+        доступные методы:
+        stop, start, pause, resume, setmaxspeed, setbuffersize, getIn|Out, get state
+        идея простестить на нем откачку данных в поток распознавания  - на входе write от микрофона
+        на выходе запись в файл, и посмотреть нет ли дыр или ошибок в полученном файле
 
-    */
-    var state= NOT_READY
-    private set
+        */
+    var state: State
+        private set
 
     private var canSendShort=false
     private val byteBuffer:ByteArray
@@ -77,13 +82,14 @@ class AudioPumpStream(private var outputStream: AudioOutputStream,
                         // исключения там, тогда убрать
                         } else read=-1
                         outputStream.writeShorts(shortBuffer)
-                    }else
+                    }else{
                         read = inputStream.read(byteBuffer)
                         if (read>0) {
                             bytesSent+=read
                             onWrite(bytesSent)
                         } else read=-1
                     outputStream.write(byteBuffer)
+                    }
                     if (read < 0) {
                         inputStream.close()
                         outputStream.close()
@@ -100,6 +106,9 @@ class AudioPumpStream(private var outputStream: AudioOutputStream,
 
         }
     }
+
+    //todo сделать stopAndClose() отдельно, обычный стоп пусть не закрывает потоки,
+    // с ошибками подумать че, пусть закрывают
 
     @Throws(IOException::class,IllegalStateException::class)
     fun stop(){
@@ -129,7 +138,7 @@ class AudioPumpStream(private var outputStream: AudioOutputStream,
             NOT_READY, PREPARED,PAUSED ->return
             PUMPING -> state=PAUSED
             FINISHED -> throw IllegalStateException ("Already finished")
-            FATAL_ERROR -> throw IllegalStateException ("already finished on error")
+            FATAL_ERROR -> throw IllegalStateException ("Already finished on error")
         }
     }
 
@@ -139,8 +148,12 @@ class AudioPumpStream(private var outputStream: AudioOutputStream,
             NOT_READY, PREPARED, PUMPING ->return
             PAUSED-> state=PUMPING
             FINISHED -> throw IllegalStateException ("Already finished")
-            FATAL_ERROR -> throw IllegalStateException ("already finished on error")
+            FATAL_ERROR -> throw IllegalStateException ("Already finished on error")
         }
+    }
+    @JvmOverloads
+    fun setVolume(leftOrMono:Float=1f,right:Float=1f){
+        //todo
     }
 
     enum class State{
@@ -152,16 +165,16 @@ class AudioPumpStream(private var outputStream: AudioOutputStream,
         FATAL_ERROR
     }
 
-    init{
-        canSendShort =inputStream.canReadShorts()&&outputStream.canWriteShorts()
-        state= PREPARED
-        if (bufferSize!=0){
-            byteBuffer=ByteArray(bufferSize)
-            shortBuffer=ShortArray(bufferSize/2)
-        } else{
-        byteBuffer=ByteArray(defaultBufferSizeBytes)
-        shortBuffer=ShortArray(defaultBufferSizeShorts)
+    init {
+        this.state = NOT_READY
+        canSendShort = inputStream.canReadShorts() && outputStream.canWriteShorts()
+        state = PREPARED
+        if (bufferSize != 0) {
+            byteBuffer = ByteArray(bufferSize)
+            shortBuffer = ShortArray(bufferSize / 2)
+        } else {
+            byteBuffer = ByteArray(defaultBufferSizeBytes)
+            shortBuffer = ShortArray(defaultBufferSizeShorts)
         }
     }
-
 }

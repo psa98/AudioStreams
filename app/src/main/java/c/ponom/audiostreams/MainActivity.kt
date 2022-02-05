@@ -4,7 +4,7 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.media.AudioFormat.*
-import android.media.MediaRecorder.AudioSource.VOICE_COMMUNICATION
+import android.media.MediaRecorder.AudioSource.VOICE_RECOGNITION
 import android.media.MediaScannerConnection
 import android.net.Uri
 import android.os.Bundle
@@ -15,17 +15,16 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.widget.Button
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.PermissionChecker
+import c.ponom.audiostreams.audio_streams.*
 import c.ponom.audiostreams.audio_streams.ArrayUtils.shortToByteArrayLittleEndian
-import c.ponom.audiostreams.audio_streams.MicSoundInputStream
-import c.ponom.audiostreams.audio_streams.Mp3OutputAudioStream
 import c.ponom.audiostreams.audio_streams.SoundProcessingUtils.getRMSVolume
 import c.ponom.audiostreams.databinding.ActivityMainBinding
 import c.ponom.recorder2.audio_streams.AudioFileSoundSource
-import c.ponom.recorder2.audio_streams.AudioOutputSteam
 import c.ponom.recorder2.audio_streams.TAG
 import c.ponom.recorder2.audio_streams.TestSoundInputStream
 import com.google.android.material.snackbar.Snackbar
@@ -46,10 +45,12 @@ private const val PERMISSION_REQUEST_CODE: Int =1
 class MainActivity : AppCompatActivity() {
 
 
+    private var mainPump: AudioPumpStream?=null
+    private var monitorPump: AudioPumpStream?=null
     private var recordingIsOn: Boolean=false
     private var permissionGranted: Boolean=false
     private lateinit var stopButton: Button
-
+    private lateinit var volume:TextView
     private lateinit var binding: ActivityMainBinding
     private var microphoneStream: MicSoundInputStream = MicSoundInputStream(16000)
     private var lastVolumeTimestamp = 0L
@@ -62,6 +63,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
         checkPermission()
         stopButton=binding.stopPlayer
+        volume=binding.volume
         stopButton.isEnabled=false
         Log.e("TAG", microphoneStream.isBluetoothSCOMicAvailable(this).toString())
         microphoneStream.getInputDeviceList(this).forEach {
@@ -70,7 +72,7 @@ class MainActivity : AppCompatActivity() {
         Log.e("TAG",  preferred)
         binding.micData.text=preferred
         binding.micData.text=  "BT mic present="+
-            microphoneStream.isBluetoothSCOMicAvailable(this).toString()
+        microphoneStream.isBluetoothSCOMicAvailable(this).toString()
 
     }
 
@@ -84,7 +86,6 @@ class MainActivity : AppCompatActivity() {
                 ), PERMISSION_REQUEST_CODE
             )
         }
-
         updateUi()
     }
 
@@ -141,7 +142,6 @@ class MainActivity : AppCompatActivity() {
 
         if (uri == Uri.EMPTY) return
         val fd =this.contentResolver.openAssetFileDescriptor(uri,"r")
-        val assetStream =this.contentResolver.openInputStream(uri)
         Log.e(TAG, "play uri:  fd len ${fd?.length}")
 
         //val assetStream =this.contentResolver.openTypedAssetFileDescriptor()
@@ -150,7 +150,7 @@ class MainActivity : AppCompatActivity() {
 
         val audioIn =AudioFileSoundSource().getStream(this,uri)
         audioIn.onReadCallback = {pos-> Log.e(TAG, "playUri: pos=$pos")}
-        val audioOut=AudioOutputSteam(audioIn.sampleRate,audioIn.channelsCount,
+        val audioOut= AudioTrackOutputSteam(audioIn.sampleRate,audioIn.channelsCount,
             audioIn.encoding,0)
         Log.e(TAG, "playUri: ="+audioIn.mediaFormat.toString())
         playing=true
@@ -184,23 +184,14 @@ class MainActivity : AppCompatActivity() {
             audioIn.close()
             launch(CoroutineScope(Main).coroutineContext){
                 stopButton.isEnabled=false
-
             }
-            }
-
+        }
     }
 
 
     fun stopPlayer(view: View){
         playing=false
-
     }
-
-
-
-
-
-
 
     fun playExternalFile(view: View) {
         val intent = Intent()
@@ -281,7 +272,7 @@ class MainActivity : AppCompatActivity() {
         testSoundInputStream.readShorts(data)
 
         CoroutineScope(IO).launch{
-            val outChannel  =AudioOutputSteam(sampleRate,
+            val outChannel  = AudioTrackOutputSteam(sampleRate,
                 2, ENCODING_PCM_16BIT,500)
             outChannel.play()
             outChannel.writeShorts(data)
@@ -300,7 +291,7 @@ class MainActivity : AppCompatActivity() {
         testSoundInputStream.readShorts(data)
         // тут тестируется передача и отправка данных в shorts
         CoroutineScope(IO).launch{
-            val outChannel  =AudioOutputSteam(sampleRate,
+            val outChannel  = AudioTrackOutputSteam(sampleRate,
                 1,ENCODING_PCM_16BIT,500)
             outChannel.play()
             outChannel.writeShorts(data)
@@ -417,15 +408,12 @@ class MainActivity : AppCompatActivity() {
         val outputFileMp3 = File(outDir, "/TestMicStream.mp3")
 
         val outputFileStream = outputFileMp3.outputStream()
-        val testMicStream=MicSoundInputStream(32000, VOICE_COMMUNICATION)
+        val testMicStream=MicSoundInputStream(32000, VOICE_RECOGNITION)
         testMicStream.startRecordingSession()
         val encoderStream=Mp3OutputAudioStream(outputFileStream,
-            32000,64, MONO
+            32000,64, MONO)
 
-        )
-
-        // todo - передедать это под pump потом под монитор с записью двух потоков
-        CoroutineScope(IO).launch {
+          CoroutineScope(IO).launch {
             do {
                 if (!recordingMic){
                     testMicStream.close()
@@ -436,14 +424,16 @@ class MainActivity : AppCompatActivity() {
                 try {
                     read = testMicStream.readShorts(shortBuffer)
                         //.. тут есть смелое допущение что поток успеет записать до
-                    // следующего потока даннызх с микрофона. в идеале все же нужен буфер
+                    // следующего потока данных с микрофона. в идеале все же нужен буфер
                     encoderStream.writeShorts(shortBuffer)
                 val timeNow = currentTimeMillis()
                 if (timeNow - lastVolumeTimestamp > meteringFreq) {
                     lastVolumeTimestamp = timeNow
-                    val vol =(getRMSVolume(shortBuffer))
-                    val t= testMicStream.timestamp / 1000.0
-                    Log.e("Vol=", "$vol, time=${testMicStream.timestamp / 1000.0}")
+                    withContext(Main) {
+                        val vol = (getRMSVolume(shortBuffer))
+                        volume.text = "$vol"
+                        Log.e("Vol=", "$vol, time=${testMicStream.timestamp / 1000.0}")
+                        }
                     }
                 } catch (e: Exception) {
                     recordingMic=false
@@ -455,15 +445,50 @@ class MainActivity : AppCompatActivity() {
             testMicStream.close()
             encoderStream.close()
             recordingMic =false
-
         }
-
-
     }
 
     fun stopRecording(view: View) {
         recordingMic=false
+        mainPump?.stop()
 
+    }
+
+
+
+    fun monitoredRecord(view: View) {
+        recordingMic=true
+        val outDirName= getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC)
+        val outDir = File("$outDirName/AudioStreams/")
+        val outputFileMp3 = File(outDir, "/TestMicStreamM.mp3")
+        val outputFileStream = outputFileMp3.outputStream()
+        val testMicStream=MicSoundInputStream(32000, VOICE_RECOGNITION)
+        testMicStream.startRecordingSession()
+        val monitoredStream=MonitoredAudioInputStream(testMicStream)
+        val monitor =monitoredStream.monitoringStream
+        val encoderStream=Mp3OutputAudioStream(outputFileStream,
+            32000,32, MONO)
+        mainPump=AudioPumpStream(
+            encoderStream,
+            monitoredStream,
+            { Log.e(TAG, "monitoredRecord: end") },
+            { Log.e(TAG, "monitoredRecord: fatal error")}
+        )
+        mainPump?.onWrite={ bytesWritten ->  Log.e(TAG, "monitoredRecord: = "+bytesWritten)}
+        mainPump?.start()
+        Thread.sleep(200)
+        val outputFileMp3Mon = File(outDir, "/TestMicStreamMon.mp3")
+        val outputFileStreamMon = outputFileMp3Mon.outputStream()
+        val encoderStreamMon=Mp3OutputAudioStream(outputFileStreamMon,
+            32000,32, MONO)
+        //val out=AudioTrackOutputSteam(32000,1, ENCODING_PCM_16BIT)
+        Thread.sleep(200)
+        //out.play()
+        monitorPump= AudioPumpStream(encoderStreamMon,monitor,
+            { Log.e(TAG, "monitoredRecord: in monitor  =end")},
+            {e->Log.e(TAG,"monitoredRecord: in monitor ="+e.localizedMessage)})
+        monitorPump?.onWrite={bytes-> Log.e(TAG, "monitoredRecord: in monitor  $bytes")}
+        monitorPump?.start()
     }
 
 
