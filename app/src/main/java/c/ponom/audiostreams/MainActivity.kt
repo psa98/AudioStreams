@@ -22,6 +22,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.PermissionChecker
 import c.ponom.audiostreams.audio_streams.*
 import c.ponom.audiostreams.audio_streams.ArrayUtils.shortToByteArrayLittleEndian
+import c.ponom.audiostreams.audio_streams.AudioPumpStream.State.PUMPING
 import c.ponom.audiostreams.audio_streams.SoundProcessingUtils.getRMSVolume
 import c.ponom.audiostreams.databinding.ActivityMainBinding
 import c.ponom.recorder2.audio_streams.AudioFileSoundSource
@@ -450,7 +451,8 @@ class MainActivity : AppCompatActivity() {
 
     fun stopRecording(view: View) {
         recordingMic=false
-        mainPump?.stop()
+        if (mainPump?.state== PUMPING) mainPump?.stop()
+        if (monitorPump?.state== PUMPING) monitorPump?.stop()
 
     }
 
@@ -471,23 +473,27 @@ class MainActivity : AppCompatActivity() {
         mainPump=AudioPumpStream(
             encoderStream,
             monitoredStream,
-            { Log.e(TAG, "monitoredRecord: end") },
-            { Log.e(TAG, "monitoredRecord: fatal error")}
+            {
+                Log.e(TAG, "monitoredRecord: end")
+            },
+            {
+                Log.e(TAG, "monitoredRecord: fatal error")
+            }
         )
-        mainPump?.onWrite={ bytesWritten ->  Log.e(TAG, "monitoredRecord: = "+bytesWritten)}
+//        mainPump?.onWrite={ bytesWritten ->  Log.e(TAG, "monitoredRecord: = "+bytesWritten)}
         mainPump?.start()
         Thread.sleep(200)
         val outputFileMp3Mon = File(outDir, "/TestMicStreamMon.mp3")
         val outputFileStreamMon = outputFileMp3Mon.outputStream()
         val encoderStreamMon=Mp3OutputAudioStream(outputFileStreamMon,
-            32000,32, MONO)
+            32000,48, MONO)
         //val out=AudioTrackOutputSteam(32000,1, ENCODING_PCM_16BIT)
         Thread.sleep(200)
         //out.play()
         monitorPump= AudioPumpStream(encoderStreamMon,monitor,
             { Log.e(TAG, "monitoredRecord: in monitor  =end")},
             {e->Log.e(TAG,"monitoredRecord: in monitor ="+e.localizedMessage)})
-        monitorPump?.onWrite={bytes-> Log.e(TAG, "monitoredRecord: in monitor  $bytes")}
+            //monitorPump?.onWrite={bytes-> Log.e(TAG, "monitoredRecord: in monitor  $bytes")}
         monitorPump?.start()
     }
 

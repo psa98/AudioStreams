@@ -21,10 +21,11 @@ public class MonitoredAudioInputStream  extends AudioInputStream {
     final int BLOCKING_PAUSE = 5; //период запроса о появлении данных в буфере, мс
     private AudioInputStream inputStream;
     private  MonitoringAudioInputStream monitoringStream;
-    private final  int bufferInitialSize = 1024*16;
-    private  ByteArrayOutputStream monitorBuffer;
+    private final static  int BUFFER_INITIAL_SIZE = 1024*16;
+    //private  ByteArrayOutputStream monitorBuffer;
     private boolean closedMain=false;
-
+    private static  ByteArrayOutputStream monitorBuffer =
+            new ByteArrayOutputStream(BUFFER_INITIAL_SIZE);
 
     private MonitoredAudioInputStream(){
 
@@ -33,7 +34,7 @@ public class MonitoredAudioInputStream  extends AudioInputStream {
     public MonitoredAudioInputStream(AudioInputStream inStream) {
         inputStream=inStream;
         monitoringStream = new MonitoringAudioInputStream();
-        monitorBuffer=monitoringStream.monitorBuffer;
+        //monitorBuffer=monitoringStream.monitorBuffer;
 
     }
     private MonitoredAudioInputStream(long streamDuration, int channels,
@@ -117,7 +118,7 @@ public class MonitoredAudioInputStream  extends AudioInputStream {
 
     @Override
     public int readShorts(@NonNull short[] b, int off, int len) throws IOException {
-        bufferPutShorts(b);
+        bufferPutShorts(b);//todo - не долелано
         return inputStream.readShorts(b, off, len);
     }
 
@@ -211,7 +212,7 @@ public class MonitoredAudioInputStream  extends AudioInputStream {
 
         Thread askingThread = Thread.currentThread();
         private boolean monitorClosed =false;
-        private  ByteArrayOutputStream monitorBuffer= new ByteArrayOutputStream(bufferInitialSize);
+
         private MonitoringAudioInputStream() {
             super();
             this.setChannelsCount(inputStream.getChannelsCount());
@@ -220,7 +221,30 @@ public class MonitoredAudioInputStream  extends AudioInputStream {
             ///todo - прочее тоже выставить
         }
 
+        @Override
+        public long bytesRemainingEstimate() {
+            return inputStream.bytesRemainingEstimate();
+        }
 
+        @Override
+        public long skip(long n) throws IOException {
+            return inputStream.skip(n);
+        }
+
+        @Override
+        public void mark(int readlimit) {
+            inputStream.mark(readlimit);
+        }
+
+        @Override
+        public void reset() throws IOException {
+            inputStream.reset();
+        }
+
+        @Override
+        public boolean markSupported() {
+            return inputStream.markSupported();
+        }
 
         @Override
         public int read() throws IOException {
@@ -267,7 +291,6 @@ public class MonitoredAudioInputStream  extends AudioInputStream {
             monitorBuffer.reset();
             monitorBuffer =new ByteArrayOutputStream(0);
             monitorClosed =true;
-
         }
 
         @Override
