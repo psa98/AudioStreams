@@ -23,12 +23,21 @@ class AudioTrackOutputSteam private constructor() : AudioOutputStream(){
     private var currentVolume: Float=1f
     lateinit var audioFormat: AudioFormat
     private var audioOut:AudioTrack?=null
-    private var prepared = false
-
+    var prepared = false
+    private set
+    /* todo - сделать State? а может глобальный enum со стейтом универсальный для всех потоков
+    *   включая PAUSE для тех что его поддерживают */
+    var closed = false
+    private set
 
     @JvmOverloads
     @Throws(IllegalArgumentException::class, UnsupportedOperationException::class)
-    constructor( sampleRate: Int, channelCount: Int,encoding:Int, minBufferInMs:Int=0) : this() {
+    constructor(
+        sampleRate: Int,
+        channelCount: Int,
+        encoding: Int = ENCODING_PCM_16BIT,
+        minBufferInMs: Int = 0
+    ) : this() {
         this.sampleRate = sampleRate
         //todo -- переделать под число каналов на входе, нечего тут
         channelConfig=channelConfig(channelCount)
@@ -46,6 +55,7 @@ class AudioTrackOutputSteam private constructor() : AudioOutputStream(){
         when (encoding){
             ENCODING_PCM_8BIT -> frameSize = channelsCount
             ENCODING_PCM_16BIT-> frameSize= channelsCount*2
+
         }
 
         //val bufferForTime = (frameTimeMs(encoding,sampleRate)*minBufferInMs/frameSize).toInt()
@@ -62,6 +72,7 @@ class AudioTrackOutputSteam private constructor() : AudioOutputStream(){
             // - смотри доки как там устроен подбор буфера для этой штуки,
             // думаю без нее никаких гарантий дать нельзя
             .build()
+        prepared=true
     }
 
 
@@ -73,9 +84,11 @@ class AudioTrackOutputSteam private constructor() : AudioOutputStream(){
     }
 
     @Synchronized
-    @Throws(IllegalStateException::class)
+
     fun stopAndClear(){
-        if (audioOut == null) throw IllegalStateException("Stream closed or in error")
+        if (closed)return
+        if (audioOut == null) return
+        try {
         audioOut?.setVolume(0.02f)         //это позволяет  убрать клик в конце
         Thread.sleep(50)
         //время подобрано на слух, меньше 30 дает клик на частоте 440 гц 16000 сэмплов
@@ -83,17 +96,25 @@ class AudioTrackOutputSteam private constructor() : AudioOutputStream(){
         audioOut?.flush()
         audioOut?.stop()
         audioOut?.setVolume(currentVolume)
+        } catch (e:java.lang.IllegalStateException){
+            e.printStackTrace()
+        }
+
     }
 
     @Synchronized
     @Throws(IllegalStateException::class)
     fun stop(){
-        if (audioOut == null) throw IllegalStateException("Stream closed or in error")
-        audioOut?.setVolume(0.02f)         //это позволяет  убрать клик в конце
-        audioOut?.stop()
-        Thread.sleep(30)
-        // пересчитать время так что бы за него заведомо произошло исчерпание текущего буфера + неск.мс
-        audioOut?.setVolume(currentVolume)
+        if (closed)return
+
+        if (audioOut == null) return
+        try {
+            //поскольку неизвестно сколько в буфере данных, попытки
+            // убрать клик в конце тут не делается, может их там на 5 секунд
+            audioOut?.stop()
+        } catch (e:java.lang.IllegalStateException){
+            e.printStackTrace()
+        }
 
     }
 
@@ -120,8 +141,10 @@ class AudioTrackOutputSteam private constructor() : AudioOutputStream(){
             throw IndexOutOfBoundsException("Wrong write(...) params")
         val result:Int = audioOut!!.write(b, off, len)
         bytesSent += result.coerceAtLeast(0)
-        if (result<0)
-            throw IllegalStateException ("Error code $result - see codes for AudioTrack write(byte []..)")
+        if (result<0){
+            close()
+            throw IOException ("Error code $result - see codes for AudioTrack write(byte []..)")
+        }
     }
 
 
@@ -142,15 +165,19 @@ class AudioTrackOutputSteam private constructor() : AudioOutputStream(){
             throw IllegalArgumentException("Wrong write(....) parameters")
         val result = audioOut!!.write(b, off, len, WRITE_BLOCKING)
         bytesSent += result.coerceAtLeast(0)*2
-        if (result<0)
-            throw IllegalStateException ("Error code $result - see codes for AudioTrack write(byte []..)")
+
+        if (result<0){
+            close()
+            throw IOException ("Error code $result - see codes for AudioTrack write(byte []..)")
+        }
    }
     @Synchronized
     override fun close() {
         stopAndClear()
         audioOut?.release()
         audioOut=null
-
+        closed=true
+        prepared=false
     }
 
     @Synchronized

@@ -118,21 +118,26 @@ public class MonitoredAudioInputStream  extends AudioInputStream {
 
     @Override
     public int readShorts(@NonNull short[] b, int off, int len) throws IOException {
-        bufferPutShorts(b);//todo - не долелано
+        bufferPutBytes(ArrayUtils.INSTANCE.shortToByteArrayLittleEndian(b));
+        //todo - не долелано
         return inputStream.readShorts(b, off, len);
     }
 
     @Override
     public int readShorts(@NonNull short[] b) throws IOException {
+
+        int len=  inputStream.readShorts(b,0,b.length);
+
         bufferPutShorts(b);
-        return inputStream.readShorts(b, 0, b.length);
+        return len;
     }
 
 
     @Override
     public int read(byte[] b) throws IOException {
+        int len=  inputStream.read(b,0,b.length);
         bufferPutBytes(b);
-        return read(b,0,b.length);
+        return len;
     }
 
     @Override
@@ -279,7 +284,7 @@ public class MonitoredAudioInputStream  extends AudioInputStream {
 
             byte[] byteArray = new byte[shorts.length*2];
             int bytes = read(byteArray,off*2,len*2);
-            short[]  resultArray = ArrayUtils.INSTANCE.byteToShortArray(byteArray);
+            short[]  resultArray = ArrayUtils.INSTANCE.byteToShortArrayLittleEndian(byteArray);
             int resultLen = min(bytes/2,shorts.length);
             System.arraycopy(resultArray,0,shorts,0,resultLen);
             return resultLen;
@@ -300,7 +305,7 @@ public class MonitoredAudioInputStream  extends AudioInputStream {
 
         @Override
         public boolean canReadShorts() {
-            return true;
+            return false;
         }
     }
 

@@ -176,7 +176,13 @@ class Mp3OutputAudioStream private constructor() : AudioOutputStream(){
         val outBuff = ByteArray(16 * 1024)
         // вообще оно заведомо до 2048 + ограниченный размер тегов, но пусть
         val resultBytes = androidLame.flush(outBuff)
+        androidLame.close()
+        /* todo -проверить как это у меня повлияет на работу рекордера-
+        * как я понимаю закрытие может отводить память плюс следующий build
+        * будет менять параметры сжатия (и возможно остальные)
+        * */
         return outBuff.sliceArray(0 until resultBytes)
+
     }
 
 

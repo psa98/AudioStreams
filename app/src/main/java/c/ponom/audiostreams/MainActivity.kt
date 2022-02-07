@@ -482,18 +482,18 @@ class MainActivity : AppCompatActivity() {
         )
 //        mainPump?.onWrite={ bytesWritten ->  Log.e(TAG, "monitoredRecord: = "+bytesWritten)}
         mainPump?.start()
-        Thread.sleep(200)
-        val outputFileMp3Mon = File(outDir, "/TestMicStreamMon.mp3")
-        val outputFileStreamMon = outputFileMp3Mon.outputStream()
-        val encoderStreamMon=Mp3OutputAudioStream(outputFileStreamMon,
-            32000,48, MONO)
-        //val out=AudioTrackOutputSteam(32000,1, ENCODING_PCM_16BIT)
-        Thread.sleep(200)
-        //out.play()
-        monitorPump= AudioPumpStream(encoderStreamMon,monitor,
+        Thread.sleep(50)
+        val audioTrackMonitor=AudioTrackOutputSteam(32000,1)
+        Thread.sleep(5)
+        audioTrackMonitor.play()
+
+        //TODO - сделать в рекордере  (1) монитор при условии подключения любых наушников
+        //
+
+        monitorPump= AudioPumpStream(audioTrackMonitor,monitor,
             { Log.e(TAG, "monitoredRecord: in monitor  =end")},
             {e->Log.e(TAG,"monitoredRecord: in monitor ="+e.localizedMessage)})
-            //monitorPump?.onWrite={bytes-> Log.e(TAG, "monitoredRecord: in monitor  $bytes")}
+            monitorPump?.onWrite={bytes-> Log.e(TAG, "monitoredRecord: in monitor  $bytes")}
         monitorPump?.start()
     }
 
@@ -502,7 +502,7 @@ class MainActivity : AppCompatActivity() {
    разобраться с размером буфера для  вывода звука, подсократить буфер у файла
    (вероятно надо секунд -надцать сделать)
    наладить и протестировать пересчет таймстемпов всех классов
-   писать классы  на базе фильтрстрима - мониторный, приеобразование в байты и обратно,
+   писать классы  на базе  - мониторный, приеобразование в байты и обратно,
    автоперегоняющий.
    писать энкодер.
    для всех выводных потоков - метод отдающий ему входной поток и команду играть до его завершения
