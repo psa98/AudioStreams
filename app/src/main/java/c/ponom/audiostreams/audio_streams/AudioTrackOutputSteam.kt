@@ -75,44 +75,53 @@ class AudioTrackOutputSteam private constructor() : AudioOutputStream(){
         prepared=true
     }
 
-
+    /**
+     *стартовать следует: либо заранее, будучи готовым напихать туда секунду-другую
+     *звука в буфер и далее подавать с достаточным темпом, либо уже уже подав звук в буфер
+     * до заполнения, тогда по play() начнется его проигрывание
+     */
     @Synchronized
-    @Throws(IllegalStateException::class)
+    @Throws(IOException::class)
     fun play(){
-        if (audioOut == null) throw IllegalStateException("Stream closed or in error")
+        if (audioOut == null) throw IOException("Stream closed or in error")
         audioOut?.play()
     }
 
-    @Synchronized
+    /**
+     * Использовать для немедленной  остановки с очисткой остатков в буфере. Убирает "щелчок"
+     * возникающий при внезапной остановке громкого звука при обычном stop()
+     */
 
+    @Synchronized
     fun stopAndClear(){
         if (closed)return
         if (audioOut == null) return
         try {
         audioOut?.setVolume(0.02f)         //это позволяет  убрать клик в конце
-        Thread.sleep(50)
+        Thread.sleep(60)
         //время подобрано на слух, меньше 30 дает клик на частоте 440 гц 16000 сэмплов
+            // этого может быть мало для звуков с мощными НЧ, но стоит потестить
         audioOut?.pause()
         audioOut?.flush()
         audioOut?.stop()
         audioOut?.setVolume(currentVolume)
-        } catch (e:java.lang.IllegalStateException){
+        } catch (e:IllegalStateException){
             e.printStackTrace()
         }
 
     }
 
+    //todo - добавить pause-resume
+
     @Synchronized
-    @Throws(IllegalStateException::class)
     fun stop(){
         if (closed)return
-
         if (audioOut == null) return
         try {
             //поскольку неизвестно сколько в буфере данных, попытки
             // убрать клик в конце тут не делается, может их там на 5 секунд
             audioOut?.stop()
-        } catch (e:java.lang.IllegalStateException){
+        } catch (e:IllegalStateException){
             e.printStackTrace()
         }
 
@@ -120,8 +129,8 @@ class AudioTrackOutputSteam private constructor() : AudioOutputStream(){
 
 
     override fun setVolume(vol: Float) {
-        audioOut?.setVolume(vol.coerceAtLeast(0f).coerceAtMost(1f))
-        currentVolume =vol
+       currentVolume =vol
+       audioOut?.setVolume(vol.coerceAtLeast(0f).coerceAtMost(1f))
     }
 
     /**
@@ -131,14 +140,13 @@ class AudioTrackOutputSteam private constructor() : AudioOutputStream(){
      */
 
 
-    @Throws(IllegalArgumentException::class,NullPointerException::class,
-        IllegalStateException::class,IOException::class)
+    @Throws(IOException::class,NullPointerException::class,IllegalArgumentException::class)
     @Synchronized
     override fun write(b: ByteArray?, off: Int, len: Int){
-        if (audioOut == null) throw IllegalStateException("Stream closed or in error state")
+        if (audioOut == null) throw IOException("Stream closed or in error state")
         if (b == null) throw NullPointerException ("Null array passed")
         if (off < 0 || len < 0 || len > b.size - off)
-            throw IndexOutOfBoundsException("Wrong write(...) params")
+            throw IllegalArgumentException("Wrong write(....) parameters")
         val result:Int = audioOut!!.write(b, off, len)
         bytesSent += result.coerceAtLeast(0)
         if (result<0){
@@ -149,7 +157,7 @@ class AudioTrackOutputSteam private constructor() : AudioOutputStream(){
 
 
     @Synchronized
-    @Throws(IllegalArgumentException::class,IllegalStateException::class,IOException::class)
+    @Throws(IOException::class)
     override fun writeShorts(b: ShortArray) {
         writeShorts(b,0,b.size)
     }
@@ -157,9 +165,9 @@ class AudioTrackOutputSteam private constructor() : AudioOutputStream(){
     override fun canWriteShorts(): Boolean = true
 
     @Synchronized
-    @Throws(IllegalArgumentException::class,IllegalStateException::class,IOException::class)
+    @Throws(IllegalArgumentException::class,IOException::class)
     override fun writeShorts(b: ShortArray, off: Int, len: Int) {
-        if (audioOut == null) throw IllegalStateException("Stream closed or in error state")
+        if (audioOut == null) throw IOException("Stream closed or in error state")
         val size=b.size
         if (off > len ||len>size||off>size||off<0||len<0)
             throw IllegalArgumentException("Wrong write(....) parameters")
@@ -172,7 +180,7 @@ class AudioTrackOutputSteam private constructor() : AudioOutputStream(){
         }
    }
     @Synchronized
-    override fun close() {
+        override fun close() {
         stopAndClear()
         audioOut?.release()
         audioOut=null
@@ -181,10 +189,8 @@ class AudioTrackOutputSteam private constructor() : AudioOutputStream(){
     }
 
     @Synchronized
-    @Throws(IOException::class)
     override fun write(b: Int) {
-        val byteArray=ByteArray(1){b.toByte()}
-        write(byteArray,0,1)
+        throw NotImplementedError (" Not implemented, use write(byteArray[] ...)")
     }
 
 }

@@ -122,7 +122,7 @@
         android:text="Record mic to file"
         android:layout_margin="16dp"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/stopPlayer" />
+        app:layout_constraintTop_toBottomOf="@id/generateMp3Files" />
 
 
     <Button

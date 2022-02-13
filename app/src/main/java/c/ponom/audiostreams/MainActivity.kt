@@ -23,6 +23,7 @@ import androidx.core.content.PermissionChecker
 import c.ponom.audiostreams.audio_streams.*
 import c.ponom.audiostreams.audio_streams.ArrayUtils.shortToByteArrayLittleEndian
 import c.ponom.audiostreams.audio_streams.AudioPumpStream.State.PUMPING
+import c.ponom.audiostreams.audio_streams.Mp3OutputAudioStream.EncodingQuality
 import c.ponom.audiostreams.audio_streams.SoundProcessingUtils.getRMSVolume
 import c.ponom.audiostreams.databinding.ActivityMainBinding
 import c.ponom.recorder2.audio_streams.AudioFileSoundSource
@@ -158,6 +159,10 @@ class MainActivity : AppCompatActivity() {
         stopButton.isEnabled=true
         CoroutineScope(IO).launch{
             audioOut.play()
+            //стартовать следует: либо заранее, будутчи готовым напихать туда секунду-другую
+            // звука в буфер и далее подавать с достаточным темпом,
+            //либо уже уже подав звук в буфер до заполнения, тогда по play()
+            // начнется его проигрывание
             val samplesArray = ShortArray(10000)
             //val byteArray = ByteArray(4096*16)
 
@@ -175,9 +180,7 @@ class MainActivity : AppCompatActivity() {
                 e.printStackTrace()
              break
             }
-            finally {
 
-            }
             }
             while(true)
             playing=false
@@ -303,6 +306,8 @@ class MainActivity : AppCompatActivity() {
     private val  MP3outBitrate = 128
 
     private val sampleRate = 24000
+
+
         fun makeMp3(view: View) {
         Log.e(TAG, "makeMp3: =start")
         val stereoSamplesStream = TestSoundInputStream(400.0,440.0,
@@ -325,6 +330,7 @@ class MainActivity : AppCompatActivity() {
             }
         stereoSamplesStream.close()
         monoSamplesStream.close()
+
         Log.e(TAG, "makeMp3: = end")
         }
 
@@ -370,7 +376,7 @@ class MainActivity : AppCompatActivity() {
 
         val mp3MonoWriterBytes = Mp3OutputAudioStream(
             outputMonoBytesTest,
-            sampleRate, MP3outBitrate, MONO
+            sampleRate, MP3outBitrate, MONO,EncodingQuality.HIGH_AND_SLOW
         )
         Log.e(TAG, "makeMp3: =start mono")
         mp3MonoWriterBytes.write(shortToByteArrayLittleEndian(monoSamples))
@@ -380,9 +386,8 @@ class MainActivity : AppCompatActivity() {
         Log.e(TAG, "makeMp3: =stereo start")
         val mp3StereoWriterBytes = Mp3OutputAudioStream(
             outputStereoSoundBytesTest,
-            sampleRate, MP3outBitrate, LameBuilder.Mode.STEREO
+            sampleRate, MP3outBitrate, LameBuilder.Mode.STEREO, EncodingQuality.FAST_ENCODING
         )
-
         mp3StereoWriterBytes.write(shortToByteArrayLittleEndian(stereoSamples))
         mp3StereoWriterBytes.close()
         Log.e(TAG, "makeMp3: =stereoSaved")
@@ -482,18 +487,24 @@ class MainActivity : AppCompatActivity() {
         )
 //        mainPump?.onWrite={ bytesWritten ->  Log.e(TAG, "monitoredRecord: = "+bytesWritten)}
         mainPump?.start()
-        Thread.sleep(50)
-        val audioTrackMonitor=AudioTrackOutputSteam(32000,1)
         Thread.sleep(5)
+        val audioTrackMonitor=AudioTrackOutputSteam(32000,1)
+        Thread.sleep(100)
         audioTrackMonitor.play()
 
         //TODO - сделать в рекордере  (1) монитор при условии подключения любых наушников
-        //
+        // (2) - я уверен что рано или поздно при реализации монитора расползется звук,
+        // поэтому по уму когда будут делать в рекордере  надо сравнивать байты выданные
+        // туда и туда и при расхождении больше заданного немного начинать выкусывать отсчеты.
+        // Но это уже для платных версий
+        // о (3) обязательно надо отрубать монитор при отключении наушников, иначе будет
+        // ужас ужас
+
 
         monitorPump= AudioPumpStream(audioTrackMonitor,monitor,
             { Log.e(TAG, "monitoredRecord: in monitor  =end")},
             {e->Log.e(TAG,"monitoredRecord: in monitor ="+e.localizedMessage)})
-            monitorPump?.onWrite={bytes-> Log.e(TAG, "monitoredRecord: in monitor  $bytes")}
+            //monitorPump?.onWrite={bytes-> Log.e(TAG, "monitoredRecord: in monitor  $bytes")}
         monitorPump?.start()
     }
 
