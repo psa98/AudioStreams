@@ -272,7 +272,7 @@ public class MonitoredAudioInputStream  extends AudioInputStream {
                 try {
                     Thread.sleep(BLOCKING_PAUSE);
                 } catch (InterruptedException e) {
-                    //
+                    //это безобазие у мене переделано иначе в проде
                 }
             }
             return bufferReadBytes(bytes,off,len);

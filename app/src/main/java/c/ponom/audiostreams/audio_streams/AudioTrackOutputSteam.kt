@@ -157,7 +157,8 @@ class AudioTrackOutputSteam private constructor() : AudioOutputStream(){
 
 
     @Synchronized
-    @Throws(IOException::class)
+
+    @Throws(IOException::class,NullPointerException::class,IllegalArgumentException::class)
     override fun writeShorts(b: ShortArray) {
         writeShorts(b,0,b.size)
     }
@@ -173,7 +174,6 @@ class AudioTrackOutputSteam private constructor() : AudioOutputStream(){
             throw IllegalArgumentException("Wrong write(....) parameters")
         val result = audioOut!!.write(b, off, len, WRITE_BLOCKING)
         bytesSent += result.coerceAtLeast(0)*2
-
         if (result<0){
             close()
             throw IOException ("Error code $result - see codes for AudioTrack write(byte []..)")

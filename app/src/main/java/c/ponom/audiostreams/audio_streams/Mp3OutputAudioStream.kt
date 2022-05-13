@@ -29,7 +29,7 @@ class Mp3OutputAudioStream private constructor() : AudioOutputStream(){
      * (1) По итогам тестов разница по скорости сжатия между FAST|HIGH примерно в 2 раза.
      * (2) работает только параметр, заданный при создании самого первого инстанса Lame,
      * для последующих запусков он игнорируется до перезагрузки, поэтому поменять его
-     * без перезапуска нельзя.
+     * без перезапуска todo (?) нельзя.
      *  Для всех последующих операций используется последнее по времени создания энкодера установленное
      * значение качества, при создании нескольких потоков установление отличающегося от базового
      * качества сжатия  меняет его значение и для созданных ранее но еще не закрытых потоков
@@ -119,7 +119,7 @@ class Mp3OutputAudioStream private constructor() : AudioOutputStream(){
     @Synchronized
     @Throws(IndexOutOfBoundsException::class,IllegalStateException::class, IOException::class)
     override fun writeShorts(b: ShortArray, off: Int, len: Int) {
-        if (finished) throw IllegalStateException("Stream closed or in error state")
+        if (finished) throw IllegalStateException("Stream was already closed or in error state")
         if (off < 0 || len < 0 || len > b.size - off)
             throw IndexOutOfBoundsException("Wrong write(...) params")
         val samples=b.copyOf(len)
@@ -176,7 +176,7 @@ class Mp3OutputAudioStream private constructor() : AudioOutputStream(){
 
 
     private fun encodeEofFrame(): ByteArray {
-        if (finished) throw IllegalStateException("Stream closed")
+        if (finished) throw IllegalStateException("Stream was already closed")
         finished = true
         val outBuff = ByteArray(16 * 1024)
         // вообще оно заведомо до 2048 + ограниченный размер тегов, но пусть

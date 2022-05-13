@@ -23,7 +23,7 @@ open class AudioDataInfo
     var duration:Long?=0L
     var samplingRate:Int? =0
     var channelsCount:Int? =0
-    var durationString:String?=""
+    var durationString:String=""
     var fileSize:Long?=null
     var fileDate:Long?=null
     var fileSizeText:String=""
@@ -42,17 +42,19 @@ open class AudioDataInfo
             hasInfo=true
             extractor.release()
     }
-
+    //todo обратить внимание на синхронизацию методов в классах либы.
+    // Нельзя упустить ни один один тэг
     @Throws (IllegalArgumentException::class)
     constructor (context: Context, uri: Uri?){
         if (uri==null|| uri == Uri.EMPTY) throw IllegalArgumentException("Path is null or empty")
         try {
-            /*
-
-
-
-
-             */
+      /* todo  вопрос сюда и для библиотеки -
+      *   я сделал функцию перегоняющую контент пути в файловые
+      *   1. можно брать от того файла если дадут размер и дату файла
+      *   2. на старших апи проще брать от контент провайдера файл, и брать оттуда
+      *   3. можно добавить поле "реальный путь" или дать функцию в состав либы (отлаженную)
+      *   4. все что работет через контент провайдер надо сделать suspend, оно медленное
+      *   */
 
             val extractor = MediaExtractor()
             extractor.setDataSource(context,uri,null)

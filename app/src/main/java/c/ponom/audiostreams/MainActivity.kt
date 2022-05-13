@@ -321,7 +321,7 @@ class MainActivity : AppCompatActivity() {
         monoSamplesStream.readShorts(monoSamples)
         stereoSamplesStream.readShorts(stereoSamples)
         Log.e(TAG, "makeMp3: =generated")
-        val outDirName= getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC)
+        val outDirName= getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC).toString()
         val outDir = File("$outDirName/AudioStreams/")
         outDir.mkdir()
             CoroutineScope(IO).launch {
@@ -472,7 +472,8 @@ class MainActivity : AppCompatActivity() {
         val testMicStream=MicSoundInputStream(32000, VOICE_RECOGNITION)
         testMicStream.startRecordingSession()
         val monitoredStream=MonitoredAudioInputStream(testMicStream)
-        val monitor =monitoredStream.monitoringStream
+        val monitor: MonitoredAudioInputStream =monitoredStream.monitoringStream
+
         val encoderStream=Mp3OutputAudioStream(outputFileStream,
             32000,32, MONO)
         mainPump=AudioPumpStream(
@@ -487,9 +488,8 @@ class MainActivity : AppCompatActivity() {
         )
 //        mainPump?.onWrite={ bytesWritten ->  Log.e(TAG, "monitoredRecord: = "+bytesWritten)}
         mainPump?.start()
-        Thread.sleep(5)
         val audioTrackMonitor=AudioTrackOutputSteam(32000,1)
-        Thread.sleep(100)
+        Thread.sleep(20)
         audioTrackMonitor.play()
 
         //TODO - сделать в рекордере  (1) монитор при условии подключения любых наушников

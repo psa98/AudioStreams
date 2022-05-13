@@ -21,7 +21,7 @@ abstract class AudioOutputStream() :
 
 
     // не путать с числом каналов! см. channelConfig(channels: Int)
-    // законые значения - CHANNEL_OUT_MONO,CHANNEL_OUT_STEREO.
+    // законные значения - CHANNEL_OUT_MONO,CHANNEL_OUT_STEREO.
     //должно быть выставлено при создании канала
     var channelConfig:Int= CHANNEL_INVALID
 
@@ -34,7 +34,7 @@ abstract class AudioOutputStream() :
 
 
     // переопределите коллбэк для возможности учета вызовов методов чтения из стороннего API,
-    // к примеру для реализации индиктора прогресса
+    // к примеру для реализации индикатора прогресса
     open var onWriteCallback: ((sentBytes:Long) -> Unit)? ={  }
 
 
@@ -48,6 +48,10 @@ abstract class AudioOutputStream() :
     // todo переделать на атомики?
     @Volatile
     var bytesSent: Long = 0
+    // todo -посмотреть, у меня есть умножение на 2 в mp3 рекордере,
+    // не лишнее ли и вообще включить во все тесты - это именно байты должны быть, не сэмплы
+
+    @Synchronized //TODO ДОБАВИТЬ В ЛИБУ ВЕЗДЕ ГДЕ НАДО
     set(value) {
         field=value
         timestamp=(frameTimeMs(this.encoding,this.sampleRate)*value).toLong()
@@ -137,7 +141,7 @@ abstract class AudioOutputStream() :
     private fun frameTimeMs(encoding:Int, rate:Int):Double{
         val bytesInFrame:Int = when (encoding){
             //TODO теоретически у меня байты во фрейме должны гарантированно быть заданы в
-            // конструкторах, и 9 битного нет, можно будет это убрать при условии покрытия тестами
+            // конструкторах, и 8 битного нет, можно будет это убрать при условии покрытия тестами
             ENCODING_PCM_8BIT -> channelsCount
             ENCODING_PCM_16BIT -> channelsCount*2
             else-> 2
