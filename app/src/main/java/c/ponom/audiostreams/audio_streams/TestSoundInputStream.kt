@@ -7,7 +7,7 @@ package c.ponom.recorder2.audio_streams
 import android.media.AudioFormat.*
 import android.util.Log
 import androidx.annotation.IntRange
-import c.ponom.audiostreams.audio_streams.ArrayUtils
+import c.ponom.audiostreams.audio_streams.ArrayUtils.shortToByteArrayLittleEndian
 import c.ponom.recorder2.audio_streams.TestSoundInputStream.TestSignalType.MONO
 import c.ponom.recorder2.audio_streams.TestSoundInputStream.TestSignalType.STEREO
 import c.ponom.recorder2.audio_streams.TestSoundInputStream.TestStreamMode.FILE
@@ -20,10 +20,7 @@ import kotlin.math.sin
 const val TAG = "Test Sound Stream"
 
 class TestSoundInputStream private constructor() : AudioInputStream()  {
-
-
     private var testChannelsMode: TestSignalType=MONO
-    private var prepared: Boolean=false
     private var closed: Boolean=false
     private lateinit var monoParams: MonoSoundParameters
     private lateinit var stereoParams: StereoSoundParameters
@@ -32,18 +29,34 @@ class TestSoundInputStream private constructor() : AudioInputStream()  {
     private set
 
 
-    // надо как то элегантнее - стерео параметры в одну структуру из 4 параметров, моно из двух
+
 
     /*
-    todo - нужен вариант генератора, подобно микрофону отдающий в read() сигнал с предельной
-    // частой не выше заданой, для лонгполлинга, с управлением частотами и потоком.
-    // точнее три режима:
-    1. аналог файла - число отсчетов ограничено фикс размером, потом бросаем -1
-    2. аналог бесконечного потока, как сейчас
-    3. аналог устройства- микрофона, отдача =неограниченная, но темпом равным частоте и с малым
-    буфером + управление громкостью
+    *todo - нужен вариант генератора, подобно микрофону отдающий в read() сигнал с предельной
+    * частой не выше заданой, для лонгполлинга, с управлением частотами и потоком.
+    * точнее три режима:
+    * 1. аналог файла - число отсчетов ограничено фикс размером, потом бросаем -1
+    * 2. аналог бесконечного потока, как сейчас
+    * 3. аналог устройства- микрофона, отдача =неограниченная, но темпом равным частоте и с малым
+    * буфером + управление громкостью
      */
+    /*
+    примерно так будут тестовые режимы
+    - если как файл, то просто отдать не более заданного и потом close и -1
+    - если как генератор то как сейчас все
+    - если как устрйство, то мы считаем мс, и считаем сколько мы отдали, с учетом
+    текущего "буфера" - если от нас хотят больше, отдаем что есть и блокируем до
+    следующего, если в буфере есть - отдаем что есть и в момент мс = расчетная
+    отпускаем то что надо, далее так же делаем. Буфер переписывается и новые отсчеты
+     становятся  доступными каждые х мкс,  N отсчетов, старые не считанные пропадают
+     итого доделки :
+     1. под режим "Как файл" в конструкторы  добавляем доп параметр, с размером.
+      Он обязателен если выбран этот режим тестирования. реализуем сразу, это быстро.
+     2. Добавляем новый параметр - макс частоту отдачи, с блокировкой чтения если быстрее,
+     не в конструктор, сеттером.
 
+     Режим "как устройство" - это в след.версии будет, там не спеша надо.
+     */
 
 
 
@@ -73,7 +86,7 @@ class TestSoundInputStream private constructor() : AudioInputStream()  {
             Log.v(TAG, "Test frequency = $testFrequencyMono Hz, probably inaudible")
         if (sampleRate<16000||sampleRate>48000)
             Log.v(TAG, "Non standard sampling rate of $sampleRate can by problematic for testing" +
-                    "of sound encoders or players")
+                    "of media encoders or players")
         testMode=mode
         this.sampleRate = sampleRate
         monoParams=MonoSoundParameters(volume,testFrequencyMono)
@@ -81,7 +94,6 @@ class TestSoundInputStream private constructor() : AudioInputStream()  {
         channelsCount = 1
         bytesPerSample = if (encoding== ENCODING_PCM_16BIT) 2 else  1
         frameSize=bytesPerSample*channelsCount
-        prepared=true
     }
 
 
@@ -105,14 +117,13 @@ class TestSoundInputStream private constructor() : AudioInputStream()  {
             throw IllegalArgumentException("This constructor usable only for CHANNEL_IN_STEREO")
         if (encoding!=ENCODING_PCM_16BIT)
             throw IllegalArgumentException("Only 16bit encoding currently supported")
-        // кинуть предупреждение если частоты в неслышимом диапазоне
         if (testFrequencyLeft<32||testFrequencyLeft>16000||testFrequencyLeft>sampleRate/2)
             Log.v(TAG, "Test frequency L = $testFrequencyLeft Hz, probably inaudible")
         if (testFrequencyRight<32||testFrequencyRight>16000||testFrequencyRight>sampleRate/2)
             Log.v(TAG, "Test frequency R = $testFrequencyRight Hz, probably inaudible")
         if (sampleRate<8000||sampleRate>48000)
             Log.v(TAG, "Non standard sampling rate of $sampleRate can by problematic for testing" +
-                    "on most sound encoders and devices")
+                    "on most media encoders and devices")
         this.sampleRate = sampleRate
         stereoParams=StereoSoundParameters(testFrequencyLeft,testFrequencyRight,volumeLeft,volumeRight)
         testMode=mode
@@ -120,7 +131,6 @@ class TestSoundInputStream private constructor() : AudioInputStream()  {
         channelsCount = 2
         bytesPerSample = 2 //if (encoding == ENCODING_PCM_16BIT) 2 else  1
         frameSize=bytesPerSample*channelsCount
-        prepared=true
     }
 
 
@@ -189,7 +199,7 @@ class TestSoundInputStream private constructor() : AudioInputStream()  {
         if (closed) return -1
         val shortArray=ShortArray(min(len/2,b.size/2))
         val bytes= readShorts(shortArray,0,len/2)*2
-        ArrayUtils.shortToByteArrayLittleEndian(shortArray).copyInto(b)
+        shortToByteArrayLittleEndian(shortArray).copyInto(b)
         bytesSent+=bytes
         onReadCallback?.invoke(bytesSent)
         return bytes
@@ -200,25 +210,6 @@ class TestSoundInputStream private constructor() : AudioInputStream()  {
 
     @Synchronized
     @Throws(NullPointerException::class)
-    /*
-    примерно так будут тестовые режимы
-    - если как файл, то просто отдать не более заданного и потом close и -1
-    - если как генератор то как сейчас все
-    - если как устрйство, то мы считаем мс, и считаем сколько мы отдали, с учетом
-    текущего "буфера" - если от нас хотят больше, отдаем что есть и блокируем до
-    следующего, если в буфере есть - отдаем что есть и в момент мс = расчетная
-    отпускаем то что надо, далее так же делаем. Буфер переписывается и новые отсчеты
-     становятся  доступными каждые х мкс,  N отсчетов, старые не считанные пропадают
-     итого доделки :
-     1. под режим "Как файл" в конструкторы  добавляем доп параметр, с размером.
-      Он обязателен если выбран этот режим тестирования. реализуем сразу, это быстро.
-     2. Добавляем новый параметр - макс частоту отдачи, с блокировкой чтения если быстрее,
-     не в конструктор, сеттером.
-
-     Режим "как устройство" - это в след.версии будет, там не спеша надо.
-     */
-
-
     override fun readShorts(b: ShortArray, off: Int, len: Int): Int {
         if (closed) return -1
         if (off < 0 || len < 0 || len > b.size - off) throw IndexOutOfBoundsException("Wrong read(...) params")
@@ -246,11 +237,7 @@ class TestSoundInputStream private constructor() : AudioInputStream()  {
         return read(ByteArray(n.toInt())).toLong()
     }
 
-    // для устройтства - мкс между началом записи и текущим моментом
-    // (паузу и стоп для простоты делать не будем), для остального по умолчанию
-    override var timestamp: Long
-        get() = super.timestamp
-        set(value) {}
+
 
     @Synchronized
     override fun readShorts(b: ShortArray): Int {
@@ -263,7 +250,6 @@ class TestSoundInputStream private constructor() : AudioInputStream()  {
 
     @Synchronized
     override fun close() {
-       prepared=false
        closed=true
     }
 
@@ -282,6 +268,7 @@ class TestSoundInputStream private constructor() : AudioInputStream()  {
     }
 
     enum class TestStreamMode{
+        //пока поддерживается только этот вариант, поток выдает звуковые синусоидальные потоки
         GENERATOR,
         FILE,
         DEVICE

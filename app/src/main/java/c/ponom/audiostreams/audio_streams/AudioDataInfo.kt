@@ -11,102 +11,107 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import java.io.File
+import java.io.FileInputStream
+import java.io.FileNotFoundException
 import java.io.IOException
 import java.util.*
 
 @Suppress("FoldInitializerAndIfToElvis")
-open class AudioDataInfo
-{
+class AudioDataInfo{
     var uri: Uri=Uri.EMPTY
+    private set
     var mimeString: String?=""
+        private set
     var hasInfo=false
+        private set
     var duration:Long?=0L
+        private set
     var samplingRate:Int? =0
+        private set
     var channelsCount:Int? =0
+        private set
     var durationString:String=""
+        private set
     var fileSize:Long?=null
+        private set
     var fileDate:Long?=null
+        private set
     var fileSizeText:String=""
+        private set
     var mediaFormat:MediaFormat?=null
+        private set
     var errorMessage:String="Ok"
     private var extractor:MediaExtractor= MediaExtractor()
 
-    private fun initFields (trackFormat:MediaFormat){
 
-            mediaFormat=trackFormat
-            duration = trackFormat.getLong("durationUs").div(1000)
-            samplingRate = trackFormat.getInteger("sample-rate")
-            channelsCount = trackFormat.getInteger("channel-count")
-            mimeString=trackFormat.getString("mime")
-            durationString=timeConversion(duration)
-            hasInfo=true
-            extractor.release()
-    }
-    //todo обратить внимание на синхронизацию методов в классах либы.
-    // Нельзя упустить ни один один тэг
     @Throws (IllegalArgumentException::class)
-    constructor (context: Context, uri: Uri?){
-        if (uri==null|| uri == Uri.EMPTY) throw IllegalArgumentException("Path is null or empty")
+    constructor (context: Context, uri: Uri, track:Int=0,headers: Map<String, String>? =null ){
+        if (uri == Uri.EMPTY) throw IllegalArgumentException("Path is empty")
         try {
-      /* todo  вопрос сюда и для библиотеки -
-      *   я сделал функцию перегоняющую контент пути в файловые
-      *   1. можно брать от того файла если дадут размер и дату файла
-      *   2. на старших апи проще брать от контент провайдера файл, и брать оттуда
-      *   3. можно добавить поле "реальный путь" или дать функцию в состав либы (отлаженную)
-      *   4. все что работет через контент провайдер надо сделать suspend, оно медленное
-      *   */
-
             val extractor = MediaExtractor()
-            extractor.setDataSource(context,uri,null)
+            extractor.setDataSource(context,uri,headers)
             this.uri=uri
-            extractor.selectTrack(0)
-            val trackFormat = extractor.getTrackFormat(0)
+            extractor.selectTrack(track)
+            val trackFormat = extractor.getTrackFormat(track)
             //документация андроида утверждает что любая
             // дорожка медиафайла имеет этот параметр
-            val mime = trackFormat
-                .getString("mime").toString()
+            val mime = trackFormat.getString("mime").toString()
             require(mime.contains("audio",true)&&!mime
-                .contains("raw",true)){"Track 0 isn't valid audio track"}
+                .contains("raw",true)){"Track isn't valid audio track"}
             initFields(trackFormat)
         } catch (e:IOException) {
-                    errorMessage=e.message.toString()
-                    e.printStackTrace()
-                    hasInfo=false
-                    return
-                }
-        val path=uri.encodedPath //тodo - посмотреть разницу м-ду encodedPath и path
+                errorMessage=e.message.toString()
+                e.printStackTrace()
+                hasInfo=false
+                return
+        }
+        // это работает для иерархических путей внутри файловой системы
+        val path=uri.encodedPath
         // todo - а оно вообще у меня с content: и file: файлами работает нормально?
         if (path==null) return
-        try {
-            val file = File(path)
-            /* todo - переделать - у content: это не отдает данные, там другие методы
-            длину из контент файла можно добыть через contentResolver.openAssetFile().length вероятно,
-            но это медленно и лучше не надо
-            contentResolver.openAssetFile().
-             */
-            fileSize= file.length()
-            fileSizeText=fileSizeToText(fileSize)
-            fileDate = file.lastModified()
+        if (uri.isRelative) {
+            /* todo  вопрос сюда и для библиотеки -
+            *   я сделал функцию перегоняющую контент пути в файловые
+            *   1. можно брать от того файла если дадут размер и дату файла
+            *   2. на старших апи проще брать от контент провайдера файл, и брать оттуда
+            *   3. можно добавить поле "реальный путь" или дать функцию в состав либы (отлаженную)
+            *   4. все что работет через контент провайдер надо сделать suspend, оно медленное  */
+            try {
+                val file = File(path)
+                fileSize = file.length()
+                fileSizeText = fileSizeToText(fileSize)
+                fileDate = file.lastModified()
+            } catch (e: IOException) {
+                errorMessage = e.message.toString()
+                e.printStackTrace()}
         }
-        catch (e: IOException) {
-            errorMessage=e.message.toString()
-            e.printStackTrace()
+        else {
+            try {
+                val s = context.contentResolver.openInputStream(uri) as FileInputStream?
+                fileSize=s?.channel?.size()?:0
+                fileSizeText = fileSizeToText(fileSize)
+                //todo - либа передеать это под медиастор, но он дико медленный
+                // на старших версиях можно вместо потока открывать сам файл, это даст доступ к данным
+                }
+                catch (e: FileNotFoundException){
+                e.printStackTrace()
+                }
             }
         }
 
         @Throws (IllegalArgumentException::class)
-        constructor (path:String?){
-            if (path.isNullOrBlank()) throw IllegalArgumentException("Path is null or empty")
+        constructor (path:String, track: Int =0){
+            if (path.isBlank()) throw IllegalArgumentException("Path is null or empty")
             try {
                 extractor = MediaExtractor()
                 extractor.setDataSource(path)
-                extractor.selectTrack(0)
-                val trackFormat = extractor.getTrackFormat(0)
+                extractor.selectTrack(track)
+                val trackFormat = extractor.getTrackFormat(track)
                 if (!trackFormat
                         .getString("mime")!!
                         .contains("audio",true)){
-                            errorMessage="Track 0 isn't audio track"
-                            throw IllegalArgumentException("Track 0 isn't audio track")
+                            errorMessage="Track $track isn't audio track"
+                            throw IllegalArgumentException("Track $track isn't audio track")
                 }
             initFields(trackFormat)
         } catch (e:IOException) {
@@ -116,9 +121,9 @@ open class AudioDataInfo
         }
 
         try {
-                //аналогично, см. выше. ну или вообще не запрашивать эти данные у content:
-                // это в любом случае делать не надо, оно может блочить процесс на секунды, а
-                // у file: проверить как это работает
+                //todo - протестить. Теоретически это должно быть для честных путей, не file:
+                // - для тех выше метод с uri
+
             val file = File(path)
             uri=file.toUri()
             fileSize=file.length()
@@ -130,26 +135,26 @@ open class AudioDataInfo
         }
     }
 
-    // сделать open метод для возврата языковых значений
-    private fun fileSizeToText(fileSize: Long?): String {
-        if (fileSize==null||fileSize==0L)
-            return ""
-        if (fileSize<1024)
-            return "${fileSize}b"
-        if (fileSize<1024*1024)
-            return String.format(Locale.US,"%1.1f",fileSize/ 1024f) + "Kb"
-        if (fileSize<1024*1024*1024)
-            return String.format(Locale.US,"%1.1f",fileSize/ (1024 * 1024f)) + "Mb"
-        return String.format(Locale.US,"%1.1f",fileSize / (1024 * 1024 * 1024f)) + "Gb"
+    private constructor()
+
+    private fun initFields (trackFormat:MediaFormat){
+        mediaFormat=trackFormat
+        /* According to MediaFormat.getTrackFormat(...) documentation any audio tracks have this 4
+         * params, so we shouldn't get an exception
+         */
+        duration = trackFormat.getLong("durationUs").div(1000)
+        samplingRate = trackFormat.getInteger("sample-rate")
+        channelsCount = trackFormat.getInteger("channel-count")
+        mimeString=trackFormat.getString("mime")
+        durationString=timeConversion(duration)
+        hasInfo=true
+        extractor.release()
     }
 
 
-    private constructor()
 
 
-    //todo open метод для возврата кастомных разделителей, и
-    // использующий стандартные разделители локали по умолчанию. И сунуть его же в утилиты проекта
-    open fun timeConversion(value: Long?): String {
+    private fun timeConversion(value: Long?): String {
         if (value == null) return ""
         val audioTime: String
         val dur = value.toInt()
@@ -164,27 +169,45 @@ open class AudioDataInfo
         return audioTime
     }
 
+    /* Static and async API for class */
     companion object{
 
-        fun  getMediaFormatDataAsync(context:Context, uri:Uri) = CoroutineScope(Dispatchers.IO)
-            .async{ AudioDataInfo(context,uri)}
+        // todo - специально для понимания как работают исключения из корутин - бросить оттуда
+        fun  getMediaDataAsync(context: Context, uri: Uri, track:Int=0,
+                               headers: Map<String, String>? =null ) =
+                        CoroutineScope(Dispatchers.IO)
+                            .async{ AudioDataInfo(context,uri,track,headers)}
 
-        fun  getMediaFormatDataAsync(path: String) = CoroutineScope(Dispatchers.IO)
-            .async{ AudioDataInfo(path)}
+        fun  getMediaDataAsync(path: String, track:Int=0) = CoroutineScope(Dispatchers.IO)
+            .async{ AudioDataInfo(path,track)}
 
-        fun getMediaFormatData(context:Context, uri:Uri): AudioDataInfo {
-            return AudioDataInfo(context,uri)
+        fun getMediaData(context: Context, uri: Uri, track:Int=0,
+                         headers: Map<String, String>? =null ): AudioDataInfo {
+            return AudioDataInfo(context,uri,track,headers)
         }
 
-        fun getMediaFormatData(path:String): AudioDataInfo {
-            return AudioDataInfo(path)
+        fun getMediaData(path:String, track:Int=0): AudioDataInfo {
+            return AudioDataInfo(path,track)
         }
 
     }
 
     override fun toString(): String {
-        if (hasInfo) return "Audio media format for file $uri = ${mediaFormat.toString()}\n" +
+        if (hasInfo) return "Media format for file $uri = ${mediaFormat.toString()}\n" +
                 "status for other file data $errorMessage"
-        return "Audio media format for file $uri not available, possible error =$errorMessage"
+        return "Media format for file $uri not available, possible error =$errorMessage"
+    }
+
+
+    private fun fileSizeToText(fileSize: Long?): String {
+        if (fileSize==null||fileSize==0L)
+            return ""
+        if (fileSize<1024)
+            return "${fileSize}b"
+        if (fileSize<1024*1024)
+            return String.format(Locale.US,"%1.1f",fileSize/ 1024f) + "Kb"
+        if (fileSize<1024*1024*1024)
+            return String.format(Locale.US,"%1.1f",fileSize/ (1024 * 1024f)) + "Mb"
+        return String.format(Locale.US,"%1.1f",fileSize / (1024 * 1024 * 1024f)) + "Gb"
     }
 }

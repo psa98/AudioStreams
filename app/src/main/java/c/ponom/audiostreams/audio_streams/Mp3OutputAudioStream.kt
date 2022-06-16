@@ -2,6 +2,7 @@ package c.ponom.audiostreams.audio_streams
 
 import android.media.AudioFormat.ENCODING_PCM_16BIT
 import androidx.annotation.IntRange
+import c.ponom.audiostreams.audio_streams.ArrayUtils.byteToShortArrayLittleEndian
 import c.ponom.recorder2.audio_streams.AudioOutputStream
 import com.naman14.androidlame.AndroidLame
 import com.naman14.androidlame.LameBuilder
@@ -17,6 +18,8 @@ class Mp3OutputAudioStream private constructor() : AudioOutputStream(){
     private lateinit var  outputStream:OutputStream
     private lateinit var stereoMode:LameBuilder.Mode
 
+    //TODO - я точно знаю что нативный объект не уничтожается на lame.close() - и не создается
+    // вроде на
 
 
     /**Важно! OutBitrate - это уровень сжатого потока и он задается  в килобитах/сек! то есть
@@ -24,18 +27,19 @@ class Mp3OutputAudioStream private constructor() : AudioOutputStream(){
      * Mp3 формат поддерживает только 16 битную кодировку, левый канал - нечетные сэмплы (signed Short)
      * допустимые входные частоты дискретизации - от 8000 до 48000 <BR>
      * qualityMode = режим высокого качества оптимален для офлайн-сжатия потоков при сохранении
-     * итоговых звуковых файлов. Быстрый режим -  для онлайн сжатия с минимальными задержаками и
+     * итоговых звуковых файлов. Быстрый режим -  для онлайн сжатия с минимальными задержками и
      * минимальным задействованием процессора
-     * (1) По итогам тестов разница по скорости сжатия между FAST|HIGH примерно в 2 раза.
-     * (2) работает только параметр, заданный при создании самого первого инстанса Lame,
-     * для последующих запусков он игнорируется до перезагрузки, поэтому поменять его
-     * без перезапуска todo (?) нельзя.
+     *  По итогам тестов разница по скорости сжатия между FAST|HIGH примерно в 2 раза.
+     *  Как я понимаю NDK инстанс существует один, так что вызов этого конструктора после close()
+     *  не создает новый.
      *  Для всех последующих операций используется последнее по времени создания энкодера установленное
      * значение качества, при создании нескольких потоков установление отличающегося от базового
      * качества сжатия  меняет его значение и для созданных ранее но еще не закрытых потоков
      */
-    //todo - попробовать сделать в библиотеке AndroidLame вызов ndk, позволяющий такое
-    //  вероятно там должен быть доступ к этому через  lame_set_quality(lame_global_flags *, int);
+
+    //todo - потесить в профилере что неоднократный вызов (раз 1000) конструктора не ведет к утечке
+    // нативной памяти
+
     @JvmOverloads
     constructor(
         outStream: OutputStream,
@@ -53,20 +57,17 @@ class Mp3OutputAudioStream private constructor() : AudioOutputStream(){
         channelConfig=channelConfig(channelsCount)
         encoding = ENCODING_PCM_16BIT
         frameSize= channelsCount*2
+
         //Only 16 bit  encoding supported
-        // when (encoding){
 
-
-        /**
-         *
-        internal algorithm selection.  True quality is determined by the bitrate
-        but this variable will effect quality by selecting expensive or cheap algorithms.
-        quality=0..9.  0=best (very slow).  9=worst.
-        recommended:  2     near-best quality, not too slow
-        5     good quality, fast
-        7     ok quality, really fast
-
-         */
+        /* From Lame doc
+        * internal algorithm selection.  True quality is determined by the bitrate
+        * but this variable will effect quality by selecting expensive or cheap algorithms.
+        * quality=0..9.  0=best (very slow).  9=worst.
+        * recommended:  2     near-best quality, not too slow
+        *               5     good quality, fast
+        *               7     ok quality, really fast
+        */
 
         val quality:Int = when (qualityMode){
             EncodingQuality.HIGH_AND_SLOW -> 1
@@ -84,18 +85,16 @@ class Mp3OutputAudioStream private constructor() : AudioOutputStream(){
     }
 
 
-    @Throws(IndexOutOfBoundsException::class,NullPointerException::class,IllegalStateException::class,
-        IOException::class)
+    @Throws(IndexOutOfBoundsException::class,NullPointerException::class,
+        IllegalStateException::class,IOException::class)
     @Synchronized
-
-
     override fun write(b: ByteArray?, off: Int, len: Int){
         if (finished) throw IllegalStateException("Stream closed or in error state")
         if (b == null) throw NullPointerException ("Null array passed")
         if (off < 0 || len < 0 || len > b.size - off)
             throw IndexOutOfBoundsException("Wrong write(...) params")
-        //!!! todo доделать оффсеты
-
+        // todo,  доделать в тех классах что писал я - что оффсет не поддерживается,
+        //  во всех write.
         val samplesShorts = byteToShortArrayLittleEndian(b)
         val samples=samplesShorts.copyOf(len/2)
         val result = if (channelsCount==2)
@@ -127,8 +126,6 @@ class Mp3OutputAudioStream private constructor() : AudioOutputStream(){
         if (channelsCount==1) result =  encodeMonoStream(samples)
         else result =  encodeInterleavedStream(samples)
         bytesSent += b.size.coerceAtMost(len) *2
-        //todo протестить, у меня в выведенных байтах теперь исходное а не сжатое, что
-        // логично - c учетом того что нужно смотреть прогресс отправки исходного потока
         onWriteCallback?.invoke(bytesSent)
         outputStream.write(result)
     }
@@ -182,10 +179,6 @@ class Mp3OutputAudioStream private constructor() : AudioOutputStream(){
         // вообще оно заведомо до 2048 + ограниченный размер тегов, но пусть
         val resultBytes = androidLame.flush(outBuff)
         androidLame.close()
-        /* todo -проверить как это у меня повлияет на работу рекордера-
-        * как я понимаю закрытие может отводить память плюс следующий build
-        * будет менять параметры сжатия (и возможно остальные)
-        * */
         return outBuff.sliceArray(0 until resultBytes)
 
     }

@@ -2,7 +2,6 @@ package c.ponom.recorder2.audio_streams
 
 import android.media.AudioFormat
 import android.media.AudioFormat.ENCODING_PCM_16BIT
-import android.media.AudioFormat.ENCODING_PCM_8BIT
 import android.media.MediaFormat
 import androidx.annotation.IntRange
 import java.io.IOException
@@ -149,7 +148,7 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
     open var bytesSent = 0L
         protected set(value) {
             field=value
-            timestamp=(frameTimeMs(encoding,sampleRate)*value).toLong()
+            timestamp=(frameTimeMs(sampleRate)*value).toLong()
         }
 
 
@@ -252,15 +251,8 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
     open fun canReadShorts():Boolean =false
 
 
-    private fun frameTimeMs(encoding:Int, rate:Int):Double{
-        val bytesInFrame:Int = when (encoding){
-            //TODO теоретически у меня байты во фрейме должны гарантированно быть заданы в
-            // конструкторах, и 9 битного нет, можно будет это убрать при условии покрытия тестами
-            ENCODING_PCM_8BIT -> channelsCount
-            ENCODING_PCM_16BIT -> channelsCount*2
-            else-> 2
-        }
-        return 1000.0/(rate*bytesInFrame.toDouble())
+    fun frameTimeMs( rate:Int):Double{
+        return 1000.0/(rate*frameSize.toDouble())
     }
 
     fun channelConfig(channels: Int) = when (channels) {

@@ -4,7 +4,7 @@ package c.ponom.audiostreams.audio_streams
 import kotlin.math.abs
 import kotlin.math.sqrt
 
-object SoundProcessingUtils {
+object SoundVolumeUtils {
 
 
 

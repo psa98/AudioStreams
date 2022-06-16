@@ -10,22 +10,21 @@ import kotlinx.coroutines.launch
 import java.io.IOException
 
 
-
-
 /*
 вызов коллбэков происходит в IO потоке!
  */
 class StreamPump @JvmOverloads constructor(
-    private var outputStream: AudioOutputStream,
-    private var inputStream: AudioInputStream,
-    val onFinish: () -> Unit = {},
-    val onFatalError: (e: Exception) -> Unit = {},
-    val onEachPump: ((b: ByteArray) -> Unit)? = null
-
+    val outputStream: AudioOutputStream,
+    val inputStream: AudioInputStream,
+    private val bufferSize:Int = 8192,
+    private val onEachPump: ((b: ByteArray) -> Unit) = {},
+    val onWrite:(bytesWritten:Long) -> Unit ={},
+    private val onFinish: () -> Unit = {},
+    private val onFatalError: (e: Exception) -> Unit = {}
     ) {
-    private var bufferSize: Int = 0
-    private val defaultBufferSizeShorts =4096
-    private val defaultBufferSizeBytes =8192
+
+
+
     /*
         поток читает (жадным образом), блокирующим чтением, все из входного потока до получения там -1,
         либо команды stop. команда стоп передается потом потока как close(). Пока не определился будет ли он
@@ -36,21 +35,18 @@ class StreamPump @JvmOverloads constructor(
         на выходе запись в файл, и посмотреть нет ли дыр или ошибок в полученном файле
 
         */
-    var state: State
+    var state: State=NOT_READY
         private set
     private var canPumpShorts=false
     private val byteBuffer:ByteArray
     private val shortBuffer:ShortArray
 
-    // TODO: добавить (1) задание размера буфера из конструктора, в байтах
-    //  протестить на микрофоне коллбэк на возможность забрать байтовый массив из
-    //  потока прокачки onEachPump(byte[])
+
 
     @Volatile
     var bytesSent=0L
     private set
 
-    var onWrite:(bytesWritten:Long) -> Unit ={}
 
     @Throws(IllegalStateException::class)
     fun start(){
@@ -70,8 +66,6 @@ class StreamPump @JvmOverloads constructor(
    }
 
     @Suppress("BlockingMethodInNonBlockingContext")
-
-
     private fun pump() {
         CoroutineScope(Dispatchers.IO).launch{
             do {
@@ -83,12 +77,12 @@ class StreamPump @JvmOverloads constructor(
                         if (read>=0) {
                             bytesSent+=read*2
                             onWrite(bytesSent)
-                        //это под то, что у меня микрофонный поток может вернуть не -1 при ошибке,
+                        //у меня микрофонный поток может вернуть не -1 при ошибке,
                         // а другое значение, -3 или -6. Возможно я переделаю это под бросание
-                        // исключения там, тогда убрать
+                        // исключения
                         } else read=-1
                         outputStream.writeShorts(shortBuffer)
-                        onEachPump?.invoke (shortToByteArrayLittleEndian(shortBuffer))
+                        onEachPump(shortToByteArrayLittleEndian(shortBuffer))
                     }else{
                         read = inputStream.read(byteBuffer)
                         if (read>=0) {
@@ -96,7 +90,7 @@ class StreamPump @JvmOverloads constructor(
                             onWrite(bytesSent)
                         } else read=-1
                         outputStream.write(byteBuffer)
-                        onEachPump?.invoke (byteBuffer)
+                        onEachPump(byteBuffer)
                     }
                     if (read < 0) {
                         inputStream.close()
@@ -114,10 +108,8 @@ class StreamPump @JvmOverloads constructor(
         }
     }
 
-    //todo сделать stopAndClose() отдельно, обычный стоп пусть не закрывает потоки,
-    // с ошибками подумать че, пусть закрывают
 
-    @Throws(IOException::class,IllegalStateException::class)
+    @Throws(IllegalStateException::class)
     fun stop(){
         when(state){
             NOT_READY, PREPARED -> return
@@ -153,18 +145,18 @@ class StreamPump @JvmOverloads constructor(
     fun resume(){
         when(state){
             NOT_READY, PREPARED, PUMPING ->return
-            PAUSED-> state=PUMPING
+            PAUSED-> {
+                state=PUMPING
+                pump()
+            }
             FINISHED -> throw IllegalStateException ("Already finished")
             FATAL_ERROR -> throw IllegalStateException ("Already finished on error")
         }
     }
-    @JvmOverloads
-    fun setVolume(leftOrMono:Float=1f,right:Float=1f){
-        //todo
-    }
+
 
     enum class State{
-        NOT_READY, //убрать? что будет при бросании исключения в init()?
+        NOT_READY,
         PREPARED,
         PUMPING,
         PAUSED,
@@ -173,15 +165,13 @@ class StreamPump @JvmOverloads constructor(
     }
 
     init {
-        this.state = NOT_READY
         canPumpShorts = inputStream.canReadShorts() && outputStream.canWriteShorts()
-        state = PREPARED
-        if (bufferSize != 0) {
-            byteBuffer = ByteArray(bufferSize)
-            shortBuffer = ShortArray(bufferSize / 2)
+          if (bufferSize < 2) {
+            throw IllegalArgumentException ("Buffer size should be at least 2 bytes")
         } else {
-            byteBuffer = ByteArray(defaultBufferSizeBytes)
-            shortBuffer = ShortArray(defaultBufferSizeShorts)
+            byteBuffer = ByteArray(bufferSize)
+            shortBuffer = ShortArray(bufferSize/2)
         }
+        state = PREPARED
     }
 }

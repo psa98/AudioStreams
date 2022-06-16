@@ -23,7 +23,7 @@ import androidx.core.content.PermissionChecker
 import c.ponom.audiostreams.audio_streams.*
 import c.ponom.audiostreams.audio_streams.ArrayUtils.shortToByteArrayLittleEndian
 import c.ponom.audiostreams.audio_streams.Mp3OutputAudioStream.EncodingQuality
-import c.ponom.audiostreams.audio_streams.SoundProcessingUtils.getRMSVolume
+import c.ponom.audiostreams.audio_streams.SoundVolumeUtils.getRMSVolume
 import c.ponom.audiostreams.audio_streams.StreamPump.State.PUMPING
 import c.ponom.audiostreams.databinding.ActivityMainBinding
 import c.ponom.recorder2.audio_streams.AudioFileSoundSource
@@ -220,6 +220,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    @Suppress("BlockingMethodInNonBlockingContext")
     private suspend fun testMic() {
         if (!microphoneStream.isReady) microphoneStream= MicSoundInputStream(16000)
         val askingThread = Thread.currentThread()
@@ -476,17 +477,9 @@ class MainActivity : AppCompatActivity() {
 
         val encoderStream=Mp3OutputAudioStream(outputFileStream,
             32000,32, MONO)
-        mainPump =StreamPump(
-            encoderStream,
-            monitoredStream,
-            {
-                Log.e(TAG, "monitoredRecord: end")
-            },
-            {
-                Log.e(TAG, "monitoredRecord: fatal error")
-            }
-        )
-//        mainPump?.onWrite={ bytesWritten ->  Log.e(TAG, "monitoredRecord: = "+bytesWritten)}
+        mainPump =StreamPump(encoderStream,monitoredStream,onWrite={ bytesWritten ->  Log.e(TAG,
+                "monitoredRecord: = $bytesWritten")})
+
         mainPump?.start()
         val audioTrackMonitor=AudioTrackOutputSteam(32000,1)
         Thread.sleep(20)
@@ -501,10 +494,11 @@ class MainActivity : AppCompatActivity() {
         // ужас ужас
 
 
-        monitorPump = StreamPump(audioTrackMonitor,monitor,
-            { Log.e(TAG, "monitoredRecord: in monitor  =end")},
+        monitorPump = StreamPump(audioTrackMonitor,monitor,20000,
+            { Log.e(TAG, "monitoredRecord: in monitor max value"+ it.maxOrNull()) },
+            {bytes-> Log.e(TAG, "monitoredRecord: in monitor  $bytes")},{},
             {e->Log.e(TAG,"monitoredRecord: in monitor ="+e.localizedMessage)})
-            //monitorPump?.onWrite={bytes-> Log.e(TAG, "monitoredRecord: in monitor  $bytes")}
+
         monitorPump?.start()
     }
 

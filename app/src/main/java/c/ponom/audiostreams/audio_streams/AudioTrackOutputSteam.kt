@@ -134,9 +134,15 @@ class AudioTrackOutputSteam private constructor() : AudioOutputStream(){
     }
 
     /**
-     *Writes the audio data to the audio sink for playback (streaming mode), or copies audio data for later playback (static buffer mode). The format specified in the AudioTrack constructor should be AudioFormat.ENCODING_PCM_8BIT to correspond to the data in the array. The format can be AudioFormat.ENCODING_PCM_16BIT, but this is deprecated.
-    In streaming mode, the write will normally block until all the data has been enqueued for playback, and will return a full transfer count. However, if the track is stopped or paused on entry, or another thread interrupts the write by calling stop or pause, or an I/O error occurs during the write, then the write may return a short transfer count.
-    In static buffer mode, copies the data to the buffer starting at offset 0. Note that the actual playback of this data might occur after this function returns.
+     *Writes the audio data to the audio sink for playback (streaming mode), or copies audio data for later playback
+     * (static buffer mode). The format specified in the AudioTrack constructor should be AudioFormat.ENCODING_PCM_8BIT
+     * to correspond to the data in the array.
+     * In streaming mode, the write will normally block until all the data has been enqueued for playback,
+     * and will return a full transfer count. However, if the track is stopped or paused on entry, or another
+     * thread interrupts the write by calling stop or pause, or an I/O error occurs during the write, then
+     * the write may return a short transfer count.
+     * In static buffer mode, copies the data to the buffer starting at offset 0. Note that the actual
+     * playback of this data might occur after this function returns.
      */
 
 

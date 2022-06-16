@@ -2,62 +2,75 @@ package c.ponom.recorder2.audio_streams
 
 import android.media.AudioFormat.*
 import android.media.MediaFormat
+import androidx.annotation.IntRange
 import java.io.IOException
 import java.io.OutputStream
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
 
 abstract class AudioOutputStream() :
     OutputStream(),  AutoCloseable{
 
 
+    constructor(@IntRange(from = 2400, to = 96000) samplingRate:Int,
+                @IntRange(from = 1, to = 2)channelsNumber: Int) : this() {
+        channelsCount=channelsNumber
+        sampleRate=samplingRate
+        channelConfig=channelConfig(channelsNumber)
+        bytesPerSample = if (encoding== ENCODING_PCM_16BIT) 2  else 1
+
+    }
+
 
     // будет содержать валидное значение если это возможно
     var mediaFormat: MediaFormat?=null
-
+    protected set
 
     // значение 0 не валидно, его наличие указывает на незавершенность инциализации
     var channelsCount:Int = 0
-
+    protected set
 
     // не путать с числом каналов! см. channelConfig(channels: Int)
     // законные значения - CHANNEL_OUT_MONO,CHANNEL_OUT_STEREO.
     //должно быть выставлено при создании канала
     var channelConfig:Int= CHANNEL_INVALID
+    protected set
 
     // типичный поддерживаемый аппаратурой диапазон - 16000 - 48000, стандартные значения:
     // 8000,11025,12000,16000,22050,24000,32000,44100,48000, гарантированно
     // поддерживается 44100
     var sampleRate:Int =0
-
-    var frameSize: Int=0 // всегда считать размер в конструкторе
-
+    protected set
 
     // переопределите коллбэк для возможности учета вызовов методов чтения из стороннего API,
     // к примеру для реализации индикатора прогресса
     open var onWriteCallback: ((sentBytes:Long) -> Unit)? ={  }
 
+    var bytesPerSample: Int = 2 // для 16 бит всегда, 8 битный звук в настоящее время не поддерживается
+        protected set
 
+    var frameSize: Int=bytesPerSample*channelsCount // всегда считать размер в конструкторе
+        protected set
 
     var encoding:Int= ENCODING_PCM_16BIT
+    protected set
 
     @Volatile
-    var timestamp=0L // пересчет выведенных байтов в мс.
+    var timestamp=0L // время от начала проигрывания
 
-
-    // todo переделать на атомики?
     @Volatile
     var bytesSent: Long = 0
     // todo -посмотреть, у меня есть умножение на 2 в mp3 рекордере,
-    // не лишнее ли и вообще включить во все тесты - это именно байты должны быть, не сэмплы
+    //  не лишнее ли и вообще включить во все тесты - это именно байты должны быть, не сэмплы
+    // вывести в составе колбэка данные о байтах и времени выведенного
 
     @Synchronized //TODO ДОБАВИТЬ В ЛИБУ ВЕЗДЕ ГДЕ НАДО
     set(value) {
         field=value
-        timestamp=(frameTimeMs(this.encoding,this.sampleRate)*value).toLong()
+        timestamp=(frameTimeMs(this.sampleRate)*value).toLong()
     }
 
-    constructor(channelMask: Int, sampleRate: Int,encoding:Int) : this()
+
+    open fun setVolume(vol:Float){
+    }
 
 
 
@@ -82,10 +95,6 @@ abstract class AudioOutputStream() :
 
     }
 
-    open fun setVolume(vol:Float){
-    }
-
-
 
     fun channelConfig(channels: Int) = when (channels) {
         1-> CHANNEL_OUT_MONO
@@ -93,25 +102,6 @@ abstract class AudioOutputStream() :
         else ->{
             CHANNEL_INVALID
         }
-    }
-
-    fun shortToByteArray(arr: ShortArray): ByteArray {
-        val byteBuffer = ByteBuffer.allocate(arr.size * 2)
-        byteBuffer.asShortBuffer().put(arr)
-        return byteBuffer.array()
-    }
-
-
-    fun byteToShortArray(bytes: ByteArray): ShortArray {
-        val shorts = ShortArray(bytes.size / 2)
-        ByteBuffer.wrap(bytes).asShortBuffer()[shorts]
-        return shorts
-    }
-
-    fun byteToShortArrayLittleEndian(bytes: ByteArray): ShortArray {
-        val shorts = ShortArray(bytes.size / 2)
-        ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer()[shorts]
-        return shorts
     }
 
 
@@ -131,26 +121,10 @@ abstract class AudioOutputStream() :
     }
 
 
-    fun shortToByteArrayLittleEndian(shorts: ShortArray): ByteArray {
-        val byteBuffer = ByteBuffer.allocate(shorts.size * 2).order(ByteOrder.LITTLE_ENDIAN)
-        byteBuffer.asShortBuffer().put(shorts)
-        return byteBuffer.array()
+
+
+    fun frameTimeMs( rate:Int):Double{
+        return 1000.0/(rate*frameSize.toDouble())
     }
-
-
-    private fun frameTimeMs(encoding:Int, rate:Int):Double{
-        val bytesInFrame:Int = when (encoding){
-            //TODO теоретически у меня байты во фрейме должны гарантированно быть заданы в
-            // конструкторах, и 8 битного нет, можно будет это убрать при условии покрытия тестами
-            ENCODING_PCM_8BIT -> channelsCount
-            ENCODING_PCM_16BIT -> channelsCount*2
-            else-> 2
-        }
-        return 1000.0/(rate*bytesInFrame.toDouble())
-    // эта вещь тоже должна в конструкторе
-    // считаться один раз и не быть равной 0, лучше не перевычислять ее каждый раз
-            // когда у нас вызывется приватный конструктор абстрактного класса? туда можно
-    }
-
 
 }
