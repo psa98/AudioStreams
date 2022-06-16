@@ -1,6 +1,7 @@
 package c.ponom.audiostreams.audio_streams
 
-import c.ponom.audiostreams.audio_streams.AudioPumpStream.State.*
+import c.ponom.audiostreams.audio_streams.ArrayUtils.shortToByteArrayLittleEndian
+import c.ponom.audiostreams.audio_streams.StreamPump.State.*
 import c.ponom.recorder2.audio_streams.AudioInputStream
 import c.ponom.recorder2.audio_streams.AudioOutputStream
 import kotlinx.coroutines.CoroutineScope
@@ -14,15 +15,17 @@ import java.io.IOException
 /*
 вызов коллбэков происходит в IO потоке!
  */
-class AudioPumpStream @JvmOverloads constructor(
+class StreamPump @JvmOverloads constructor(
     private var outputStream: AudioOutputStream,
     private var inputStream: AudioInputStream,
-    var onFinish: () -> Unit = {},
-    var onFatalError: (e: Exception) -> Unit = {},
+    val onFinish: () -> Unit = {},
+    val onFatalError: (e: Exception) -> Unit = {},
+    val onEachPump: ((b: ByteArray) -> Unit)? = null
+
+    ) {
     private var bufferSize: Int = 0
-) {
-     val defaultBufferSizeShorts =4096
-      val defaultBufferSizeBytes =8192
+    private val defaultBufferSizeShorts =4096
+    private val defaultBufferSizeBytes =8192
     /*
         поток читает (жадным образом), блокирующим чтением, все из входного потока до получения там -1,
         либо команды stop. команда стоп передается потом потока как close(). Пока не определился будет ли он
@@ -35,10 +38,13 @@ class AudioPumpStream @JvmOverloads constructor(
         */
     var state: State
         private set
-
-    private var canSendShort=false
+    private var canPumpShorts=false
     private val byteBuffer:ByteArray
     private val shortBuffer:ShortArray
+
+    // TODO: добавить (1) задание размера буфера из конструктора, в байтах
+    //  протестить на микрофоне коллбэк на возможность забрать байтовый массив из
+    //  потока прокачки onEachPump(byte[])
 
     @Volatile
     var bytesSent=0L
@@ -69,12 +75,12 @@ class AudioPumpStream @JvmOverloads constructor(
     private fun pump() {
         CoroutineScope(Dispatchers.IO).launch{
             do {
-                if (state==FINISHED) break
+                if (state==FINISHED||state==FATAL_ERROR) break
                 var read: Int
                 try {
-                    if (canSendShort) {
+                    if (canPumpShorts) {
                         read = inputStream.readShorts(shortBuffer)
-                        if (read>0) {
+                        if (read>=0) {
                             bytesSent+=read*2
                             onWrite(bytesSent)
                         //это под то, что у меня микрофонный поток может вернуть не -1 при ошибке,
@@ -82,13 +88,15 @@ class AudioPumpStream @JvmOverloads constructor(
                         // исключения там, тогда убрать
                         } else read=-1
                         outputStream.writeShorts(shortBuffer)
+                        onEachPump?.invoke (shortToByteArrayLittleEndian(shortBuffer))
                     }else{
                         read = inputStream.read(byteBuffer)
-                        if (read>0) {
+                        if (read>=0) {
                             bytesSent+=read
                             onWrite(bytesSent)
                         } else read=-1
-                    outputStream.write(byteBuffer)
+                        outputStream.write(byteBuffer)
+                        onEachPump?.invoke (byteBuffer)
                     }
                     if (read < 0) {
                         inputStream.close()
@@ -103,7 +111,6 @@ class AudioPumpStream @JvmOverloads constructor(
                   break
                 }
             } while (read >= 0&& state!=PAUSED)
-
         }
     }
 
@@ -167,7 +174,7 @@ class AudioPumpStream @JvmOverloads constructor(
 
     init {
         this.state = NOT_READY
-        canSendShort = inputStream.canReadShorts() && outputStream.canWriteShorts()
+        canPumpShorts = inputStream.canReadShorts() && outputStream.canWriteShorts()
         state = PREPARED
         if (bufferSize != 0) {
             byteBuffer = ByteArray(bufferSize)

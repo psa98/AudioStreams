@@ -22,9 +22,9 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.PermissionChecker
 import c.ponom.audiostreams.audio_streams.*
 import c.ponom.audiostreams.audio_streams.ArrayUtils.shortToByteArrayLittleEndian
-import c.ponom.audiostreams.audio_streams.AudioPumpStream.State.PUMPING
 import c.ponom.audiostreams.audio_streams.Mp3OutputAudioStream.EncodingQuality
 import c.ponom.audiostreams.audio_streams.SoundProcessingUtils.getRMSVolume
+import c.ponom.audiostreams.audio_streams.StreamPump.State.PUMPING
 import c.ponom.audiostreams.databinding.ActivityMainBinding
 import c.ponom.recorder2.audio_streams.AudioFileSoundSource
 import c.ponom.recorder2.audio_streams.TAG
@@ -47,8 +47,8 @@ private const val PERMISSION_REQUEST_CODE: Int =1
 class MainActivity : AppCompatActivity() {
 
 
-    private var mainPump: AudioPumpStream?=null
-    private var monitorPump: AudioPumpStream?=null
+    private var mainPump: StreamPump?=null
+    private var monitorPump: StreamPump?=null
     private var recordingIsOn: Boolean=false
     private var permissionGranted: Boolean=false
     private lateinit var stopButton: Button
@@ -476,7 +476,7 @@ class MainActivity : AppCompatActivity() {
 
         val encoderStream=Mp3OutputAudioStream(outputFileStream,
             32000,32, MONO)
-        mainPump=AudioPumpStream(
+        mainPump =StreamPump(
             encoderStream,
             monitoredStream,
             {
@@ -501,7 +501,7 @@ class MainActivity : AppCompatActivity() {
         // ужас ужас
 
 
-        monitorPump= AudioPumpStream(audioTrackMonitor,monitor,
+        monitorPump = StreamPump(audioTrackMonitor,monitor,
             { Log.e(TAG, "monitoredRecord: in monitor  =end")},
             {e->Log.e(TAG,"monitoredRecord: in monitor ="+e.localizedMessage)})
             //monitorPump?.onWrite={bytes-> Log.e(TAG, "monitoredRecord: in monitor  $bytes")}
