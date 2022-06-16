@@ -25,7 +25,7 @@ class AudioPumpStream @JvmOverloads constructor(
       val defaultBufferSizeBytes =8192
     /*
         поток читает (жадным образом), блокирующим чтением, все из входного потока до получения там -1,
-        либо команды stop. команда стоп передается потом в оба потока как close(). Пока не определился будет ли он
+        либо команды stop. команда стоп передается потом потока как close(). Пока не определился будет ли он
         входным, выходным или просто классом.
         доступные методы:
         stop, start, pause, resume, setmaxspeed, setbuffersize, getIn|Out, get state

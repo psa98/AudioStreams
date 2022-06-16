@@ -155,15 +155,15 @@ public class BluetoothAudioRecorder extends AppCompatActivity {
             int state = intent.getIntExtra(AudioManager.EXTRA_SCO_AUDIO_STATE, -1);
             System.out.println("ANDROID Audio SCO state: " + state);
             if (AudioManager.SCO_AUDIO_STATE_CONNECTED == state) {
-                /*
-                 * Now the connection has been established to the bluetooth device.
-                 * Record audio or whatever (on another thread).With AudioRecord you can record with an object created like this:
-                 * new AudioRecord(MediaRecorder.AudioSource.MIC, 8000, AudioFormat.CHANNEL_CONFIGURATION_MONO,
-                 * AudioFormat.ENCODING_PCM_16BIT, audioBufferSize);
-                 *
-                 * After finishing, don't forget to unregister this receiver and
-                 * to stop the bluetooth connection with am.stopBluetoothSco();
-                 */
+        /*
+         * Now the connection has been established to the bluetooth device.
+         * Record audio or whatever (on another thread).With AudioRecord you can record with an object created like this:
+         * new AudioRecord(MediaRecorder.AudioSource.MIC, 8000, AudioFormat.CHANNEL_CONFIGURATION_MONO,
+         * AudioFormat.ENCODING_PCM_16BIT, audioBufferSize);
+         *
+         * After finishing, don't forget to unregister this receiver and
+         * to stop the bluetooth connection with am.stopBluetoothSco();
+         */
             }
         }
     };

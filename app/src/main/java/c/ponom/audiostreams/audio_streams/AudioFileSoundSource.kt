@@ -321,12 +321,7 @@ open class AudioFileSoundSource { //todo - переделать под
 
 
 
-        @Throws(IllegalArgumentException::class,NullPointerException::class, CodecException::class)
-        @Synchronized
-        override fun read(b: ByteArray?): Int {
-            if (b == null) throw NullPointerException("Null byte array passed") else
-            return read(b,0, b.size)
-        }
+
 
 
         @Synchronized

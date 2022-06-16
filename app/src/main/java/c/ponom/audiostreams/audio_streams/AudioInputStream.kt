@@ -4,6 +4,7 @@ import android.media.AudioFormat
 import android.media.AudioFormat.ENCODING_PCM_16BIT
 import android.media.AudioFormat.ENCODING_PCM_8BIT
 import android.media.MediaFormat
+import androidx.annotation.IntRange
 import java.io.IOException
 import java.io.InputStream
 
@@ -17,12 +18,12 @@ import java.io.InputStream
  * 8, 24 or 32 bit samples) used in very limited circumstances
  *
  * <p> Applications that need to define a subclass of <code>AudioInputStream</code>
- * must always provide a method that returns the next byte of input.
+ * must always provide method read(b: ByteArray?, off: Int, len: Int): Int
+ * A method that returns the next byte of input must be provided, but for many real implementations
+ * won't have sense and can just throw UnsupportedOperationException.
  *
- *
- * @see     java.io.BufferedInputStream
  * @see     java.io.ByteArrayInputStream
- * @see     java.io.InputStream#read()
+ * @see     java.io.InputStream#read(byte b[], int off, int len)
 
  */
 
@@ -30,47 +31,120 @@ import java.io.InputStream
 abstract class AudioInputStream :    InputStream, AutoCloseable {
 
 
+
+
+
     /**Sampling rate measured in samples|sec, sound stream durationString if known, for example, when we
      * work with audio file content - in ms.
-     * вероятно этим конструктором следует пользоваться при создании потока из устройства
-     * (или иного потока бесконечных raw data)
-    */
-    constructor(streamDuration: Long = 0, channels: Int = 0, samplingRate: Int = 0){
+     * The constructor should be used for creating potentially endless streams, for example,
+     * from input devices.
+     * @param sampleRate the source sample rate expressed in Hz.
+     * @param channelNumber describes the number of the audio channels. It is NOT configuration of
+     * the audio channels:
+     *   See {@link AudioFormat#CHANNEL_OUT_MONO} and
+     *   {@link AudioFormat#CHANNEL_OUT_STEREO}
+     *  @param streamDuration is duration in ms of input stream if known,  for example, for streams
+     *  from audio files
+     *
+     *
+     */
+    //
+    //значения частоты с запасом от поддерживаемых в настоящее время
+    @JvmOverloads
+    constructor(  @IntRange(from = 2400, to= 96000) samplingRate:Int,
+                  @IntRange(from = 1, to=2)channelsNumber: Int,
+                  streamDuration: Long = 0){
         duration=streamDuration
-        channelsCount=channels
+        channelsCount=channelsNumber
         sampleRate=samplingRate
-        channelConfig=channelConfig(channels)
-
+        channelConfig=channelConfig(channelsNumber)
+        bytesPerSample = if (encoding== ENCODING_PCM_16BIT) 2  else 1
+        frameSize=bytesPerSample*channelsCount
     }
 
-    constructor()
+    protected constructor()
 
     /** This constructor can be used, for example, when stream created with data from
-     * MediaExtractor or MediaEncoder classes
+     * MediaExtractor or MediaEncoder classes.
      */
+    @Throws(IllegalArgumentException::class)
     constructor(format: MediaFormat){
         mediaFormat=format
         val duration = mediaFormat?.getLong("durationUs")?.div(1000)
         val sampleRate = mediaFormat?.getInteger("sample-rate")
         val channelsCount = mediaFormat?.getInteger("channel-count")
+
+        // возможно все это работает только для raw потоков, а для остальных
+        // это надо извлекать скажем из медиа кодека - тогда проверку 16 бит  надо возлагать на
+        // переопределяемый конструктор
+
+        //todo - определиться с документированным способом найти гарантированное подтверждение
+        // 16 битного источника
+        /* see
+         public static final String KEY_PCM_ENCODING = "pcm-encoding";
+         если этого ключа нет или он ENCODING_PCM_16BIT то все в порядке, но надо по тестам
+         посмотреть что выдает на алтернативных форматах и бросать исключение (может в отдаленном
+         будущем будем декодировать такое на лету в 16 бит)
+         */
+
+        var encoding:Int?
+        try {
+            encoding= mediaFormat?.getInteger("pcm-encoding")
+            if (encoding!= ENCODING_PCM_16BIT)
+                throw IllegalArgumentException (" only 16 bit encoding currently implemented")
+        }catch (e:NullPointerException){
+            // если ключа нет, метод бросает это исключение, то все в порядке, 16 битная кодировка
+            encoding = ENCODING_PCM_16BIT
+        }
         if (duration != null) this.duration=duration
         if (sampleRate != null) this.sampleRate=sampleRate
         if (channelsCount != null) {
             this.channelsCount=channelsCount
             channelConfig=channelConfig(channelsCount)
         }
+        if (sampleRate==0||channelsCount !in 1..2) throw
+            IllegalArgumentException ("Need valid sampleRate and channelsCount parameters set" )
+        bytesPerSample = if (encoding== ENCODING_PCM_16BIT) 2  else 1
+        frameSize=bytesPerSample*this.channelsCount
+   }
 
-    }
-
-
-    var bytesPerSample: Int =2 // для 16 бит всегда 2
+    // типичный поддерживаемый аппаратурой диапазон - 16000 - 48000, стандартные значения:
+    // 8000,11025,12000,16000,22050,24000,32000,44100,48000, гарантированно
+    // поддерживается 44100
+    var sampleRate:Int =0
         protected set
+
+    // будет содержать валидное значение если это возможно, к примеру для потока из файла
+    var mediaFormat:MediaFormat?=null
+        protected set
+
+    // будет содержать валидное значение если это возможно, к примеру для потока из файла
+    var duration: Long = 0
+        protected set
+
+    // значение 0 не валидно, его использование указывает на незавершенность инциализации
+    var channelsCount:Int = 0
+        protected set
+
+    // не путать с числом каналов! см. channelConfig(channels: Int)
+    // одно из законных значений - CHANNEL_IN_MONO,CHANNEL_IN_STEREO.
+    //должно быть выставлено при создании канала
+    var channelConfig:Int= AudioFormat.CHANNEL_INVALID
+        protected set
+
+    var bytesPerSample: Int =2 // для 16 бит всегда, 8 битный звук в настоящее время не поддерживается
+        protected set
+
+    var frameSize: Int=bytesPerSample*channelsCount // всегда считать размер в конструкторе
+        protected set
+
     var encoding:Int= ENCODING_PCM_16BIT
         protected set
 
     @Volatile
-    open var timestamp=0L //todo  пересчет выведенных байтов в мс.
+    open var timestamp=0L //пересчет выведенных байтов в мс.
         protected set
+
     @Volatile
     open var bytesSent = 0L
         protected set(value) {
@@ -84,34 +158,18 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
      * streams) or return estimated total count bytes in stream if known
      */
     open fun totalBytesEstimate():Long{
-        val bytesEstimate=((this.sampleRate*this.duration*2.0f*this.channelsCount)/1000.0).toLong()
+        val bytesEstimate=((this.sampleRate*this.duration*bytesPerSample*this.channelsCount)/1000.0).toLong()
         return if (bytesEstimate==0L) -1L else bytesEstimate
 
     }
 
-    // будет содержать валидное значение если это возможно, к примеру для потока из файла
-    var mediaFormat:MediaFormat?=null
-        protected set
-    // будет содержать валидное значение если это возможно, к примеру для потока из файла
-    var duration: Long = 0
-        protected set
-    // значение 0 не валидно, его использование указывает на незавершенность инциализации
-    var channelsCount:Int = 0
-        protected set
+    @Throws(IOException::class)
+    @Synchronized
+    override fun read(b: ByteArray?): Int {
+        if (b == null) throw NullPointerException("Null byte array passed") else
+            return read(b,0, b.size)
+    }
 
-    // не путать с числом каналов! см. channelConfig(channels: Int)
-    // одно из законных значений - CHANNEL_IN_MONO,CHANNEL_IN_STEREO.
-    //должно быть выставлено при создании канала
-    var channelConfig:Int= AudioFormat.CHANNEL_INVALID
-        protected set
-    // типичный поддерживаемый аппаратурой диапазон - 16000 - 48000, стандартные значения:
-    // 8000,11025,12000,16000,22050,24000,32000,44100,48000, гарантированно
-    // поддерживается 44100
-    var sampleRate:Int =0
-        protected set
-
-    var frameSize: Int=0 // всегда считать размер в конструкторе
-        protected set
 
 
     // переопределите коллбэк для возможности учета вызовов методов чтения из стороннего API,
@@ -173,7 +231,6 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
     }
 
 
-
     @Throws(IOException::class)
     override fun skip(n: Long): Long {
         throw IllegalArgumentException("Skip not supported ")
@@ -183,6 +240,7 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
         throw IllegalArgumentException("Mark/reset not supported ")
 
     }
+
     @Throws(IOException::class)
     override fun reset() {
         throw IllegalArgumentException("Mark/reset not supported ")
