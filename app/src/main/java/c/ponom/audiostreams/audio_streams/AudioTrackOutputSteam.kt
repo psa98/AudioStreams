@@ -1,8 +1,6 @@
 
 
 @file:Suppress("unused")
-
-
 package c.ponom.audiostreams.audio_streams
 import android.media.AudioFormat
 import android.media.AudioFormat.*
@@ -15,7 +13,6 @@ import java.io.IOException
 
 private  const val MAX_BUFFER_SIZE = 512 * 1024
 private const val RESERVE_BUFFER_SIZE = 24 * 1024
-
 
 class AudioTrackOutputSteam private constructor() : AudioOutputStream(){
 

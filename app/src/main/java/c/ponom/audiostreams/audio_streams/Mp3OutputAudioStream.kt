@@ -157,9 +157,6 @@ class Mp3OutputAudioStream private constructor() : AudioOutputStream(){
         return outBuff.sliceArray(0 until resultBytes)
     }
 
-
-
-    // убедиться что оно берет little ended  shorts
     private fun encodeInterleavedStream(samples: ShortArray): ByteArray {
         if (finished) throw IllegalStateException("Stream closed, create new encoder")
         val size = samples.size
@@ -169,9 +166,6 @@ class Mp3OutputAudioStream private constructor() : AudioOutputStream(){
         return outBuff.sliceArray(0 until resultBytes)
     }
 
-
-
-
     private fun encodeEofFrame(): ByteArray {
         if (finished) throw IllegalStateException("Stream was already closed")
         finished = true
@@ -180,7 +174,6 @@ class Mp3OutputAudioStream private constructor() : AudioOutputStream(){
         val resultBytes = androidLame.flush(outBuff)
         androidLame.close()
         return outBuff.sliceArray(0 until resultBytes)
-
     }
 
 

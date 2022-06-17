@@ -10,9 +10,10 @@ import kotlinx.coroutines.launch
 import java.io.IOException
 
 
-/*
-вызов коллбэков происходит в IO потоке!
- */
+
+
+
+
 class StreamPump @JvmOverloads constructor(
     val outputStream: AudioOutputStream,
     val inputStream: AudioInputStream,
@@ -25,16 +26,13 @@ class StreamPump @JvmOverloads constructor(
 
 
 
-    /*
-        поток читает (жадным образом), блокирующим чтением, все из входного потока до получения там -1,
-        либо команды stop. команда стоп передается потом потока как close(). Пока не определился будет ли он
-        входным, выходным или просто классом.
-        доступные методы:
-        stop, start, pause, resume, setmaxspeed, setbuffersize, getIn|Out, get state
-        идея простестить на нем откачку данных в поток распознавания  - на входе write от микрофона
-        на выходе запись в файл, и посмотреть нет ли дыр или ошибок в полученном файле
-
+        /*
+        * поток читает (жадным образом, блокирующим чтением), все из входного потока до получения там -1,
+        * либо команды stop. команда стоп передается потом в оба потока как close().
+        * доступные методы:
+        * stop, start, pause, resume, setmaxspeed, setbuffersize, getIn|OutStream, get state
         */
+
     var state: State=NOT_READY
         private set
     private var canPumpShorts=false

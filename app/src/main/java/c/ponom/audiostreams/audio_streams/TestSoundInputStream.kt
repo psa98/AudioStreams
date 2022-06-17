@@ -28,6 +28,7 @@ class TestSoundInputStream private constructor() : AudioInputStream()  {
     var fileLen=0L
     private set
 
+    // todo сделать фабрику/строитель
 
 
 
@@ -39,6 +40,8 @@ class TestSoundInputStream private constructor() : AudioInputStream()  {
     * 2. аналог бесконечного потока, как сейчас
     * 3. аналог устройства- микрофона, отдача =неограниченная, но темпом равным частоте и с малым
     * буфером + управление громкостью
+    * аналог файла сделать просто, все готово, надо просто выдать -1 когда длина файла в сэмплах
+    *  истечет
      */
     /*
     примерно так будут тестовые режимы
@@ -158,7 +161,7 @@ class TestSoundInputStream private constructor() : AudioInputStream()  {
    }
 
     /**
-     * смотри описание исходного. Теоретически тут надо сообщитьсколько можно отдать без
+     * смотри описание контракта метода. Теоретически тут надо сообщить сколько можно отдать без
      * блокирования из буферов - класс может отдать сколько угодно, но думаю что слишком большим
      * буфером (от 32-64к) некоторые устройства могут подавиться, поэтому отдается разумное число
      */
@@ -221,7 +224,6 @@ class TestSoundInputStream private constructor() : AudioInputStream()  {
             dataArray[index] = calculateSampleValueMono(index.toLong())
         }
         if (testChannelsMode== STEREO) {
-            //todo если убрать -2 в конце - будет превышение? или это перестраховка
             for (index in 0..dataArray.size-2 step 2 ){
             val samplesPair= calculateSampleValueStereo(index.toLong())
             dataArray[index] =samplesPair.first
@@ -229,7 +231,7 @@ class TestSoundInputStream private constructor() : AudioInputStream()  {
             }
         }
         dataArray.copyInto(b)
-        bytesSent+=len*2
+        bytesSent+=length*2
         return len
     }
 

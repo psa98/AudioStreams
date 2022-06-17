@@ -22,10 +22,10 @@ import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.max
 
 /*
-*максимальный размер буфера - соответствует примерно 1 минуте
-*для  моно записи на 16000 отсчетов в сек
+*максимальный размер буфера - соответствует примерно 4 минут
+*для  моно записи на 16000 отсчетов в сек, ~1 мин на стерео 44100
 */
-private const val MAX_BUFFER_SIZE = 1024 * 1024
+private const val MAX_BUFFER_SIZE = 4096 * 1024
 
 // резервная зона в конце буфера, что бы избежать его переполнениея
 private const val RESERVE_BUFFER_SIZE = 96 * 1024
@@ -270,17 +270,15 @@ open class AudioFileSoundSource { //todo - переделать под
     inner class SoundInputStream(format: MediaFormat) : AudioInputStream(format), AutoCloseable {
 
         init {
-            bytesPerSample = if (encoding== ENCODING_PCM_16BIT) 2 else  1
+            bytesPerSample = if (encoding== ENCODING_PCM_16BIT) 2
+                    else throw IllegalArgumentException("Only 16bit Encoding media files accepted ")
             frameSize=bytesPerSample*channelsCount
-
         }
+
         @Throws(IllegalArgumentException::class,NullPointerException::class, CodecException::class)
-        @Synchronized
+        @Synchronized         //todo тестить
         override fun read(): Int {
-            // были проблемы после вставки  ||released непонятные
-            if ((bytesSent >= bytesFinalCount && bytesFinalCount != 0)
-                    //||released
-            )
+            if ((bytesSent >= bytesFinalCount && bytesFinalCount != 0))
                 return -1
             //это ситуация =  отдан последний байт через return mainBuffer.get() ниже
             if (mainBuffer.remaining() == 0) fillBuffer()
@@ -291,13 +289,7 @@ open class AudioFileSoundSource { //todo - переделать под
             bytesSent++
             onReadCallback?.invoke(bytesSent)
             return mainBuffer.get() + 128
-
          }
-
-
-
-        // todo - сделать варианты такого же чтения - с коллбэком внутри,
-        //  отрабатывающим по итогу (отдает результат, где ексепшн или байты)
 
         @Throws(IllegalArgumentException::class,NullPointerException::class, CodecException::class)
         @Synchronized
@@ -305,25 +297,13 @@ open class AudioFileSoundSource { //todo - переделать под
             if (b == null) throw NullPointerException("Null byte array passed")
             if (off != 0) throw IllegalArgumentException("Non zero offset currently not implemented")
             if ((bytesSent >= bytesFinalCount && bytesFinalCount != 0)
-//                ||released
             ) return -1
-            //    странно, но добавление проверки на released давало ранний -1 в поток
             if (len==0) return 0
             val bytes =  getBytesFromBuffer(b, len)
             bytesSent += bytes
             onReadCallback?.invoke(bytesSent)
             return  bytes
         }
-
-
-        // todo -сделать read  отдающий 16 битные samples +  метод разбивки двойного набора на
-        //  левый и правый. точнее для этого будет фильтр
-
-
-
-
-
-
         @Synchronized
         override fun close() {
             if (released) return
@@ -336,28 +316,18 @@ open class AudioFileSoundSource { //todo - переделать под
             mainBuffer= ByteBuffer.allocate(1)
             newBuffer= ByteBuffer.allocate(1)
             //bufferFutureList.clear()
-            //отдадим мегабайты памяти обратно системе сразу, а то может дурень программист на этот
-            //объект ссылку будет долго держать
-
+            //отдадим мегабайты памяти обратно системе сразу
             codecInputBuffers=Array(1){ ByteBuffer.allocate(1)}
             codecOutputBuffers=Array(1){ ByteBuffer.allocate(1)}
         }
-
         /*
         Returns an estimate of the number of bytes that can be read (or skipped over) from this input
         stream without blocking by the next invocation of a method for this input stream.
         The next invocation might be the same thread or another thread. A single read or skip of this
         many bytes will not block, but may read or skip fewer bytes.
         Чтение большего количества инициализирует блокирующий запрос на заполненеие буфера.
-         Возможно оптимальный подход будет таким - запросить размер, потом запросить ровно столько
-         и одновременно запросить в фоне следующий буфер (будет получен блокирующим чтением) и пока
-         работать с первым полученным
-         todo - после переделки скорее всего будет равно размеру остатка в текущем буфере,
-         или 0 если в очереди один буфер
         */
-        override fun available(): Int {
-            return max(mainBuffer.remaining(),bytesRemainingEstimate().toInt())
-        }
+
 
         @Synchronized
         @Throws(IllegalArgumentException::class,NullPointerException::class, CodecException::class)
@@ -375,76 +345,66 @@ open class AudioFileSoundSource { //todo - переделать под
             return bytes/2
         }
 
-        override fun readShorts(b: ShortArray): Int {
-            return readShorts(b,0,b.size)
-        }
-
-        override fun canReadShorts(): Boolean = true
-
         private fun getBytesFromBuffer(b: ByteArray, len: Int): Int {
             if (!bufferReady && !eofReached) fillBuffer()
             var length = len
             if (len >= mainBuffer.remaining()) {
                 length = mainBuffer.remaining()
                 bufferReady = false
+                //getNextDataInBuffer()
             } // интересно, не может ли это случайно дать запрос на получение 0 если мы
             // считали последний байт после EOF? и потом цикл?
             mainBuffer.get(b, 0, length)
             return length
         }
-    }
 
-
-
-    private fun fillInBackground(): Future<ByteBuffer> {
-
-        val fill: () -> ByteBuffer = {
-            nextBuffer()
+        private fun fillInBackground(): Future<ByteBuffer> {
+            val fill: () -> ByteBuffer = { nextBuffer() }
+            return executor.submit(fill)
         }
-        return executor.submit(fill)
-    }
 
-    fun getNextDataInBuffer(){
-        if (!prepared || bufferReady || eofReached) throw
-        IllegalStateException("Extractor not ready or already released")
+        fun getNextDataInBuffer(){
+            if (!prepared || bufferReady || eofReached) throw
+            IllegalStateException("Extractor not ready or already released")
+            //todo  if (!prepared || bufferReady || eofReached) как вариант по этом можно пройти по очереди
+            // и удалить все задания
+            if (bufferFutureList.isEmpty()) bufferFutureList.add(fillInBackground())
 
-        //todo  if (!prepared || bufferReady || eofReached) как вариант по этом можно пройти по очереди
-        // и удалить все задания
-
-        if (bufferFutureList.isEmpty()) bufferFutureList.add(fillInBackground())
-
-        if (!eofReached) bufferFutureList.add(fillInBackground())
-        val buff = bufferFutureList.takeFirst().get()
-        // блокирующе ждем ответа на предыдущий буфер с огромной вероятностью он давно расшифрован
-        // при правильном размере - правильный размер это примерно секунд 7-15 звука,
-        // их расшифруют за пару секунд
-        newBuffer=buff
-    }
-
-    @Throws(IllegalStateException::class, CodecException::class,IllegalArgumentException::class)
-    private fun nextBuffer(): ByteBuffer {
-        if (!prepared || bufferReady || eofReached)
-        return ByteBuffer.allocate(0) // хз как сработает, это на случай если че то в очереди останется
-        val buffer = ByteBuffer.allocate(MAX_BUFFER_SIZE)
-        synchronized(lock) {
-            var lastPos: Int
-            do {
-                input()
-                output()
-                //maxChunkSize - максимальный размер полученного буфера, типичный
-                // показатель - единицы килобайт. Переполнение основного  буфера недопустимо, поэтому
-                // при приближении к "резервной зоне" в его конце fillBuffer() прекращает дальнйшее
-                // чтение
-                lastPos = MAX_BUFFER_SIZE - max(RESERVE_BUFFER_SIZE, maxChunkSize)
-                if (buffer.position() > lastPos||eofReached) {
-                    break
-                }
-            } while (true)
-            buffer.position(0)
+            if (!eofReached) bufferFutureList.add(fillInBackground())
+            val buff = bufferFutureList.takeFirst().get()
+            // блокирующе ждем ответа на предыдущий буфер с огромной вероятностью он давно расшифрован
+            // при правильном размере - правильный размер это примерно секунд 7-15 звука,
+            // их расшифруют за пару секунд
+            newBuffer=buff
         }
-        return buffer
-    }
 
+        @Throws(IllegalStateException::class, CodecException::class,IllegalArgumentException::class)
+        private fun nextBuffer(): ByteBuffer {
+            if (!prepared || bufferReady || eofReached)
+                return ByteBuffer.allocate(0) // хз как сработает, это на случай если че то в очереди останется
+            val buffer = ByteBuffer.allocate(MAX_BUFFER_SIZE)
+            synchronized(lock) {
+                var lastPos: Int
+                do {
+                    input()
+                    output()
+                    lastPos = MAX_BUFFER_SIZE - max(RESERVE_BUFFER_SIZE, maxChunkSize)
+                    if (buffer.position() > lastPos||eofReached) {
+                        break
+                    }
+                } while (true)
+                buffer.position(0)
+            }
+            return buffer
+        }
+        override fun available(): Int {
+            return max(mainBuffer.remaining(),bytesRemainingEstimate().toInt())
+        }
+        override fun readShorts(b: ShortArray): Int {
+            return readShorts(b,0,b.size)
+        }
+        override fun canReadShorts(): Boolean = true
+    }
 
 }
 
