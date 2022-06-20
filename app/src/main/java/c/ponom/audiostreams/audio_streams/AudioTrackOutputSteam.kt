@@ -66,7 +66,7 @@ class AudioTrackOutputSteam private constructor() : AudioOutputStream(){
             .setBufferSizeInBytes(getMinBufferSize(sampleRate, channelConfig, encoding))
             .setTransferMode(AudioTrack.MODE_STREAM)
             //.setPerformanceMode(PERFORMANCE_MODE_LOW_LATENCY)
-            // - смотри доки как там устроен подбор буфера для этой штуки,
+            // - todo смотри доки как там устроен подбор буфера для этой штуки,
             // думаю без нее никаких гарантий дать нельзя
             .build()
         prepared=true

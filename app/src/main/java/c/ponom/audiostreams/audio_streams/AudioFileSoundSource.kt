@@ -11,13 +11,13 @@ import android.media.MediaFormat
 import android.net.Uri
 import android.util.Log
 import c.ponom.audiostreams.audio_streams.ArrayUtils.byteToShortArrayLittleEndian
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.io.FileDescriptor
 import java.io.IOException
 import java.nio.ByteBuffer
-import java.util.concurrent.Executors
-import java.util.concurrent.Future
-import java.util.concurrent.LinkedBlockingDeque
-import java.util.concurrent.ThreadPoolExecutor
+import java.util.concurrent.*
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.max
 
@@ -47,6 +47,12 @@ private const val LOG_TAG: String = "Decoder"
 
 @Suppress("unused")
 open class AudioFileSoundSource { //todo - переделать под
+
+
+    private lateinit var currentBuffer: ByteBuffer
+    var _closed=false
+
+
     private var maxChunkSize = 0
     private lateinit var codec: MediaCodec
     private var bufferReady: Boolean = false
@@ -56,22 +62,21 @@ open class AudioFileSoundSource { //todo - переделать под
     private lateinit var codecOutputBuffers: Array<ByteBuffer>
     private var inputEOS = false
     private var outputEOS = false
+    private var eofReached = false
     private var bufferInfo: MediaCodec.BufferInfo? = null
     private var prepared = false
 
     private var newBufferReady: Boolean = false
     private var newBuffer: ByteBuffer = ByteBuffer.allocate(MAX_BUFFER_SIZE)
-
-
     private var mainBuffer: ByteBuffer = ByteBuffer.allocate(MAX_BUFFER_SIZE)
     private var lock = Any()
-
+    private val bufferQueue:ArrayBlockingQueue<BufferedChunck> = ArrayBlockingQueue(1000,true)
 
     private  var bufferFutureList: LinkedBlockingDeque<Future<ByteBuffer>> = LinkedBlockingDeque(3)
 
     private var bytesTotalCount = 0
     private var bytesFinalCount = 0
-    private var eofReached = false
+
 
     /**
      * значение продолжительности в мс!
@@ -174,7 +179,7 @@ open class AudioFileSoundSource { //todo - переделать под
     private fun fillBuffer() {
         if (!prepared || bufferReady || eofReached) throw
         IllegalStateException("Extractor not ready or already released")
-        maxChunkSize=0
+        maxChunkSize=0 //todo пусть его возвращает input? не надо глобальных переменных
         mainBuffer.clear()
         do {
             input()
@@ -226,9 +231,9 @@ open class AudioFileSoundSource { //todo - переделать под
         val res =
             codec.dequeueOutputBuffer(bufferInfo!!, TIMEOUT_US)
         if (res >= 0) {
-            val buf = codecOutputBuffers[res]
+            val buf:ByteBuffer = codecOutputBuffers[res]
             val chunk = ByteArray(bufferInfo!!.size)
-            buf[chunk]
+            buf.get(chunk)
             buf.clear()
             val bytesRead=chunk.size
             if (bytesRead > 0) {
@@ -253,6 +258,13 @@ open class AudioFileSoundSource { //todo - переделать под
             // mAudioTrack.setPlaybackRate(oformat.getInteger(MediaFormat.KEY_SAMPLE_RATE))
         }
     }
+
+
+
+
+
+
+
 
     /**
      * Стоит обратить внимание на то что отдаваемый класс  SoundInputStream содержит:
@@ -405,6 +417,116 @@ open class AudioFileSoundSource { //todo - переделать под
         }
         override fun canReadShorts(): Boolean = true
     }
+
+    inner class BufferedChunck{
+        val buffer:ByteBuffer= ByteBuffer.allocate(MAX_BUFFER_SIZE)
+        var lastBuffer:Boolean=true
+        val fatalError:Boolean=false
+        val exception:Exception?=null
+    }
+
+    fun fillBufferQueue(){
+        var _maxPos=0
+
+        CoroutineScope(Dispatchers.IO).launch {
+            do {
+            if (!prepared  ) throw IllegalStateException("Extractor not ready or already released")
+            maxChunkSize=0 //todo пусть его возвращает input? не надо глобальных переменных
+
+            do {
+                val newByteBuffer=BufferedChunck()
+                currentBuffer = newByteBuffer.buffer
+                    do {
+                    val eos = inputForBuff()
+                    val eof = outputToBuff(currentBuffer)
+                    _maxPos = MAX_BUFFER_SIZE - max(RESERVE_BUFFER_SIZE, maxChunkSize)
+                    if (eof) newByteBuffer.lastBuffer=true
+                    if (mainBuffer.position() > _maxPos||eof) break
+                    //todo - обработку исключений как то
+
+                    }while (true)
+                    bufferQueue.put(newByteBuffer)
+                if (newByteBuffer.lastBuffer||newByteBuffer.fatalError) break
+                } while (true)
+
+            }while (true)
+        }
+
+
+
+
+
+
+
+
+
+    }
+
+    @Throws(IllegalStateException::class, CodecException::class )
+    fun inputForBuff(): Boolean {
+        var _inputEOS=false
+        var _eofReached=false
+        val inputBufIndex =
+            codec.dequeueInputBuffer(TIMEOUT_US)
+        Log.i(LOG_TAG, "inputBufIndex : $inputBufIndex")
+        if (inputBufIndex >= 0) {
+            val dstBuf = codecInputBuffers[inputBufIndex]
+            var sampleSize = extractor.readSampleData(dstBuf, 0)
+            var presentationTimeUs: Long = 0
+            if (sampleSize < 0) {
+                _inputEOS = true
+                sampleSize = 0
+            } else {
+                presentationTimeUs = extractor.sampleTime
+            }
+            codec.queueInputBuffer(
+                inputBufIndex,
+                0,
+                sampleSize,
+                presentationTimeUs,
+                if (_inputEOS) MediaCodec.BUFFER_FLAG_END_OF_STREAM else 0
+            )
+            if (!_inputEOS) {
+                extractor.advance()
+            }
+        }
+        return _inputEOS
+    }
+
+    @Throws(IllegalStateException::class, CodecException::class)
+    fun outputToBuff(currentBuffer: ByteBuffer): Boolean {
+
+        var _eofReached=false
+
+        val res =
+            codec.dequeueOutputBuffer(bufferInfo!!, TIMEOUT_US)
+        if (res >= 0) {
+            val buf:ByteBuffer = codecOutputBuffers[res]
+            val chunk = ByteArray(bufferInfo!!.size)
+            buf[chunk]
+            buf.clear()
+            val bytesRead=chunk.size
+            if (bytesRead > 0) {
+                currentBuffer.put(chunk, 0, bytesRead)
+                bytesTotalCount += bytesRead
+            }
+
+            if (bytesRead > maxChunkSize) maxChunkSize = bytesRead
+            codec.releaseOutputBuffer(res, false /* render */)
+            if (bufferInfo!!.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) {
+                bytesFinalCount = bytesTotalCount
+                _eofReached = true
+
+                //released=true
+                //extractor.release()
+            }
+        } else if (res == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED)
+            codecOutputBuffers = codec.outputBuffers
+        return _eofReached
+    }
+
+
+
 
 }
 
