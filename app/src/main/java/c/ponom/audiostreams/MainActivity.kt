@@ -35,6 +35,7 @@ import com.naman14.androidlame.LameBuilder.Mode.MONO
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.Dispatchers.Main
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -140,7 +141,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun playUri(uri: Uri){
         playing=!playing
-        if (!playing)return //повторный тык выключает
+        if (!playing)return
 
         if (uri == Uri.EMPTY) return
         val fd =this.contentResolver.openAssetFileDescriptor(uri,"r")
@@ -151,38 +152,33 @@ class MainActivity : AppCompatActivity() {
         // - надо разбраться
 
         val audioIn =AudioFileSoundSource().getStream(this,uri)
-        audioIn.onReadCallback = {pos-> Log.e(TAG, "playUri: pos=$pos")}
+
+        //return
+        //audioIn.onReadCallback = {pos-> Log.e(TAG, "playUri: pos=$pos")}
         val audioOut= AudioTrackOutputSteam(audioIn.sampleRate,audioIn.channelsCount,
             audioIn.encoding,0)
         Log.e(TAG, "playUri: ="+audioIn.mediaFormat.toString())
         playing=true
         stopButton.isEnabled=true
+        //val pump= StreamPump(audioOut,audioIn)
+        //audioOut.play()
+        //pump.start()
+
         CoroutineScope(IO).launch{
             audioOut.play()
-            //стартовать следует: либо заранее, будутчи готовым напихать туда секунду-другую
-            // звука в буфер и далее подавать с достаточным темпом,
-            //либо уже уже подав звук в буфер до заполнения, тогда по play()
-            // начнется его проигрывание
-            val samplesArray = ShortArray(10000)
-            //val byteArray = ByteArray(4096*16)
-
+            val samplesArray = ShortArray(30000)
+            delay(2000)
             do {
-            try {
-                if (!playing) break
-                val samples = audioIn.readShorts(samplesArray)
-
-                //val bytes = audioIn.read(byteArray)
-                //if (bytes > 0) audioOut.writeShorts(byteToShortArrayLittleEndian(byteArray),0, bytes/2)
-
-                if (samples > 0) audioOut.writeShorts(samplesArray)
-                else break
-            } catch (e:Exception){
-                e.printStackTrace()
-             break
-            }
-
-            }
-            while(true)
+                try {
+                    if (!playing) break
+                    val samples = audioIn.readShorts(samplesArray)
+                    if (samples > 0) audioOut.writeShorts(samplesArray)
+                    else break
+                    } catch (e:Exception){
+                    e.printStackTrace()
+                    break
+                }
+            }while(true)
             playing=false
             audioOut.close()
             audioIn.close()
@@ -190,6 +186,7 @@ class MainActivity : AppCompatActivity() {
                 stopButton.isEnabled=false
             }
         }
+
     }
 
 

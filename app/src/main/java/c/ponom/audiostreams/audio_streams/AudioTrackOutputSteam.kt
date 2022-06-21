@@ -7,8 +7,11 @@ import android.media.AudioFormat.*
 import android.media.AudioTrack
 import android.media.AudioTrack.WRITE_BLOCKING
 import android.media.AudioTrack.getMinBufferSize
+import android.util.Log
 import c.ponom.recorder2.audio_streams.AudioOutputStream
+import c.ponom.recorder2.audio_streams.TAG
 import java.io.IOException
+import java.lang.System.currentTimeMillis
 
 
 private  const val MAX_BUFFER_SIZE = 512 * 1024
@@ -61,9 +64,11 @@ class AudioTrackOutputSteam private constructor() : AudioOutputStream(){
             .setSampleRate(sampleRate)
             .setChannelMask(channelConfig)
             .build()
+        val minBuffer =getMinBufferSize(sampleRate, channelConfig, encoding)
+        Log.e(TAG, "AUDIO TRACK: MINBUFFER=$minBuffer")
         audioOut=AudioTrack.Builder()
             .setAudioFormat(audioFormat)
-            .setBufferSizeInBytes(getMinBufferSize(sampleRate, channelConfig, encoding))
+            .setBufferSizeInBytes(minBuffer)
             .setTransferMode(AudioTrack.MODE_STREAM)
             //.setPerformanceMode(PERFORMANCE_MODE_LOW_LATENCY)
             // - todo смотри доки как там устроен подбор буфера для этой штуки,
@@ -151,6 +156,7 @@ class AudioTrackOutputSteam private constructor() : AudioOutputStream(){
         if (off < 0 || len < 0 || len > b.size - off)
             throw IllegalArgumentException("Wrong write(....) parameters")
         val result:Int = audioOut!!.write(b, off, len)
+
         bytesSent += result.coerceAtLeast(0)
         if (result<0){
             close()
@@ -167,12 +173,16 @@ class AudioTrackOutputSteam private constructor() : AudioOutputStream(){
     }
 
     override fun canWriteShorts(): Boolean = true
+    private var lastWrite= currentTimeMillis()
 
     @Synchronized
     @Throws(IllegalArgumentException::class,IOException::class)
     override fun writeShorts(b: ShortArray, off: Int, len: Int) {
         if (audioOut == null) throw IOException("Stream closed or in error state")
         val size=b.size
+        val time= currentTimeMillis()
+        Log.e(TAG, "writeShorts ms to prev="+(time-lastWrite))
+        lastWrite=time
         if (off > len ||len>size||off>size||off<0||len<0)
             throw IllegalArgumentException("Wrong write(....) parameters")
         val result = audioOut!!.write(b, off, len, WRITE_BLOCKING)
