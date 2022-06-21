@@ -172,15 +172,15 @@ class MainActivity : AppCompatActivity() {
             MP3outBitrate, LameBuilder.Mode.STEREO,
             EncodingQuality.FAST_ENCODING)
         CoroutineScope(IO).launch{
-            //audioOut.play()
+            audioOut.play()
             val samplesArray = ShortArray(8192)
             delay(2000)
             do {
                 try {
                     if (!playing) break
                     val samples = audioIn.readShorts(samplesArray)
-                    if (samples > 0) mp3StereoWriterStream.writeShorts(samplesArray)
-                    //if (samples > 0) audioOut.writeShorts(samplesArray)
+                    //if (samples > 0) mp3StereoWriterStream.writeShorts(samplesArray)
+                    if (samples > 0) audioOut.writeShorts(samplesArray)
                     else break
                     } catch (e:Exception){
                     e.printStackTrace()

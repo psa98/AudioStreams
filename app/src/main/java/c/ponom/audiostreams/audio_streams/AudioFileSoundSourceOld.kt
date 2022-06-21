@@ -366,7 +366,6 @@ open class AudioFileSoundSourceOld { //todo - переделать под
             return length
         }
 
-
         override fun available(): Int {
             return max(mainBuffer.remaining(),bytesRemainingEstimate().toInt())
         }
@@ -374,40 +373,6 @@ open class AudioFileSoundSourceOld { //todo - переделать под
             return readShorts(b,0,b.size)
         }
         override fun canReadShorts(): Boolean = true
-
-        /*
-        *
-         private fun fillInBackground(): Future<ByteBuffer> {
-            val fill: () -> ByteBuffer = { nextBuffer() }
-            return executor.submit(fill)
-        }
-
-
-        @Throws(IllegalStateException::class, CodecException::class,IllegalArgumentException::class)
-        private fun nextBuffer(): ByteBuffer {
-            if (!prepared || bufferReady || eofReached)
-                return ByteBuffer.allocate(0) // хз как сработает, это на случай если че то в очереди останется
-            val buffer = ByteBuffer.allocate(MAX_BUFFER_SIZE)
-            synchronized(lock) {
-                var lastPos: Int
-                do {
-                    input()
-                    output()
-                    lastPos = MAX_BUFFER_SIZE - max(RESERVE_BUFFER_SIZE, maxChunkSize)
-                    if (buffer.position() > lastPos||eofReached) {
-                        break
-                    }
-                } while (true)
-                buffer.position(0)
-            }
-            return buffer
-        }
-         */
-
-
-
-
-
 
     }
 
@@ -428,8 +393,6 @@ open class AudioFileSoundSourceOld { //todo - переделать под
                 currentBuffer = newByteBuffer.buffer
                     do {
                     try {
-
-
                         val eos = inputForBuff()
                         val eof = outputToBuff(currentBuffer)
                         _maxPos = MAX_BUFFER_SIZE - max(RESERVE_BUFFER_SIZE, maxChunkSize)
@@ -443,11 +406,10 @@ open class AudioFileSoundSourceOld { //todo - переделать под
                       e.printStackTrace()
                       break
                     }
-
                     }while (true)
                     bufferQueue.put(newByteBuffer)
                 if (newByteBuffer.lastBuffer||newByteBuffer.fatalError) break
-                Log.e(TAG, "fillBufferQueue next ${bufferQueue.size}")
+                    Log.e(TAG, "fillBufferQueue next ${bufferQueue.size}")
                 } while (true)
                 Log.e(TAG, "fillBufferQueue TOTAL size ${bufferQueue.size}")
 
@@ -455,15 +417,6 @@ open class AudioFileSoundSourceOld { //todo - переделать под
             // ошибку если она поймана
 
         }
-
-
-
-
-
-
-
-
-
     }
 
     @Throws(IllegalStateException::class, CodecException::class )

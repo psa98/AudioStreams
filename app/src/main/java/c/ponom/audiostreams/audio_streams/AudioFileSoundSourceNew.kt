@@ -310,6 +310,7 @@ open class AudioFileSoundSourceNew { //todo - переделать под
             //    странно, но добавление проверки на released давало ранний -1 в поток
             if (len==0) return 0
             val bytes =  getBytesFromBuffer(b, len)
+
             bytesSent += bytes
             onReadCallback?.invoke(bytesSent)
             return  bytes

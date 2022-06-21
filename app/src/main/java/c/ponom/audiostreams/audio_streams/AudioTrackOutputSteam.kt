@@ -65,7 +65,7 @@ class AudioTrackOutputSteam private constructor() : AudioOutputStream(){
             .setChannelMask(channelConfig)
             .build()
         val minBuffer =getMinBufferSize(sampleRate, channelConfig, encoding)
-        Log.e(TAG, "AUDIO TRACK: MINBUFFER=$minBuffer")
+        Log.i(TAG, "AUDIO TRACK: MIN.BUFFER=$minBuffer")
         audioOut=AudioTrack.Builder()
             .setAudioFormat(audioFormat)
             .setBufferSizeInBytes(minBuffer)
@@ -181,7 +181,7 @@ class AudioTrackOutputSteam private constructor() : AudioOutputStream(){
         if (audioOut == null) throw IOException("Stream closed or in error state")
         val size=b.size
         val time= currentTimeMillis()
-        Log.e(TAG, "writeShorts ms to prev="+(time-lastWrite))
+        //Log.d(TAG, "writeShorts ms to prev write="+(time-lastWrite))
         lastWrite=time
         if (off > len ||len>size||off>size||off<0||len<0)
             throw IllegalArgumentException("Wrong write(....) parameters")
