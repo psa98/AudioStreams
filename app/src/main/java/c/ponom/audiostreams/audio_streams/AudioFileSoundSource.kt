@@ -21,18 +21,16 @@ import java.util.concurrent.ArrayBlockingQueue
 import kotlin.math.max
 
 /*
-*максимальный размер буфера - соответствует примерно 4 минут
-*для  моно записи на 16000 отсчетов в сек, ~1 мин на стерео 44100
+*максимальный размер буфера - соответствует примерно ~~~~ сек на 44100
 */
-private const val MAX_BUFFER_SIZE = 2048 * 1024
+private const val MAX_BUFFER_SIZE = 512 * 1024
 
 // резервная зона в конце буфера, что бы избежать его переполнения,
 // к ней плюсуется максимальный размер буфера используемого кодеком (типично 4-8Кб)
-private const val RESERVE_BUFFER_SIZE = 96 * 1024
-private const val TIMEOUT_US = 500_000L
+private const val RESERVE_BUFFER_SIZE = 32 * 1024
+private const val TIMEOUT_US = 0L
 private const val LOG_TAG: String = "Decoder"
-
-private const val QUEUE_SIZE  =4
+private const val QUEUE_SIZE  =8
 
 
 /**
@@ -162,18 +160,16 @@ open class AudioFileSoundSource { //todo - переделать под
         // после чего либо бросит исключение, либо отдаст -1, либо запросит следующий
         if (!prepared || bufferReady || eofReached) throw
             IllegalStateException("Extractor not ready or already released")
-        if (!bufferQueue.isEmpty()) {
-            currentBufferChunk=bufferQueue.remove()
-            Log.e(TAG, "takeNewBuffer: = REMOVED")
-        }
-            else  currentBufferChunk=bufferQueue.take()
-        Log.e(TAG, "takeNewBuffer: OUT")
-        Log.e(TAG, "fillBufferQueue TAKE ${bufferQueue.size}")
-        mainBuffer=currentBufferChunk.byteBuffer
+            currentBufferChunk = bufferQueue.take()
+            Log.e(TAG, "takeNewBuffer: OUT")
+            Log.e(TAG, "fillBufferQueue TAKE ${bufferQueue.size}")
+            mainBuffer = currentBufferChunk.byteBuffer
+            mainBuffer.position(0)
+
         fatalErrorInBuffer=currentBufferChunk.inFatalError
         lastBuffer=currentBufferChunk.isLastBuffer
         Log.e(TAG, "fillBufferQueue TAKE ${bufferQueue.size}, last = ${currentBufferChunk.isLastBuffer}")
-        mainBuffer.position(0)
+
         bufferReady = true
     }
 
@@ -182,7 +178,7 @@ open class AudioFileSoundSource { //todo - переделать под
     private fun fillBufferQueue(){
         var maxPos=0
         if (!prepared) throw IllegalStateException("Extractor not ready or already released")
-        CoroutineScope(Dispatchers.IO).launch {
+        CoroutineScope(Dispatchers.Default).launch {
             maxChunkSize=0
             do {
                 val newByteBufferChunk=BufferedChunck()
@@ -203,7 +199,7 @@ open class AudioFileSoundSource { //todo - переделать под
                     }
                 }while (true)
                 bufferQueue.put(newByteBufferChunk)
-                 if (newByteBufferChunk.isLastBuffer||newByteBufferChunk.inFatalError) break
+                if (newByteBufferChunk.isLastBuffer||newByteBufferChunk.inFatalError) break
                 Log.e(TAG, "fillBufferQueue put next ${bufferQueue.size}")
             } while (true)
             Log.e(TAG, "fillBufferQueue last chunk TOTAL size ${bufferQueue.size}")
@@ -306,7 +302,9 @@ open class AudioFileSoundSource { //todo - переделать под
             if (b == null) throw NullPointerException("Null byte array passed")
             if (off != 0) throw IllegalArgumentException("Non zero offset currently not implemented")
             if (len==0) return 0
-            if (((bytesSent >= bytesFinalCount && bytesFinalCount != 0)&&!fatalErrorInBuffer)||eofReached) {
+            if (((bytesSent >= bytesFinalCount && bytesFinalCount != 0)&&!fatalErrorInBuffer)
+//                ||eofReached
+            ) {
                 //close()
                 //todo - а вообще формально доигранный до конца поток или поток с ошибкой и нормально
                 // закрытый это одно и то же? как я понимаю вроде для доигранного если он mark
@@ -324,6 +322,7 @@ open class AudioFileSoundSource { //todo - переделать под
         }
         @Synchronized
         override fun close() {
+
             if (released) return
             released=true
             bufferInfo=null
@@ -358,17 +357,25 @@ open class AudioFileSoundSource { //todo - переделать под
         private fun getBytesFromBuffer(b: ByteArray, len: Int): Int {
             if (!bufferReady && !eofReached) {
                 takeNewBuffer()
-                Log.e(TAG, "getBytesFromBuffer: ASK for first")
+                Log.e(TAG, "getBytesFromBuffer: ASK for next buffer")
+                mainBuffer.get(b, 0, len)
+                Log.e(TAG, "getBytesFromBuffer: GET  next buffer")
+                return len
             }
             var length = len
-            if (len >= mainBuffer.remaining()) {
-                length = mainBuffer.remaining()
-                Log.e(TAG, "getBytesFromBuffer:  LAST BUFFER IN CHUNK")
-                if (!lastBuffer&&!fatalErrorInBuffer) {
-                    bufferReady = false
-                    takeNewBuffer()
-                } else eofReached=true
-             }
+
+                if (len >= mainBuffer.remaining()) {
+                    length = mainBuffer.remaining()
+                    mainBuffer.get(b, 0, length)
+                    Log.e(TAG, "getBytesFromBuffer:  LAST BUFFER IN CHUNK")
+                    if (!lastBuffer && !fatalErrorInBuffer) {
+                        bufferReady = false
+                        takeNewBuffer()
+                        return length
+                    }
+                    if (lastBuffer || fatalErrorInBuffer) eofReached = true
+                }
+
             mainBuffer.get(b, 0, length)
             return length
         }
@@ -381,7 +388,7 @@ open class AudioFileSoundSource { //todo - переделать под
         override fun available(): Int {
             //Чтение большего количества инициализирует блокирующий запрос на заполнение буфера
             //или неблокирующий запрос готового
-                    return max(mainBuffer.remaining(),bytesRemainingEstimate().toInt())
+            return max(mainBuffer.remaining(),bytesRemainingEstimate().toInt())
         }
         override fun readShorts(b: ShortArray): Int {
             return readShorts(b,0,b.size)

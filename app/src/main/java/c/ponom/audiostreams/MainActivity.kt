@@ -82,8 +82,7 @@ class MainActivity : AppCompatActivity() {
     private fun checkPermission() {
         if (!isPermissionGranted()) {
             ActivityCompat.requestPermissions(
-                this,
-                arrayOf(
+                this,arrayOf(
                     Manifest.permission.RECORD_AUDIO,
                     Manifest.permission.WRITE_EXTERNAL_STORAGE
                 ), PERMISSION_REQUEST_CODE
@@ -163,16 +162,25 @@ class MainActivity : AppCompatActivity() {
         //val pump= StreamPump(audioOut,audioIn)
         //audioOut.play()
         //pump.start()
-
+        // документирвать что размер более 8192 shorts  не рекомендуется для четния из файлов
+        val outDirName= getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC).toString()
+        val outDir = File("$outDirName/AudioStreams/")
+        outDir.mkdir()
+        val outputStereoSoundMp3Test = File(outDir, "/recordedCopy.mp3").outputStream()
+        val mp3StereoWriterStream = Mp3OutputAudioStream(
+            outputStereoSoundMp3Test,audioIn.sampleRate,
+            MP3outBitrate, LameBuilder.Mode.STEREO,
+            EncodingQuality.FAST_ENCODING)
         CoroutineScope(IO).launch{
-            audioOut.play()
-            val samplesArray = ShortArray(30000)
+            //audioOut.play()
+            val samplesArray = ShortArray(8192)
             delay(2000)
             do {
                 try {
                     if (!playing) break
                     val samples = audioIn.readShorts(samplesArray)
-                    if (samples > 0) audioOut.writeShorts(samplesArray)
+                    if (samples > 0) mp3StereoWriterStream.writeShorts(samplesArray)
+                    //if (samples > 0) audioOut.writeShorts(samplesArray)
                     else break
                     } catch (e:Exception){
                     e.printStackTrace()
@@ -181,6 +189,7 @@ class MainActivity : AppCompatActivity() {
             }while(true)
             playing=false
             audioOut.close()
+            mp3StereoWriterStream.close()
             audioIn.close()
             launch(CoroutineScope(Main).coroutineContext){
                 stopButton.isEnabled=false
@@ -320,8 +329,8 @@ class MainActivity : AppCompatActivity() {
         stereoSamplesStream.readShorts(stereoSamples)
         Log.e(TAG, "makeMp3: =generated")
         val outDirName= getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC).toString()
-        val outDir = File("$outDirName/AudioStreams/")
-        outDir.mkdir()
+            val outDir = File("$outDirName/AudioStreams/")
+            outDir.mkdir()
             CoroutineScope(IO).launch {
                 testMp3ShortsWrite(outDir, monoSamples, stereoSamples)
                 testBytesMP3Write(outDir, monoSamples, stereoSamples)
