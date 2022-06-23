@@ -6,9 +6,12 @@
     <string name="second_fragment_label">Second Fragment</string>
     <string name="next">Next</string>
     <string name="previous">Previous</string>
-    <string name="title_home">Home</string>
-    <string name="title_dashboard">Dashboard</string>
-    <string name="title_notifications">Notifications</string>
+    <string name="title_files">Audio Files</string>
+    <string name="title_mic">Microphone</string>
+    <string name="title_out">Audio Out</string>
     <string name="hello_first_fragment">Hello first fragment</string>
     <string name="hello_second_fragment">Hello second fragment. Arg: %1$s</string>
+    <string name="streams_from_to_audio_media_files">Streams from/to Audio media files</string>
+    <string name="audio_track_audio_stream_test">Audio Track audio stream test</string>
+    <string name="microphone_audio_input_stream_test">Microphone audio input stream test</string>
 </resources>

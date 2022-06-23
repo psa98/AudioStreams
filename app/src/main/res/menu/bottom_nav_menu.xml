@@ -2,18 +2,18 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
 
     <item
-        android:id="@+id/navigation_home"
-        android:icon="@drawable/ic_home_black_24dp"
-        android:title="@string/title_home" />
+        android:id="@+id/navigation_files"
+        android:icon="@android:drawable/ic_menu_save"
+        android:title="@string/title_files" />
 
     <item
-        android:id="@+id/navigation_dashboard"
-        android:icon="@drawable/ic_dashboard_black_24dp"
-        android:title="@string/title_dashboard" />
+        android:id="@+id/navigation_mic"
+        android:icon="@android:drawable/ic_btn_speak_now"
+        android:title="@string/title_mic" />
 
     <item
-        android:id="@+id/navigation_notifications"
-        android:icon="@drawable/ic_notifications_black_24dp"
-        android:title="@string/title_notifications" />
+        android:id="@+id/navigation_out"
+        android:icon="@android:drawable/ic_lock_silent_mode_off"
+        android:title="@string/title_out" />
 
 </menu>

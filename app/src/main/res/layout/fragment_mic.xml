@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MicFragment">
+
+
+    <TextView
+        android:id="@+id/text_mic_test"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/std_margin"
+        android:layout_marginTop="@dimen/std_margin"
+        android:layout_marginEnd="@dimen/std_margin"
+        android:text="@string/microphone_audio_input_stream_test"
+        android:textAlignment="center"
+        style="@style/TextAppearance.AppCompat.Medium"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_margin="@dimen/std_margin"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@id/sampleLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/std_margin"
+        android:text="Sample rate"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintBottom_toBottomOf="@id/rate_selector"
+        />
+
+    <Spinner
+        android:id="@+id/rate_selector"
+        android:layout_width="wrap_content"
+        android:layout_margin="@dimen/std_margin"
+        android:layout_height="wrap_content"
+        app:layout_constraintStart_toEndOf="@+id/sampleLabel"
+        app:layout_constraintTop_toBottomOf="@id/text_mic_test"
+        />
+
+
+    <TextView
+        android:id="@id/inputLabel"
+        android:layout_marginStart="@dimen/std_margin"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Mic input"
+        app:layout_constraintStart_toStartOf="parent"
+
+        app:layout_constraintBottom_toBottomOf="@id/input_selector"
+        />
+    <Spinner
+        android:id="@+id/input_selector"
+        android:layout_width="wrap_content"
+        android:layout_margin="@dimen/std_margin"
+        android:layout_height="wrap_content"
+        app:layout_constraintStart_toEndOf="@+id/inputLabel"
+        app:layout_constraintTop_toBottomOf="@id/rate_selector"
+        />
+
+    <c.ponom.audiostreams.MeterView
+        android:id="@+id/meter_level"
+        android:layout_width="12dp"
+        android:layout_margin="@dimen/std_margin"
+        android:layout_height="200dp"
+        app:layout_constraintTop_toBottomOf="@id/text_mic_test"
+        app:layout_constraintEnd_toEndOf="parent"
+        />
+
+
+    <TextView
+        android:id="@+id/text_mic_bytes_written"
+        android:layout_width="75dp"
+        android:layout_height="wrap_content"
+        android:layout_margin="@dimen/std_margin"
+        android:text="0"
+        android:textAlignment="center"
+        style="@style/TextAppearance.AppCompat.Medium"
+        app:layout_constraintEnd_toStartOf="@id/meter_level"
+        app:layout_constraintBottom_toTopOf="@id/text_mic_current_level" />
+
+
+    <TextView
+        style="@style/TextAppearance.AppCompat.Medium"
+        android:layout_width="102dp"
+        android:layout_height="25dp"
+        android:layout_margin="@dimen/std_margin"
+        android:text="Bytes in/out:"
+        android:textAlignment="center"
+        app:layout_constraintBottom_toTopOf="@id/text_mic_current_level"
+        app:layout_constraintEnd_toStartOf="@id/text_mic_bytes_written" />
+
+
+    <TextView
+        android:id="@+id/text_mic_current_level"
+        android:layout_width="75dp"
+        android:layout_height="wrap_content"
+        android:layout_margin="@dimen/std_margin"
+        android:text="0"
+        android:textAlignment="center"
+        style="@style/TextAppearance.AppCompat.Medium"
+        app:layout_constraintEnd_toStartOf="@id/meter_level"
+        app:layout_constraintBottom_toBottomOf="@id/meter_level" />
+
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="@dimen/std_margin"
+        android:text="Record level:"
+        android:textAlignment="center"
+        style="@style/TextAppearance.AppCompat.Medium"
+        app:layout_constraintEnd_toStartOf="@id/text_mic_current_level"
+        app:layout_constraintBottom_toBottomOf="@id/meter_level" />
+
+
+    <Button
+        android:id="@+id/record_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="@dimen/std_margin"
+        android:text="Record"
+        android:textAllCaps="false"
+        app:layout_constraintTop_toBottomOf="@id/meter_level"
+        app:layout_constraintStart_toStartOf="parent"
+        />
+    <Button
+        android:id="@+id/stop_recording"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="@dimen/std_margin"
+        android:text="Stop recording"
+        android:textAllCaps="false"
+        app:layout_constraintTop_toBottomOf="@id/record_button"
+        app:layout_constraintStart_toStartOf="parent"
+        />
+    <Button
+        android:id="@+id/play_record"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="@dimen/std_margin"
+        android:text="Play"
+        android:textAllCaps="false"
+        app:layout_constraintTop_toBottomOf="@id/stop_recording"
+        app:layout_constraintStart_toStartOf="parent"
+        />
+    <Button
+        android:id="@+id/stop_playing"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="@dimen/std_margin"
+        android:text="Stop playback"
+        android:textAllCaps="false"
+        app:layout_constraintTop_toBottomOf="@id/play_record"
+        app:layout_constraintStart_toStartOf="parent"
+        />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

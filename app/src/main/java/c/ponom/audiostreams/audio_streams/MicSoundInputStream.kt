@@ -17,10 +17,9 @@ import java.io.IOException
 
 
 private const val BUFFER_SIZE__MULT: Int=4 //todo переделать под мс
-class MicSoundInputStream private constructor(): AudioInputStream()  {
+class MicSoundInputStream private constructor(private var audioRecord: AudioRecord? = null): AudioInputStream()  {
 
     private var recordingIsOn: Boolean=false
-    private var audioRecord:AudioRecord?=null
 
     var isReady=false
 
@@ -30,7 +29,7 @@ class MicSoundInputStream private constructor(): AudioInputStream()  {
     @JvmOverloads
     @SuppressLint("MissingPermission")
     @Throws(IllegalArgumentException::class,IOException::class)
-    constructor(freq:Int, mic:Int= MediaRecorder.AudioSource.DEFAULT,
+    constructor(sampleRate:Int, mic:Int= MediaRecorder.AudioSource.DEFAULT,
                 channels:Int=1,
                 encoding:Int= ENCODING_PCM_16BIT)
                 : this() {
@@ -41,26 +40,19 @@ class MicSoundInputStream private constructor(): AudioInputStream()  {
                     "and CHANNEL_IN_STEREO) supported")
             require(encoding== ENCODING_PCM_8BIT ||
                     encoding== ENCODING_PCM_16BIT) { "Only 16 and 8 bit encodings supported"}
-        val minBuffer= getMinBufferSize(freq,channelConfig,encoding)
-            //todo - разбираться
-        audioRecord= AudioRecord(mic,freq ,channelConfig,encoding,minBuffer)
+        val buffer= getMinBufferSize(sampleRate,channelConfig,encoding)
+        audioRecord= AudioRecord(mic,sampleRate ,channelConfig,encoding,buffer)
          if (audioRecord==null) throw IllegalArgumentException("Audio record init error - wrong params? ")
-
-        sampleRate = audioRecord!!.sampleRate
+        this.sampleRate = audioRecord!!.sampleRate
         // todo тут будет проверка на законные значения из списка, варнинг для всех законных кроме 16,22 и 44к
         //  и исключение для совсем левых
         bytesPerSample = if (encoding== ENCODING_PCM_16BIT) 2  else 1
-
         frameSize=bytesPerSample*channels
-        //bufferSizeMs=(audioRecord!!.bufferSizeInFrames.toFloat()/sampleRate*1000).toInt()
-        //if (audioRecord?.state== STATE_UNINITIALIZED)
-        //     throw IOException ("Cannot init recording")
         isReady=true
-
-         // todo - возможно нужны коллбэки на готовность, инициализация микрофона может быть не быстрой
+        // todo - возможно нужны коллбэки на готовность и асинхронный вариант конструктора,
+        //  инициализация микрофона может быть не быстрой
     }
 
-    //доработать вызов после закрытия потока -
 
 
    override fun read(): Int {
@@ -121,6 +113,17 @@ class MicSoundInputStream private constructor(): AudioInputStream()  {
         return read(b,0,b.size)
     }
 
+
+
+
+    //todo или эксепшн? надо определиться все же однозначно, что мы ВСЕМИ Input отдаем если
+    // - поток уже закрыт через close(). тут хотелось бы -1 все же
+    // - поток не прошел удачно инициализацию
+    // - поток уже бросал исключение по ошибке
+    // Одинаково для Bytes и Shorts
+    // - еще - надо задокументировать что bufferSize =
+
+
     @Synchronized
     @Throws(NullPointerException::class,IOException::class,IndexOutOfBoundsException::class)
     override fun read(b: ByteArray?, off: Int, len: Int): Int {
@@ -139,6 +142,7 @@ class MicSoundInputStream private constructor(): AudioInputStream()  {
     }
 
 
+    // у меня же onRead коллбэки переделаны, убрать это, сделать единое
     @Synchronized
     fun readShorts(b: ShortArray, off: Int, len: Int,
                    onReady:((samples:Int,dataSamples: ShortArray) -> Unit)?): Int {
@@ -147,14 +151,11 @@ class MicSoundInputStream private constructor(): AudioInputStream()  {
         if (len == 0) return 0
         if (audioRecord==null) return -1
         if (!isRecording()) return ERROR_INVALID_OPERATION
-
             /*
             обработать ошибки другие: и в bytes
             ERROR_INVALID_OPERATION if the object isn't properly initialized
             ERROR_BAD_VALUE if the parameters don't resolve to valid data and indexes
-
              */
-
         val samples = audioRecord!!.read(b, off, len)
         if (samples== ERROR_DEAD_OBJECT) {
             close()
@@ -164,7 +165,7 @@ class MicSoundInputStream private constructor(): AudioInputStream()  {
             val data=b.copyOf(samples)
                 if(onReady!=null)
                 onReady(samples,data)
-            bytesSent+=samples.coerceAtLeast(0)*2
+            bytesSent+=samples*2
             onReadCallback?.invoke(bytesSent)
         }
         return samples
