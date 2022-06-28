@@ -13,6 +13,14 @@ class AudioOutFragment : Fragment() {
 
     private val binding get() = _binding!!
 
+   /*
+   * проигрыш звука из генератора (пока не выключат)
+   * регулировка громкости.
+   * пауза и  продолжение
+   * выбор вывода
+   *
+   */
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?

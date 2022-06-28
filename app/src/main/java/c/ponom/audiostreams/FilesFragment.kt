@@ -14,8 +14,11 @@ class FilesFragment : Fragment() {
 
     private var _binding: FragmentFilesBinding? = null
 
-    // This property is only valid between onCreateView and
-    // onDestroyView.
+    /*
+    * проигрывание произвольного файла
+    * вывод медиа данных о нем
+    *
+    */
     private val binding get() = _binding!!
 
     override fun onCreateView(

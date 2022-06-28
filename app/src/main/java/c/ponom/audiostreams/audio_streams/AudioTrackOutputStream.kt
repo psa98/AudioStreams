@@ -22,11 +22,17 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
 
     private var currentVolume: Float=1f
     lateinit var audioFormat: AudioFormat
-    private var audioOut:AudioTrack?=null
+    // поле не приватное что позволяет менять доступные свойства проигрывателя - частоты, роутинг,
+    // ставить слушатели и тп
+    var audioOut:AudioTrack?=null
     var prepared = false
     private set
     /* todo - сделать State? а может глобальный enum со стейтом универсальный для всех потоков
-    *   включая PAUSE для тех что его поддерживают? */
+    *   включая PAUSE для тех что его поддерживают?
+    *   в v. 2 - удобное управление audioOut!!.setPreferredDevice(AudioDeviceInfo), с выбором
+    *   "Первый динамик", "первый динамик телефона"
+    *
+    * */
     var closed = false
     private set
 
@@ -73,6 +79,7 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
             .setTransferMode(AudioTrack.MODE_STREAM)
             .build()
         prepared=true
+
     }
 
     /**

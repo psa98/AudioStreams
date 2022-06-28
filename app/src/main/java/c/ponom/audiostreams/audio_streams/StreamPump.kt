@@ -13,15 +13,15 @@ import java.io.IOException
 
 
 
-
+// todo - перетестить
 class StreamPump @JvmOverloads constructor(
     val inputStream: AudioInputStream,
     val outputStream: AudioOutputStream,
-    private val bufferSize:Int = 8192,
-    private val onEachPump: ((b: ByteArray) -> Unit) = {},
-    val onWrite:(bytesWritten:Long) -> Unit ={},
-    private val onFinish: () -> Unit = {},
-    private val onFatalError: (e: Exception) -> Unit = {}
+    val bufferSize:Int = 8192,
+    var onEachPump: ((b: ByteArray) -> Unit) = {},
+    var onWrite:(bytesWritten:Long) -> Unit ={},
+    var onFinish: () -> Unit = {},
+    var onFatalError: (e: Exception) -> Unit = {}
 
     ) {
 
@@ -66,48 +66,64 @@ class StreamPump @JvmOverloads constructor(
         CoroutineScope(Dispatchers.IO).launch{
             do {
                 if (state==FINISHED||state==FATAL_ERROR) break
-                var read: Int
+                var read: Int=0
                 try {
                     if (canPumpShorts) {
                         read = inputStream.readShorts(shortBuffer)
                         if (read>=0) {
                             bytesSent+=read*2
                             onWrite(bytesSent)
-                        //у меня микрофонный поток может вернуть не -1 при ошибке,
-                        // а другое значение, -3 или -6. Возможно я переделаю это под бросание
-                        // исключения
+                        //у меня микрофонный поток может вернуть не -1 при ошибке, поэтому не на -1 проверка
+                            outputStream.writeShorts(shortBuffer)
+                            onEachPump(shortToByteArrayLittleEndian(shortBuffer))
+                            continue
                         } else read=-1
-                        outputStream.writeShorts(shortBuffer)
-                        onEachPump(shortToByteArrayLittleEndian(shortBuffer))
-                    }else{
+                     }else{
                         read = inputStream.read(byteBuffer)
                         if (read>=0) {
                             bytesSent+=read
                             onWrite(bytesSent)
+                            outputStream.write(byteBuffer)
+                            onEachPump(byteBuffer)
+                            continue
                         } else read=-1
-                        outputStream.write(byteBuffer)
-                        onEachPump(byteBuffer)
                     }
                     if (read < 0) {
-                        if(autoClose){
-                        inputStream.close()
-                        outputStream.close()
+                        if (autoClose) try {
+                            inputStream.close()
+                            outputStream.close()
+                            state=FINISHED
+                            onFinish.invoke()
+                            break
+                        } catch (e:IOException){ // секция ловит ошибку в закрытии потоков
+                            e.printStackTrace()
+                            state=FATAL_ERROR
+                            onFatalError(e)
+                            onFinish.invoke()
+                            break
+                        } else {
+                            state=FINISHED
+                            onFinish.invoke()
+                            break
                         }
-
-                        state = FINISHED
-                        onFinish.invoke()
                     }
-                } catch (e: Exception) {
+                } catch (e: Exception) { // секция ловит ошибку в чтении записи потоков
                     state = FATAL_ERROR
                     e.printStackTrace()
-                    if(autoClose) {
+                    if(autoClose) try {
                         inputStream.close()
                         outputStream.close()
-                    }
-                    onFatalError(e)
-                    onFinish.invoke()
-                  break
-                }
+                        state=FINISHED
+                        onFinish.invoke()
+                        break
+                    } catch (e:IOException){ // секция ловит ошибку в *закрытии* потоков
+                        e.printStackTrace()
+                        state=FATAL_ERROR
+                        onFatalError(e)
+                        onFinish.invoke()
+                        break
+                     }
+                 }
             } while (read >= 0&& state!=PAUSED)
 
         }
@@ -121,11 +137,11 @@ class StreamPump @JvmOverloads constructor(
             NOT_READY, PREPARED -> return
             PAUSED, PUMPING -> {
                 state=FINISHED
-                try {
-                    if (closeAllStreams){
-                        inputStream.close()
-                        outputStream.close()
-                    }
+                if (closeAllStreams) try {
+
+                    inputStream.close()
+                    outputStream.close()
+
                 } catch (e:IOException){
                     e.printStackTrace()
                     onFatalError(e)
