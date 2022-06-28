@@ -20,9 +20,9 @@ import c.ponom.recorder2.audio_streams.TAG
 class MicFragment : Fragment() {
 
     private var _binding: FragmentMicBinding? = null
-    var input = MediaRecorder.AudioSource.DEFAULT
+    var source = MediaRecorder.AudioSource.DEFAULT
     var sampleRate = 8000
-    val sampleRateList = arrayListOf("8000","16000","22050","44100")
+    val sampleRateList = arrayListOf("16000","22050","32000","44100")
     val inputList = arrayListOf("0=DEFAULT","6=VOICE_RECOGNITION","9=UNPROCESSED")
     private val binding get() = _binding!!
     private lateinit var viewmodel:MicTestViewModel
@@ -52,26 +52,52 @@ class MicFragment : Fragment() {
     }
 
     private fun setupButtons() {
-        binding.recordButton.setOnClickListener { viewmodel.record(input, sampleRate) }
+        binding.recordButton.setOnClickListener { viewmodel.record(source, sampleRate) }
         binding.stopRecording.setOnClickListener{ viewmodel.stopRecording() }
         binding.playRecord.setOnClickListener{ viewmodel.play() }
-        binding.stopRecording.setOnClickListener{ viewmodel.stopPlaying() }
+        binding.stopPlaying.setOnClickListener{ viewmodel.stopPlaying() }
 
     }
 
     private fun setupObservers() {
-        recordLevel.observe(this,{ binding.meterLevel.level=it})
+        recordLevel.observe(this,{
+            binding.meterLevel.level=it
+            binding.textMicCurrentLevel.text=it.toString()})
         bytesPassed.observe(this,{ binding.textMicBytesWritten.text=it.toString()})
         currentState.observe(this,{ setControlsState(it)})
     }
 
     private fun setControlsState(state: MicRecordState) {
         // будет управлять видимостью контролей
+        binding.textMicBytesWritten.text="0"
+        binding.meterLevel.level=0.0f
+        binding.textMicCurrentLevel.text="0.0"
         when(state) {
-            NO_FILE_RECORDED ->{}
-            STOPPED_READY -> {}
-            RECORDING -> {}
-            PLAYING -> {}
+            NO_FILE_RECORDED ->{
+                binding.recordButton.isEnabled=true
+                binding.stopRecording.isEnabled=false
+                binding.playRecord.isEnabled=false
+                binding.stopPlaying.isEnabled=false
+            }
+            STOPPED_READY -> {
+                binding.recordButton.isEnabled=true
+                binding.stopRecording.isEnabled=false
+                binding.playRecord.isEnabled=true
+                binding.stopPlaying.isEnabled=false
+
+            }
+            RECORDING -> {
+                binding.recordButton.isEnabled=false
+                binding.stopRecording.isEnabled=true
+                binding.playRecord.isEnabled=false
+                binding.stopPlaying.isEnabled=false
+            }
+            PLAYING -> {
+                binding.recordButton.isEnabled=false
+                binding.stopRecording.isEnabled=false
+                binding.playRecord.isEnabled=false
+                binding.stopPlaying.isEnabled=true
+            }
         }
     }
 
@@ -106,8 +132,8 @@ class MicFragment : Fragment() {
     inner class  InputSelector : AdapterView.OnItemSelectedListener {
         override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long): Unit =
             run{
-                input = inputList[position].split("=")[0]. toInt()
-                Log.e(TAG, "onItemSelected: =$input")
+                source = inputList[position].split("=")[0]. toInt()
+                Log.e(TAG, "onItemSelected: =$source")
             }
 
 

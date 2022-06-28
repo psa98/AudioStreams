@@ -165,7 +165,6 @@ open class AudioFileSoundSource { //todo - переделать под
         Log.e(TAG, "takeNewBuffer TAKE ${bufferQueue.size}")
         mainBuffer = currentBufferChunk.byteBuffer
         mainBuffer.position(0)
-
         fatalErrorInBuffer=currentBufferChunk.inFatalError
         lastBuffer=currentBufferChunk.isLastBuffer
         Log.e(TAG, "fillBufferQueue TAKE ${bufferQueue.size}, last = ${currentBufferChunk.isLastBuffer}")
@@ -285,18 +284,7 @@ open class AudioFileSoundSource { //todo - переделать под
                - оставить метод неподдерживаемым, все нормальные запросы от сторонних API
                требуют не побайтное чтение
                - вернуть данные запрошенные через b = ByteArray(1);read([b]); return b[1].toInt + 128
-               - использовать код ниже
-            if ((bytesSent >= bytesFinalCount && bytesFinalCount != 0))
-                return -1
-            //это ситуация =  отдан последний байт через return mainBuffer.get() ниже
-            if (mainBuffer.remaining() == 0) fillBuffer()
-            //это если флаг был выставлен а буфер забран   прошлым read(....)
-            if (!bufferReady) fillBuffer()
-            //а это для чтения по одному байту выставить флаг для следующего прохода
-            if (mainBuffer.remaining() == 1) bufferReady = false
-            bytesSent++
-            onReadCallback?.invoke(bytesSent)
-            return mainBuffer.get() + 128
+
              */
         }
 
@@ -317,6 +305,7 @@ open class AudioFileSoundSource { //todo - переделать под
             }
             if ((bytesSent >= bytesFinalCount && bytesFinalCount != 0)&&fatalErrorInBuffer) {
                 close()
+                currentBufferChunk.exception?.printStackTrace()
                 throw IOException("IO exception in audio codec =${currentBufferChunk.exception}")
             }
             val bytes =  getBytesFromBuffer(b, len)
@@ -371,7 +360,6 @@ open class AudioFileSoundSource { //todo - переделать под
                 return len
             }
             var length = len
-
                 if (len >= mainBuffer.remaining()) {
                     length = mainBuffer.remaining()
                     mainBuffer.get(b, 0, length)
@@ -381,9 +369,9 @@ open class AudioFileSoundSource { //todo - переделать под
                     if (!lastBuffer && !fatalErrorInBuffer) {
                         bufferReady = false
                         takeNewBuffer()
-                        return length
                     }
                     if (lastBuffer || fatalErrorInBuffer) eofReached = true
+                    return length
                 }
 
             mainBuffer.get(b, 0, length)

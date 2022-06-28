@@ -17,7 +17,7 @@ import java.lang.System.currentTimeMillis
 private  const val MAX_BUFFER_SIZE = 512 * 1024
 private const val RESERVE_BUFFER_SIZE = 24 * 1024
 
-class AudioTrackOutputSteam private constructor() : AudioOutputStream(){
+class AudioTrackOutputStream private constructor() : AudioOutputStream(){
 
 
     private var currentVolume: Float=1f
@@ -26,7 +26,7 @@ class AudioTrackOutputSteam private constructor() : AudioOutputStream(){
     var prepared = false
     private set
     /* todo - сделать State? а может глобальный enum со стейтом универсальный для всех потоков
-    *   включая PAUSE для тех что его поддерживают */
+    *   включая PAUSE для тех что его поддерживают? */
     var closed = false
     private set
 
@@ -57,6 +57,7 @@ class AudioTrackOutputSteam private constructor() : AudioOutputStream(){
             ENCODING_PCM_16BIT-> frameSize= channelsCount*2
 
         }
+        val minBufferInBytes=frameSize*(sampleRate/1000)*(minBufferInMs/1000.0).toInt()
 
         //val bufferForTime = (frameTimeMs(encoding,sampleRate)*minBufferInMs/frameSize).toInt()
         audioFormat= Builder()
@@ -65,14 +66,11 @@ class AudioTrackOutputSteam private constructor() : AudioOutputStream(){
             .setChannelMask(channelConfig)
             .build()
         val minBuffer =getMinBufferSize(sampleRate, channelConfig, encoding)
-        Log.i(TAG, "AUDIO TRACK: MIN.BUFFER=$minBuffer")
+        Log.d(TAG, "AUDIO TRACK: MIN.BUFFER.SIZE=$minBuffer bytes")
         audioOut=AudioTrack.Builder()
             .setAudioFormat(audioFormat)
-            .setBufferSizeInBytes(minBuffer)
+            .setBufferSizeInBytes(minBuffer.coerceAtLeast(minBufferInBytes))
             .setTransferMode(AudioTrack.MODE_STREAM)
-            //.setPerformanceMode(PERFORMANCE_MODE_LOW_LATENCY)
-            // - todo смотри доки как там устроен подбор буфера для этой штуки,
-            // думаю без нее никаких гарантий дать нельзя
             .build()
         prepared=true
     }
@@ -113,23 +111,20 @@ class AudioTrackOutputSteam private constructor() : AudioOutputStream(){
 
     }
 
-    //todo - добавить pause-resume
+    //todo v2- добавить pause-resume?
 
     @Synchronized
     fun stop(){
         if (closed)return
         if (audioOut == null) return
         try {
-            //поскольку неизвестно сколько в буфере данных, попытки
-            // убрать клик в конце тут не делается, может их там на 5 секунд
             audioOut?.stop()
         } catch (e:IllegalStateException){
             e.printStackTrace()
         }
-
     }
 
-
+    // документировать
     override fun setVolume(vol: Float) {
        currentVolume =vol
        audioOut?.setVolume(vol.coerceAtLeast(0f).coerceAtMost(1f))
@@ -156,7 +151,6 @@ class AudioTrackOutputSteam private constructor() : AudioOutputStream(){
         if (off < 0 || len < 0 || len > b.size - off)
             throw IllegalArgumentException("Wrong write(....) parameters")
         val result:Int = audioOut!!.write(b, off, len)
-
         bytesSent += result.coerceAtLeast(0)
         if (result<0){
             close()
@@ -181,7 +175,6 @@ class AudioTrackOutputSteam private constructor() : AudioOutputStream(){
         if (audioOut == null) throw IOException("Stream closed or in error state")
         val size=b.size
         val time= currentTimeMillis()
-        //Log.d(TAG, "writeShorts ms to prev write="+(time-lastWrite))
         lastWrite=time
         if (off > len ||len>size||off>size||off<0||len<0)
             throw IllegalArgumentException("Wrong write(....) parameters")

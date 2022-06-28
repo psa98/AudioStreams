@@ -15,20 +15,21 @@ import java.io.IOException
 
 
 class StreamPump @JvmOverloads constructor(
-    val outputStream: AudioOutputStream,
     val inputStream: AudioInputStream,
+    val outputStream: AudioOutputStream,
     private val bufferSize:Int = 8192,
     private val onEachPump: ((b: ByteArray) -> Unit) = {},
     val onWrite:(bytesWritten:Long) -> Unit ={},
     private val onFinish: () -> Unit = {},
     private val onFatalError: (e: Exception) -> Unit = {}
+
     ) {
 
 
 
         /*
         * поток читает (жадным образом, блокирующим чтением), все из входного потока до получения там -1,
-        * либо команды stop. команда стоп передается потом в оба потока как close().
+        * либо команды stop. команда стоп или ошибка возможно передается потом в оба потока как close().
         * доступные методы:
         * stop, start, pause, resume, setmaxspeed, setbuffersize, getIn|OutStream, get state
         */
@@ -38,25 +39,22 @@ class StreamPump @JvmOverloads constructor(
     private var canPumpShorts=false
     private val byteBuffer:ByteArray
     private val shortBuffer:ShortArray
-
-
-
     @Volatile
     var bytesSent=0L
     private set
 
-
+    @JvmOverloads
     @Throws(IllegalStateException::class)
-    fun start(){
+    fun start(autoClose:Boolean=false){
         when(state){
             NOT_READY -> return
             PREPARED, PUMPING -> {
                 state=PUMPING
-                pump()
+                pump(autoClose)
             }
             PAUSED -> {
                 state=PUMPING
-                pump()
+                pump(autoClose)
             }
             FINISHED -> throw IllegalStateException ("Already finished")
             FATAL_ERROR -> throw IllegalStateException ("already finished on error")
@@ -64,7 +62,7 @@ class StreamPump @JvmOverloads constructor(
    }
 
     @Suppress("BlockingMethodInNonBlockingContext")
-    private fun pump() {
+    private fun pump(autoClose: Boolean) {
         CoroutineScope(Dispatchers.IO).launch{
             do {
                 if (state==FINISHED||state==FATAL_ERROR) break
@@ -91,37 +89,49 @@ class StreamPump @JvmOverloads constructor(
                         onEachPump(byteBuffer)
                     }
                     if (read < 0) {
+                        if(autoClose){
                         inputStream.close()
                         outputStream.close()
+                        }
+
                         state = FINISHED
-                        onFinish
+                        onFinish.invoke()
                     }
                 } catch (e: Exception) {
                     state = FATAL_ERROR
-                    onFatalError (e)
-                    onFinish
+                    e.printStackTrace()
+                    if(autoClose) {
+                        inputStream.close()
+                        outputStream.close()
+                    }
+                    onFatalError(e)
+                    onFinish.invoke()
                   break
                 }
             } while (read >= 0&& state!=PAUSED)
+
         }
     }
 
-
-    @Throws(IllegalStateException::class)
-    fun stop(){
+    // документировать параметр
+    @JvmOverloads
+    @Throws(IllegalStateException::class,IOException::class)
+    fun stop(closeAllStreams:Boolean=false){
         when(state){
             NOT_READY, PREPARED -> return
             PAUSED, PUMPING -> {
                 state=FINISHED
                 try {
-                inputStream.close()
-                outputStream.close()
+                    if (closeAllStreams){
+                        inputStream.close()
+                        outputStream.close()
+                    }
                 } catch (e:IOException){
                     e.printStackTrace()
                     onFatalError(e)
                     state=FATAL_ERROR
                 }
-                onFinish
+                onFinish.invoke()
             }
             FINISHED -> throw IllegalStateException ("Already finished")
             FATAL_ERROR -> throw IllegalStateException ("already finished on error")
@@ -139,13 +149,14 @@ class StreamPump @JvmOverloads constructor(
         }
     }
 
+    @JvmOverloads
     @Throws(IllegalStateException::class)
-    fun resume(){
+    fun resume(autoClose:Boolean=false){
         when(state){
             NOT_READY, PREPARED, PUMPING ->return
             PAUSED-> {
                 state=PUMPING
-                pump()
+                pump(autoClose)
             }
             FINISHED -> throw IllegalStateException ("Already finished")
             FATAL_ERROR -> throw IllegalStateException ("Already finished on error")
@@ -154,7 +165,7 @@ class StreamPump @JvmOverloads constructor(
 
 
     enum class State{
-        NOT_READY,
+        NOT_READY, //todo убрать
         PREPARED,
         PUMPING,
         PAUSED,

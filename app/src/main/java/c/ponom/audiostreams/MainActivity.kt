@@ -55,7 +55,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var stopButton: Button
     private lateinit var volume:TextView
     private lateinit var binding: ActivityMainBinding
-    private var microphoneStream: MicSoundInputStream = MicSoundInputStream(16000)
+    private var microphoneStream: MicSoundInputStream = MicSoundInputStream(16000, bufferMult = 16)
     private var lastVolumeTimestamp = 0L
     val meteringFreq = 300
 
@@ -154,7 +154,7 @@ class MainActivity : AppCompatActivity() {
 
         //return
         //audioIn.onReadCallback = {pos-> Log.e(TAG, "playUri: pos=$pos")}
-        val audioOut= AudioTrackOutputSteam(audioIn.sampleRate,audioIn.channelsCount,
+        val audioOut= AudioTrackOutputStream(audioIn.sampleRate,audioIn.channelsCount,
             audioIn.encoding,0)
         Log.e(TAG, "playUri: ="+audioIn.mediaFormat.toString())
         playing=true
@@ -166,12 +166,7 @@ class MainActivity : AppCompatActivity() {
         val outDirName= getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC).toString()
         val outDir = File("$outDirName/AudioStreams/")
         outDir.mkdir()
-        val outputStereoSoundMp3Test = File(outDir, "/recordedCopy.mp3").outputStream()
-        val mp3StereoWriterStream = Mp3OutputAudioStream(
-            outputStereoSoundMp3Test,audioIn.sampleRate,
-            MP3outBitrate, LameBuilder.Mode.STEREO,
-            EncodingQuality.FAST_ENCODING)
-        CoroutineScope(IO).launch{
+          CoroutineScope(IO).launch{
             audioOut.play()
             val samplesArray = ShortArray(8192)
             delay(2000)
@@ -189,7 +184,6 @@ class MainActivity : AppCompatActivity() {
             }while(true)
             playing=false
             audioOut.close()
-            mp3StereoWriterStream.close()
             audioIn.close()
             launch(CoroutineScope(Main).coroutineContext){
                 stopButton.isEnabled=false
@@ -228,7 +222,7 @@ class MainActivity : AppCompatActivity() {
 
     @Suppress("BlockingMethodInNonBlockingContext")
     private suspend fun testMic() {
-        if (!microphoneStream.isReady) microphoneStream= MicSoundInputStream(16000)
+        if (!microphoneStream.isReady) microphoneStream= MicSoundInputStream(16000, bufferMult = 16)
         val askingThread = Thread.currentThread()
         askingThread.interrupt()
         //val monitoredStream=MonitoredAudioInputStream(microphoneStream)
@@ -283,7 +277,7 @@ class MainActivity : AppCompatActivity() {
         testSoundInputStream.readShorts(data)
 
         CoroutineScope(IO).launch{
-            val outChannel  = AudioTrackOutputSteam(sampleRate,
+            val outChannel  = AudioTrackOutputStream(sampleRate,
                 2, ENCODING_PCM_16BIT,500)
             outChannel.play()
             outChannel.writeShorts(data)
@@ -302,7 +296,7 @@ class MainActivity : AppCompatActivity() {
         testSoundInputStream.readShorts(data)
         // тут тестируется передача и отправка данных в shorts
         CoroutineScope(IO).launch{
-            val outChannel  = AudioTrackOutputSteam(sampleRate,
+            val outChannel  = AudioTrackOutputStream(sampleRate,
                 1,ENCODING_PCM_16BIT,500)
             outChannel.play()
             outChannel.writeShorts(data)
@@ -312,7 +306,7 @@ class MainActivity : AppCompatActivity() {
     @Suppress("LocalVariableName", "PropertyName", "PrivatePropertyName")
     private val  MP3outBitrate = 128
 
-    private val sampleRate = 24000
+    private val sampleRate = 44100
 
 
         fun makeMp3(view: View) {
@@ -421,7 +415,7 @@ class MainActivity : AppCompatActivity() {
         val outputFileMp3 = File(outDir, "/TestMicStream.mp3")
 
         val outputFileStream = outputFileMp3.outputStream()
-        val testMicStream=MicSoundInputStream(32000, VOICE_RECOGNITION)
+        val testMicStream=MicSoundInputStream(32000, VOICE_RECOGNITION, bufferMult = 16)
         testMicStream.startRecordingSession()
         val encoderStream=Mp3OutputAudioStream(outputFileStream,
             32000,64, MONO)
@@ -476,18 +470,18 @@ class MainActivity : AppCompatActivity() {
         val outDir = File("$outDirName/AudioStreams/")
         val outputFileMp3 = File(outDir, "/TestMicStreamM.mp3")
         val outputFileStream = outputFileMp3.outputStream()
-        val testMicStream=MicSoundInputStream(32000, VOICE_RECOGNITION)
+        val testMicStream=MicSoundInputStream(32000, VOICE_RECOGNITION, bufferMult = 16)
         testMicStream.startRecordingSession()
         val monitoredStream=MonitoredAudioInputStream(testMicStream)
         val monitor: MonitoredAudioInputStream =monitoredStream.monitoringStream
 
         val encoderStream=Mp3OutputAudioStream(outputFileStream,
             32000,32, MONO)
-        mainPump =StreamPump(encoderStream,monitoredStream,onWrite={ bytesWritten ->  Log.e(TAG,
+        mainPump =StreamPump(monitoredStream, encoderStream, onWrite={ bytesWritten ->  Log.e(TAG,
                 "monitoredRecord: = $bytesWritten")})
 
         mainPump?.start()
-        val audioTrackMonitor=AudioTrackOutputSteam(32000,1)
+        val audioTrackMonitor=AudioTrackOutputStream(32000,1)
         Thread.sleep(20)
         audioTrackMonitor.play()
 
@@ -500,10 +494,10 @@ class MainActivity : AppCompatActivity() {
         // ужас ужас
 
 
-        monitorPump = StreamPump(audioTrackMonitor,monitor,20000,
+        monitorPump = StreamPump(monitor, audioTrackMonitor, 20000,
             { Log.e(TAG, "monitoredRecord: in monitor max value"+ it.maxOrNull()) },
-            {bytes-> Log.e(TAG, "monitoredRecord: in monitor  $bytes")},{},
-            {e->Log.e(TAG,"monitoredRecord: in monitor ="+e.localizedMessage)})
+            {bytes-> Log.e(TAG, "monitoredRecord: in monitor  $bytes")}, {}
+        ) { e -> Log.e(TAG, "monitoredRecord: in monitor =" + e.localizedMessage) }
 
         monitorPump?.start()
     }

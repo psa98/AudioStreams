@@ -30,13 +30,7 @@ import java.io.InputStream
 abstract class AudioInputStream :    InputStream, AutoCloseable {
 
 
-
-
-
-    /**Sampling rate measured in samples|sec, sound stream durationString if known, for example, when we
-     * work with audio file content - in ms.
-     * The constructor should be used for creating potentially endless streams, for example,
-     * from input devices.
+    /**
      * @param sampleRate the source sample rate expressed in Hz.
      * @param channelNumber describes the number of the audio channels. It is NOT configuration of
      * the audio channels:
@@ -44,7 +38,7 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
      *   {@link AudioFormat#CHANNEL_OUT_STEREO}
      *  @param streamDuration is duration in ms of input stream if known,  for example, for streams
      *  from audio files
-     *
+     * The constructor could also  be used for creating potentially endless streams.
      *
      */
     //
@@ -64,7 +58,7 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
     protected constructor()
 
     /** This constructor can be used, for example, when stream created with data from
-     * MediaExtractor or MediaEncoder classes.
+     * AudioDataInfo, MediaExtractor or MediaEncoder classes.
      */
     @Throws(IllegalArgumentException::class)
     constructor(format: MediaFormat){
@@ -72,19 +66,6 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
         val duration = mediaFormat?.getLong("durationUs")?.div(1000)
         val sampleRate = mediaFormat?.getInteger("sample-rate")
         val channelsCount = mediaFormat?.getInteger("channel-count")
-
-        // возможно все это работает только для raw потоков, а для остальных
-        // это надо извлекать скажем из медиа кодека - тогда проверку 16 бит  надо возлагать на
-        // переопределяемый конструктор
-
-        //todo - определиться с документированным способом найти гарантированное подтверждение
-        // 16 битного источника
-        /* see
-         public static final String KEY_PCM_ENCODING = "pcm-encoding";
-         если этого ключа нет или он ENCODING_PCM_16BIT то все в порядке, но надо по тестам
-         посмотреть что выдает на алтернативных форматах и бросать исключение (может в отдаленном
-         будущем будем декодировать такое на лету в 16 бит)
-         */
 
         var encoding:Int?
         try {
@@ -101,8 +82,8 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
             this.channelsCount=channelsCount
             channelConfig=channelConfig(channelsCount)
         }
-        if (sampleRate==0||channelsCount !in 1..2) throw
-            IllegalArgumentException ("Need valid sampleRate and channelsCount parameters set" )
+        if (this.sampleRate<=0||channelsCount !in 1..2) throw
+            IllegalArgumentException ("Need valid sampleRate and channelsCount parameters in MediaFormat" )
         bytesPerSample = if (encoding== ENCODING_PCM_16BIT) 2  else 1
         frameSize=bytesPerSample*this.channelsCount
    }
@@ -127,22 +108,22 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
 
     // не путать с числом каналов! см. channelConfig(channels: Int)
     // одно из законных значений - CHANNEL_IN_MONO,CHANNEL_IN_STEREO.
-    //должно быть выставлено при создании канала
+    //должно быть выставлено при создании канала в конструкторе
     var channelConfig:Int= AudioFormat.CHANNEL_INVALID
         protected set
 
     var bytesPerSample: Int =2 // для 16 бит всегда, 8 битный звук в настоящее время не поддерживается
         protected set
 
-    var frameSize: Int=bytesPerSample*channelsCount // всегда считать размер в конструкторе
+    var frameSize: Int=bytesPerSample*channelsCount
         protected set
 
     var encoding:Int= ENCODING_PCM_16BIT
         protected set
 
     @Volatile
-    open var timestamp=0L //пересчет выведенных байтов в мс.
-        protected set
+    var timestamp=0L //пересчет выведенных байтов в мс.
+        private set
 
     @Volatile
     open var bytesSent = 0L
@@ -163,7 +144,6 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
     }
 
     @Throws(IOException::class)
-    @Synchronized
     override fun read(b: ByteArray?): Int {
         if (b == null) throw NullPointerException("Null byte array passed") else
             return read(b,0, b.size)
@@ -205,6 +185,7 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
      * переопределение обязательно - поскольку надо освободить все ресурсы
      * @exception  IOException  if an I/O error occurs.
      */
+
     @Throws(IOException::class)
     abstract override fun close()
 
@@ -251,7 +232,7 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
     open fun canReadShorts():Boolean =false
 
 
-    fun frameTimeMs( rate:Int):Double{
+    private fun frameTimeMs(rate:Int):Double{
         return 1000.0/(rate*frameSize.toDouble())
     }
 

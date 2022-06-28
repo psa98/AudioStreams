@@ -47,7 +47,8 @@ abstract class AudioOutputStream() :
     var bytesPerSample: Int = 2 // для 16 бит всегда, 8 битный звук в настоящее время не поддерживается
         protected set
 
-    var frameSize: Int=bytesPerSample*channelsCount // всегда считать размер в конструкторе
+    var frameSize: Int=bytesPerSample*channelsCount
+        // todo убрать из конструкторов и протестить результат
         protected set
 
     var encoding:Int= ENCODING_PCM_16BIT
@@ -56,14 +57,15 @@ abstract class AudioOutputStream() :
     @Volatile
     var timestamp=0L // время от начала проигрывания
 
-    @Volatile
-    var bytesSent: Long = 0
+
     // todo -посмотреть, у меня есть умножение на 2 в mp3 рекордере,
     //  не лишнее ли и вообще включить во все тесты - это именно байты должны быть, не сэмплы
     // вывести в составе колбэка данные о байтах и времени выведенного
 
+    @Volatile
+    var bytesSent: Long = 0
     @Synchronized //TODO ДОБАВИТЬ В ЛИБУ ВЕЗДЕ ГДЕ НАДО
-    set(value) {
+    protected set(value) {
         field=value
         timestamp=(frameTimeMs(this.sampleRate)*value).toLong()
     }
@@ -78,12 +80,9 @@ abstract class AudioOutputStream() :
     abstract override fun close()
 
 
-
     open fun setRecommendedBufferSize(bytes:Int){
 
     }
-
-
 
     abstract override fun write(b: ByteArray?, off: Int, len: Int)
 
@@ -122,8 +121,9 @@ abstract class AudioOutputStream() :
 
 
 
-
-    fun frameTimeMs( rate:Int):Double{
+    // todo  поменять на var и протестить. бросит ошибку если frameSize=0,
+    //  я буду тестировать что будет если не устаномить законное значение в конструкторе
+    private fun frameTimeMs(rate:Int):Double{
         return 1000.0/(rate*frameSize.toDouble())
     }
 

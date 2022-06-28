@@ -64,6 +64,7 @@
     <c.ponom.audiostreams.MeterView
         android:id="@+id/meter_level"
         android:layout_width="12dp"
+        android:background="@drawable/gradient"
         android:layout_margin="@dimen/std_margin"
         android:layout_height="200dp"
         app:layout_constraintTop_toBottomOf="@id/text_mic_test"
@@ -73,20 +74,18 @@
 
     <TextView
         android:id="@+id/text_mic_bytes_written"
-        android:layout_width="75dp"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_margin="@dimen/std_margin"
         android:text="0"
         android:textAlignment="center"
-        style="@style/TextAppearance.AppCompat.Medium"
         app:layout_constraintEnd_toStartOf="@id/meter_level"
         app:layout_constraintBottom_toTopOf="@id/text_mic_current_level" />
 
 
     <TextView
-        style="@style/TextAppearance.AppCompat.Medium"
-        android:layout_width="102dp"
-        android:layout_height="25dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:layout_margin="@dimen/std_margin"
         android:text="Bytes in/out:"
         android:textAlignment="center"
@@ -96,12 +95,11 @@
 
     <TextView
         android:id="@+id/text_mic_current_level"
-        android:layout_width="75dp"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_margin="@dimen/std_margin"
         android:text="0"
         android:textAlignment="center"
-        style="@style/TextAppearance.AppCompat.Medium"
         app:layout_constraintEnd_toStartOf="@id/meter_level"
         app:layout_constraintBottom_toBottomOf="@id/meter_level" />
 
@@ -112,7 +110,6 @@
         android:layout_margin="@dimen/std_margin"
         android:text="Record level:"
         android:textAlignment="center"
-        style="@style/TextAppearance.AppCompat.Medium"
         app:layout_constraintEnd_toStartOf="@id/text_mic_current_level"
         app:layout_constraintBottom_toBottomOf="@id/meter_level" />
 

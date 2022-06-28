@@ -2,6 +2,19 @@
 
 package c.ponom.audiostreams.audio_streams
 
+/*todo - по классу
+ *  - переделать всю обработку исключений на их возврат
+ *  - временно убрать код работающий по uri, но сделать работающий
+ * по fd (c него можно длину файла получить)
+ * убрать дату-время
+ *  - не забыть все файлы и ресурсы позакрывать
+  *
+  *
+  *
+  * todo по всем - @JvmOverloads, по статикам - @JvmStatic
+ */
+
+
 import android.content.Context
 import android.media.MediaExtractor
 import android.media.MediaFormat
@@ -40,10 +53,11 @@ class AudioDataInfo{
         private set
     var mediaFormat:MediaFormat?=null
         private set
-    var errorMessage:String="Ok"
+    var error:Exception? = null
+    var errorMessage:String=""
     private var extractor:MediaExtractor= MediaExtractor()
 
-
+    @JvmOverloads
     @Throws (IllegalArgumentException::class)
     constructor (context: Context, uri: Uri, track:Int=0,headers: Map<String, String>? =null ){
         if (uri == Uri.EMPTY) throw IllegalArgumentException("Path is empty")
@@ -60,6 +74,8 @@ class AudioDataInfo{
                 .contains("raw",true)){"Track isn't valid audio track"}
             initFields(trackFormat)
         } catch (e:IOException) {
+                // перейти к "всегда эксепшн" или "всегда ошибка и null"
+                error=e
                 errorMessage=e.message.toString()
                 e.printStackTrace()
                 hasInfo=false
@@ -82,6 +98,7 @@ class AudioDataInfo{
                 fileSizeText = fileSizeToText(fileSize)
                 fileDate = file.lastModified()
             } catch (e: IOException) {
+                error=e
                 errorMessage = e.message.toString()
                 e.printStackTrace()}
         }
@@ -99,23 +116,22 @@ class AudioDataInfo{
             }
         }
 
-        @Throws (IllegalArgumentException::class)
-        constructor (path:String, track: Int =0){
-            if (path.isBlank()) throw IllegalArgumentException("Path is null or empty")
-            try {
-                extractor = MediaExtractor()
-                extractor.setDataSource(path)
-                extractor.selectTrack(track)
-                val trackFormat = extractor.getTrackFormat(track)
-                if (!trackFormat
-                        .getString("mime")!!
-                        .contains("audio",true)){
-                            errorMessage="Track $track isn't audio track"
-                            throw IllegalArgumentException("Track $track isn't audio track")
-                }
-            initFields(trackFormat)
+    @JvmOverloads
+    @Throws (IllegalArgumentException::class)
+    constructor (path:String, track: Int =0){
+        if (path.isBlank()) throw IllegalArgumentException("Path is null or empty")
+        try {
+            extractor = MediaExtractor()
+            extractor.setDataSource(path)
+            extractor.selectTrack(track)
+            val trackFormat = extractor.getTrackFormat(track)
+            val mime = trackFormat.getString("mime").toString()
+            require(mime.contains("audio",true)&&!mime
+                .contains("raw",true)){"Track isn't valid audio track"}
+        initFields(trackFormat)
         } catch (e:IOException) {
             e.printStackTrace()
+            error=e
             errorMessage=e.message.toString()
             hasInfo=false
         }
@@ -123,7 +139,6 @@ class AudioDataInfo{
         try {
                 //todo - протестить. Теоретически это должно быть для честных путей, не file:
                 // - для тех выше метод с uri
-
             val file = File(path)
             uri=file.toUri()
             fileSize=file.length()

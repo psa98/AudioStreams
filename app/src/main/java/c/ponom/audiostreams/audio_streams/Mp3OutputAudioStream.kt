@@ -1,9 +1,11 @@
 package c.ponom.audiostreams.audio_streams
 
 import android.media.AudioFormat.ENCODING_PCM_16BIT
+import android.util.Log
 import androidx.annotation.IntRange
 import c.ponom.audiostreams.audio_streams.ArrayUtils.byteToShortArrayLittleEndian
 import c.ponom.recorder2.audio_streams.AudioOutputStream
+import c.ponom.recorder2.audio_streams.TAG
 import com.naman14.androidlame.AndroidLame
 import com.naman14.androidlame.LameBuilder
 import java.io.IOException
@@ -13,13 +15,11 @@ class Mp3OutputAudioStream private constructor() : AudioOutputStream(){
 
 
 
-    lateinit var androidLame: AndroidLame
+    private lateinit var androidLame: AndroidLame
     private var finished = false
-    private lateinit var  outputStream:OutputStream
-    private lateinit var stereoMode:LameBuilder.Mode
+    lateinit var  outputStream:OutputStream
+    lateinit var stereoMode:LameBuilder.Mode
 
-    //TODO - я точно знаю что нативный объект не уничтожается на lame.close() - и не создается
-    // вроде на
 
 
     /**Важно! OutBitrate - это уровень сжатого потока и он задается  в килобитах/сек! то есть
@@ -37,13 +37,17 @@ class Mp3OutputAudioStream private constructor() : AudioOutputStream(){
      * качества сжатия  меняет его значение и для созданных ранее но еще не закрытых потоков
      */
 
-    //todo - потесить в профилере что неоднократный вызов (раз 1000) конструктора не ведет к утечке
-    // нативной памяти
+    //todo -
+    // в документацию в переводе:
+    // - outBitrate не должно превышать  inSampleRate/137,  (но делить на ~150 лучше), к примеру, при 22100
+    // максимум ~160, рекомендуемое 128 .
+    // минимальный размер буфера отправляемого на write должен быть достаточен для помещения туда данных
+    // фрейма, зависит от параметров, рекомендуемый не менее inSampleRate сэмплов
 
     @JvmOverloads
     constructor(
         outStream: OutputStream,
-        @IntRange(from = 8000, to= 48000)inSampleRate: Int,
+        @IntRange(from = 16000, to= 48000)inSampleRate: Int,
         @IntRange(from = 32, to= 320) outBitrate: Int,
         outStereoMode: LameBuilder.Mode,
         qualityMode: EncodingQuality=EncodingQuality.BALANCED) : this() {
@@ -58,7 +62,7 @@ class Mp3OutputAudioStream private constructor() : AudioOutputStream(){
         encoding = ENCODING_PCM_16BIT
         frameSize= channelsCount*2
 
-        //Only 16 bit  encoding supported
+        //документириовать что оnly 16 bit  encoding supported
 
         /* From Lame doc
         * internal algorithm selection.  True quality is determined by the bitrate
@@ -74,7 +78,6 @@ class Mp3OutputAudioStream private constructor() : AudioOutputStream(){
             EncodingQuality.BALANCED -> 5
             EncodingQuality.FAST_ENCODING -> 7
         }
-        outputStream=outStream
         androidLame= LameBuilder()
             .setQuality(quality)
             .setInSampleRate(inSampleRate)
@@ -83,6 +86,13 @@ class Mp3OutputAudioStream private constructor() : AudioOutputStream(){
             .setOutBitrate(outBitrate.coerceAtMost(320).coerceAtLeast(32))
             .build()
     }
+
+    /**
+     * todo для версии 2- автоувеличить размер буфера передаваемого Lame c сохр. исх. len:Int
+     *  документировать
+     *  минимальный размер буфера для чтения должен быть достаточен для помещения туда данных
+     *  фрейма, зависит от параметров LAME, безопасный размер =  не менее inSampleRate сэмплов
+     */
 
 
     @Throws(IndexOutOfBoundsException::class,NullPointerException::class,
@@ -115,6 +125,14 @@ class Mp3OutputAudioStream private constructor() : AudioOutputStream(){
     }
 
 
+    /**
+     * todo
+     *  - задокументировать что работа при записи буферов длиннее 1024 сэмплов не гарантируется
+     *  - либо брать буфер любого размера но разбивать его на куски до 1000 сэмплов и отдавать
+     *  LAME
+     */
+
+    // документировать что sample here =  L+R pair
     @Synchronized
     @Throws(IndexOutOfBoundsException::class,IllegalStateException::class, IOException::class)
     override fun writeShorts(b: ShortArray, off: Int, len: Int) {
@@ -152,17 +170,20 @@ class Mp3OutputAudioStream private constructor() : AudioOutputStream(){
 
     private fun encodeMonoStream(inArray: ShortArray): ByteArray {
         if (finished) throw IllegalStateException("Stream closed, create new encoder")
-        val outBuff = ByteArray(inArray.size)
+        val outBuff = ByteArray(inArray.size*2)
         val resultBytes = androidLame.encode(inArray, inArray, inArray.size, outBuff)
+        if (resultBytes<0)
+            throw IOException ("Lame codec error $resultBytes, wrong init params or too small buffer size")
         return outBuff.sliceArray(0 until resultBytes)
     }
 
     private fun encodeInterleavedStream(samples: ShortArray): ByteArray {
         if (finished) throw IllegalStateException("Stream closed, create new encoder")
         val size = samples.size
-        val outBuff = ByteArray(size)
+        val outBuff = ByteArray(size*2)
         val resultBytes = androidLame.encodeBufferInterLeaved(samples, size/2, outBuff)
-            // sample here =  L+R pair
+        if (resultBytes<0)
+            throw IOException ("Lame codec error $resultBytes, wrong init params or or too small buffer size")
         return outBuff.sliceArray(0 until resultBytes)
     }
 
@@ -172,10 +193,10 @@ class Mp3OutputAudioStream private constructor() : AudioOutputStream(){
         val outBuff = ByteArray(16 * 1024)
         // вообще оно заведомо до 2048 + ограниченный размер тегов, но пусть
         val resultBytes = androidLame.flush(outBuff)
+        Log.e(TAG, "encodeMonoStream: MP3 bytes closed=")
         androidLame.close()
         return outBuff.sliceArray(0 until resultBytes)
     }
-
 
     enum class EncodingQuality {
         HIGH_AND_SLOW, BALANCED, FAST_ENCODING

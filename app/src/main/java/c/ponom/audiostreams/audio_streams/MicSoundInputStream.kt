@@ -12,7 +12,9 @@ import android.media.AudioManager
 import android.media.AudioRecord
 import android.media.AudioRecord.*
 import android.media.MediaRecorder
+import android.util.Log
 import c.ponom.recorder2.audio_streams.AudioInputStream
+import c.ponom.recorder2.audio_streams.TAG
 import java.io.IOException
 
 
@@ -29,9 +31,12 @@ class MicSoundInputStream private constructor(private var audioRecord: AudioReco
     @JvmOverloads
     @SuppressLint("MissingPermission")
     @Throws(IllegalArgumentException::class,IOException::class)
-    constructor(sampleRate:Int, mic:Int= MediaRecorder.AudioSource.DEFAULT,
-                channels:Int=1,
-                encoding:Int= ENCODING_PCM_16BIT)
+    constructor(
+        sampleRate: Int, source: Int = MediaRecorder.AudioSource.DEFAULT,
+        channels: Int = 1,
+        encoding: Int = ENCODING_PCM_16BIT,
+        bufferMult: Int = BUFFER_SIZE__MULT
+    )
                 : this() {
         channelConfig=channelConfig(channels)
         channelsCount=channels
@@ -41,7 +46,7 @@ class MicSoundInputStream private constructor(private var audioRecord: AudioReco
             require(encoding== ENCODING_PCM_8BIT ||
                     encoding== ENCODING_PCM_16BIT) { "Only 16 and 8 bit encodings supported"}
         val buffer= getMinBufferSize(sampleRate,channelConfig,encoding)
-        audioRecord= AudioRecord(mic,sampleRate ,channelConfig,encoding,buffer)
+        audioRecord= AudioRecord(source,sampleRate ,channelConfig,encoding,buffer*bufferMult)
          if (audioRecord==null) throw IllegalArgumentException("Audio record init error - wrong params? ")
         this.sampleRate = audioRecord!!.sampleRate
         // todo тут будет проверка на законные значения из списка, варнинг для всех законных кроме 16,22 и 44к
@@ -132,13 +137,28 @@ class MicSoundInputStream private constructor(private var audioRecord: AudioReco
             throw IndexOutOfBoundsException("Wrong read(...) params")
         if (len == 0) return 0
         if (audioRecord==null) return -1
-        if (!isRecording()) return ERROR_INVALID_OPERATION
+        if (!isRecording()) {
+            logMicError(ERROR_INVALID_OPERATION)
+            return ERROR_INVALID_OPERATION
+        }
         val bytes = audioRecord!!.read(b, off, len)
+        if (bytes < 0) logMicError(bytes)
         if (bytes == ERROR_DEAD_OBJECT) close()
         //конец потока
         if (bytes>0) bytesSent += bytes
         onReadCallback?.invoke(bytesSent)
         return bytes
+    }
+
+    private fun logMicError(response: Int) {
+            val message:String =
+            when (response){
+                ERROR_INVALID_OPERATION -> "MicSoundInputStream AudioRecord not initiated or started properly"
+                ERROR_DEAD_OBJECT -> "MicSoundInputStream AudioRecord not valid anymore and stream to be recreated "
+                ERROR_BAD_VALUE -> "MicSoundInputStream#read(..) parameters don't resolve to valid data and indexes"
+                else -> return
+            }
+        Log.d(TAG, "Audio Record read result=$response, $message", )
     }
 
 
@@ -150,13 +170,12 @@ class MicSoundInputStream private constructor(private var audioRecord: AudioReco
             throw IndexOutOfBoundsException("Wrong read(...) params")
         if (len == 0) return 0
         if (audioRecord==null) return -1
-        if (!isRecording()) return ERROR_INVALID_OPERATION
-            /*
-            обработать ошибки другие: и в bytes
-            ERROR_INVALID_OPERATION if the object isn't properly initialized
-            ERROR_BAD_VALUE if the parameters don't resolve to valid data and indexes
-             */
+        if (!isRecording()) {
+            logMicError(ERROR_INVALID_OPERATION)
+            return ERROR_INVALID_OPERATION
+        }
         val samples = audioRecord!!.read(b, off, len)
+        if (samples < 0) logMicError(samples)
         if (samples== ERROR_DEAD_OBJECT) {
             close()
             return  -1
@@ -178,8 +197,12 @@ class MicSoundInputStream private constructor(private var audioRecord: AudioReco
             throw IndexOutOfBoundsException("Wrong read(...) params")
         if (len == 0) return 0
         if (audioRecord==null) return -1
-        if (!isRecording()) return ERROR_INVALID_OPERATION
+        if (!isRecording()) {
+            logMicError(ERROR_INVALID_OPERATION)
+            return ERROR_INVALID_OPERATION
+        }
         val samples = audioRecord!!.read(b, off, len)
+        if (samples < 0) logMicError(samples)
         if (samples== ERROR_DEAD_OBJECT) {
             close()
             return  -1
@@ -259,6 +282,7 @@ class MicSoundInputStream private constructor(private var audioRecord: AudioReco
         else return audioRecord!!.preferredDevice
     }
 
+    //  Check for 0!
     fun currentBufferSize(): Int {
         if (audioRecord==null) return 0
         return try {

@@ -77,7 +77,7 @@ class TestSoundInputStream private constructor() : AudioInputStream()  {
         testFrequencyMono: Double, volume: Short,
         @IntRange(from = 8000, to= 48000 )sampleRate: Int,
         @IntRange(from = 1, to= 16)channelConfig: Int,
-        @IntRange(from = 1, to= 2) encoding: Int,
+        @IntRange(from = 1, to= 2) encoding: Int = ENCODING_PCM_16BIT,
         mode:TestStreamMode= GENERATOR
     ) : this() {
         if (channelConfig!= CHANNEL_IN_MONO)
@@ -109,11 +109,11 @@ class TestSoundInputStream private constructor() : AudioInputStream()  {
     @JvmOverloads
     @Throws(IllegalArgumentException::class, IOException::class)
     constructor (
-        testFrequencyLeft: Double,testFrequencyRight: Double,
-        volumeLeft: Short,volumeRight: Short,
+        testFrequencyLeft: Double, testFrequencyRight: Double,
+        volumeLeft: Short, volumeRight: Short,
         @IntRange(from = 8000, to= 48000 )sampleRate: Int,
         @IntRange(from = 12, to= 12)channelConfig: Int,
-        @IntRange(from = 1, to= 2) encoding: Int,
+        @IntRange(from = 1, to= 2) encoding: Int= ENCODING_PCM_16BIT,
         mode:TestStreamMode= GENERATOR
     ) : this() {
         if (channelConfig!= CHANNEL_IN_STEREO)
