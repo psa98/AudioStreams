@@ -60,7 +60,7 @@ class StreamPump @JvmOverloads constructor(
             FATAL_ERROR -> throw IllegalStateException ("already finished on error")
         }
    }
-
+    // задокументировать что onFinish вызывается всегда, даже при ошибке, после onError
     @Suppress("BlockingMethodInNonBlockingContext")
     private fun pump(autoClose: Boolean) {
         CoroutineScope(Dispatchers.IO).launch{

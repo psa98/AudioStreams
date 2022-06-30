@@ -17,17 +17,74 @@
         android:textAlignment="center"
         style="@style/TextAppearance.AppCompat.Medium"
         app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginBottom="70dp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <Button
-        android:id="@+id/test_play_generated"
+    <TextView
+        android:id="@+id/secondsPlayed"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_margin="@dimen/std_margin"
-        android:text="Test generated sine wave output"
-        android:textAllCaps="false"
+        android:text="0.0"
+        android:textAlignment="center"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/text_audio_out_fragment"
+        />
+
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="@dimen/std_margin"
+        android:text="Seconds played:"
+        android:textAlignment="center"
+        app:layout_constraintTop_toBottomOf="@id/text_audio_out_fragment"
+        app:layout_constraintEnd_toStartOf="@id/secondsPlayed" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:id="@+id/error_label"
+        android:visibility="gone"
+        android:layout_height="wrap_content"
+        android:layout_margin="@dimen/std_margin"
+        android:text="Error message"
+        android:textAlignment="center"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/secondsPlayed" />
+
+    <TextView
+        android:id="@+id/error_message"
+        android:visibility="gone"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="@dimen/std_margin"
+        android:text=""
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/error_label" />
+
+
+
+
+    <Button
+        android:id="@+id/play_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="@dimen/std_margin"
+        android:text="Play"
+        android:textAllCaps="false"
+        app:layout_constraintTop_toBottomOf="@id/error_message"
+        app:layout_constraintStart_toStartOf="parent"
+        />
+    <Button
+        android:id="@+id/stop_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="@dimen/std_margin"
+        android:text="Stop Playing"
+        android:textAllCaps="false"
+        app:layout_constraintTop_toBottomOf="@id/play_button"
         app:layout_constraintStart_toStartOf="parent"
         />
 

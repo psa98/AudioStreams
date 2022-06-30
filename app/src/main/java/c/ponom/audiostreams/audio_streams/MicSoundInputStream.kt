@@ -19,7 +19,7 @@ import java.io.IOException
 
 
 private const val BUFFER_SIZE__MULT: Int=4 //todo переделать под мс
-class MicSoundInputStream private constructor(private var audioRecord: AudioRecord? = null): AudioInputStream()  {
+class MicSoundInputStream private constructor(var audioRecord: AudioRecord? = null): AudioInputStream()  {
 
     private var recordingIsOn: Boolean=false
 

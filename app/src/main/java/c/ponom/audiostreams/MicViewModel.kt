@@ -1,17 +1,13 @@
-package c.ponom.navgrafapp.ui.notifications
+package c.ponom.audiostreams
 
 import android.os.Environment
 import android.util.Log
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import c.ponom.audiostreams.MicRecordState.*
+import c.ponom.audiostreams.audio_streams.*
 import c.ponom.audiostreams.audio_streams.ArrayUtils.byteToShortArrayLittleEndian
-import c.ponom.audiostreams.audio_streams.AudioTrackOutputStream
-import c.ponom.audiostreams.audio_streams.MicSoundInputStream
-import c.ponom.audiostreams.audio_streams.Mp3OutputAudioStream
 import c.ponom.audiostreams.audio_streams.SoundVolumeUtils.getRMSVolume
-import c.ponom.audiostreams.audio_streams.StreamPump
-import c.ponom.navgrafapp.ui.notifications.MicRecordState.*
-import c.ponom.recorder2.audio_streams.AudioFileSoundSource
 import c.ponom.recorder2.audio_streams.TAG
 import com.naman14.androidlame.LameBuilder
 import java.io.File
@@ -87,7 +83,7 @@ class MicTestViewModel : ViewModel() {
             onFatalError={ Log.e(TAG, "Error=${it.localizedMessage}")})
         audioOut.play()
         audioPump.start(true)
-        recorderState.postValue(MicRecordState.PLAYING)
+        recorderState.postValue(PLAYING)
     }
 
     fun stopPlaying() {

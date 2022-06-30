@@ -1,6 +1,5 @@
 package c.ponom.audiostreams
 
-import android.R
 import android.media.MediaRecorder
 import android.os.Bundle
 import android.util.Log
@@ -9,12 +8,10 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.AdapterView
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.viewModels
 import androidx.lifecycle.LiveData
-import androidx.lifecycle.ViewModelProvider
+import c.ponom.audiostreams.MicRecordState.*
 import c.ponom.audiostreams.databinding.FragmentMicBinding
-import c.ponom.navgrafapp.ui.notifications.MicRecordState
-import c.ponom.navgrafapp.ui.notifications.MicRecordState.*
-import c.ponom.navgrafapp.ui.notifications.MicTestViewModel
 import c.ponom.recorder2.audio_streams.TAG
 
 class MicFragment : Fragment() {
@@ -25,7 +22,7 @@ class MicFragment : Fragment() {
     val sampleRateList = arrayListOf("16000","22050","32000","44100")
     val inputList = arrayListOf("0=DEFAULT","6=VOICE_RECOGNITION","9=UNPROCESSED")
     private val binding get() = _binding!!
-    private lateinit var viewmodel:MicTestViewModel
+    private val viewModel:MicTestViewModel by viewModels()
     private lateinit var recordLevel: LiveData<Float>
     private lateinit var bytesPassed: LiveData<Int>
     private lateinit var currentState: LiveData<MicRecordState>
@@ -36,12 +33,10 @@ class MicFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View {
         _binding = FragmentMicBinding.inflate(inflater, container, false)
-        viewmodel=ViewModelProvider(this).get(MicTestViewModel::class.java)
-        recordLevel=viewmodel.recordLevel
-        bytesPassed=viewmodel.bytesPassed
-        currentState=viewmodel.recorderState
+        recordLevel=viewModel.recordLevel
+        bytesPassed=viewModel.bytesPassed
+        currentState=viewModel.recorderState
         return binding.root
-
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -52,10 +47,10 @@ class MicFragment : Fragment() {
     }
 
     private fun setupButtons() {
-        binding.recordButton.setOnClickListener { viewmodel.record(source, sampleRate) }
-        binding.stopRecording.setOnClickListener{ viewmodel.stopRecording() }
-        binding.playRecord.setOnClickListener{ viewmodel.play() }
-        binding.stopPlaying.setOnClickListener{ viewmodel.stopPlaying() }
+        binding.recordButton.setOnClickListener { viewModel.record(source, sampleRate) }
+        binding.stopRecording.setOnClickListener{ viewModel.stopRecording() }
+        binding.playRecord.setOnClickListener{ viewModel.play() }
+        binding.stopPlaying.setOnClickListener{ viewModel.stopPlaying() }
 
     }
 
@@ -104,10 +99,10 @@ class MicFragment : Fragment() {
 
     private fun setupSpinners() {
 
-        val rateAdapter = StandardChoiceAdapter(requireContext(), R.layout.simple_spinner_item, sampleRateList)
+        val rateAdapter = StandardChoiceAdapter(requireContext(), android.R.layout.simple_spinner_item, sampleRateList)
         binding.rateSelector.adapter = rateAdapter
         binding.rateSelector.onItemSelectedListener = SampleRateSelector()
-        val inputAdapter = StandardChoiceAdapter(requireContext(), R.layout.simple_spinner_item, inputList)
+        val inputAdapter = StandardChoiceAdapter(requireContext(), android.R.layout.simple_spinner_item, inputList)
         binding.inputSelector.adapter = inputAdapter
         binding.inputSelector.onItemSelectedListener = InputSelector()
     }
@@ -123,9 +118,6 @@ class MicFragment : Fragment() {
                 sampleRate=sampleRateList[position].toInt()
                 Log.e(TAG, "onItemSelected: =$sampleRate")
             }
-
-
-
         override fun onNothingSelected(parent: AdapterView<*>?) {}
     }
 
@@ -135,9 +127,6 @@ class MicFragment : Fragment() {
                 source = inputList[position].split("=")[0]. toInt()
                 Log.e(TAG, "onItemSelected: =$source")
             }
-
-
-
         override fun onNothingSelected(parent: AdapterView<*>?) {}
     }
 

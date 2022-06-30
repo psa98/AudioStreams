@@ -80,7 +80,7 @@ class TestSoundInputStream private constructor() : AudioInputStream()  {
         @IntRange(from = 1, to= 2) encoding: Int = ENCODING_PCM_16BIT,
         mode:TestStreamMode= GENERATOR
     ) : this() {
-        if (channelConfig!= CHANNEL_IN_MONO)
+        if (channelConfig!= CHANNEL_IN_MONO) // todo заменить как в AudioOut, 1 и 2 канала
             throw IllegalArgumentException("This constructor usable only for CHANNEL_IN_MONO")
         if (encoding!=ENCODING_PCM_16BIT)
             throw IllegalArgumentException("Only 16 encoding currently supported")

@@ -4,9 +4,9 @@
 package c.ponom.audiostreams.audio_streams
 import android.media.AudioFormat
 import android.media.AudioFormat.*
+import android.media.AudioFormat.Builder
 import android.media.AudioTrack
-import android.media.AudioTrack.WRITE_BLOCKING
-import android.media.AudioTrack.getMinBufferSize
+import android.media.AudioTrack.*
 import android.util.Log
 import c.ponom.recorder2.audio_streams.AudioOutputStream
 import c.ponom.recorder2.audio_streams.TAG
@@ -47,7 +47,6 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
         this.sampleRate = sampleRate
         //todo -- переделать под число каналов на входе, нечего тут
         channelConfig=channelConfig(channelCount)
-
         // todo тут будет проверка на законные значения из списка, варнинг для всех законных кроме
         //  8, 16,22, 32 и 44 - 48к
         // доделать буфер!
@@ -65,7 +64,6 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
         }
         val minBufferInBytes=frameSize*(sampleRate/1000)*(minBufferInMs/1000.0).toInt()
 
-        //val bufferForTime = (frameTimeMs(encoding,sampleRate)*minBufferInMs/frameSize).toInt()
         audioFormat= Builder()
             .setEncoding(encoding)
             .setSampleRate(sampleRate)
@@ -76,10 +74,9 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
         audioOut=AudioTrack.Builder()
             .setAudioFormat(audioFormat)
             .setBufferSizeInBytes(minBuffer.coerceAtLeast(minBufferInBytes))
-            .setTransferMode(AudioTrack.MODE_STREAM)
+            .setTransferMode(MODE_STREAM)
             .build()
         prepared=true
-
     }
 
     /**
@@ -87,10 +84,10 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
      *звука в буфер и далее подавать с достаточным темпом, либо уже уже подав звук в буфер
      * до заполнения, тогда по play() начнется его проигрывание
      */
-    @Synchronized
     @Throws(IOException::class)
     fun play(){
-        if (audioOut == null) throw IOException("Stream closed or in error")
+        if (closed||audioOut == null||audioOut?.state != STATE_INITIALIZED)
+            throw IOException("Stream closed or in error state")
         audioOut?.play()
     }
 
@@ -99,13 +96,11 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
      * возникающий при внезапной остановке громкого звука при обычном stop()
      */
 
-    @Synchronized
     fun stopAndClear(){
-        if (closed)return
-        if (audioOut == null) return
+        if (closed||audioOut == null||audioOut?.playState!= PLAYSTATE_STOPPED) return
         try {
         audioOut?.setVolume(0.02f)         //это позволяет  убрать клик в конце
-        Thread.sleep(60)
+        Thread.sleep(90)
         //время подобрано на слух, меньше 30 дает клик на частоте 440 гц 16000 сэмплов
             // этого может быть мало для звуков с мощными НЧ, но стоит потестить
         audioOut?.pause()
@@ -118,17 +113,44 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
 
     }
 
-    //todo v2- добавить pause-resume?
-
     @Synchronized
     fun stop(){
-        if (closed)return
-        if (audioOut == null) return
+        if (closed||audioOut == null||audioOut?.playState!= PLAYSTATE_STOPPED) return
         try {
             audioOut?.stop()
         } catch (e:IllegalStateException){
             e.printStackTrace()
         }
+    }
+
+    fun pause (){
+        if (closed||audioOut == null||audioOut?.playState!= PLAYSTATE_PLAYING) return
+        try {
+            audioOut?.setVolume(0.02f)         //это позволяет  убрать клик в конце
+            Thread.sleep(60)
+            //время подобрано на слух, меньше 30 дает клик на частоте 440 гц 16000 сэмплов
+            // этого может быть мало для звуков с мощными НЧ, но стоит потестить
+            audioOut?.pause()
+            audioOut?.setVolume(currentVolume)
+        } catch (e:IllegalStateException){
+            e.printStackTrace()
+        }
+    }
+
+    fun resume() {
+        if (closed||audioOut == null||audioOut?.playState!= PLAYSTATE_PAUSED) return
+        try {
+            audioOut?.setVolume(0.02f)         //это позволяет  убрать клик в конце
+            Thread.sleep(60)
+            //время подобрано на слух, меньше 30 дает клик на частоте 440 гц 16000 сэмплов
+            // этого может быть мало для звуков с мощными НЧ, но стоит потестить
+            audioOut?.play()
+            audioOut?.setVolume(currentVolume)
+        } catch (e:IllegalStateException){
+            e.printStackTrace()
+        }
+
+
     }
 
     // документировать
@@ -151,7 +173,6 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
 
 
     @Throws(IOException::class,NullPointerException::class,IllegalArgumentException::class)
-    @Synchronized
     override fun write(b: ByteArray?, off: Int, len: Int){
         if (audioOut == null) throw IOException("Stream closed or in error state")
         if (b == null) throw NullPointerException ("Null array passed")
@@ -166,7 +187,6 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
     }
 
 
-    @Synchronized
 
     @Throws(IOException::class,NullPointerException::class,IllegalArgumentException::class)
     override fun writeShorts(b: ShortArray) {
@@ -176,7 +196,6 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
     override fun canWriteShorts(): Boolean = true
     private var lastWrite= currentTimeMillis()
 
-    @Synchronized
     @Throws(IllegalArgumentException::class,IOException::class)
     override fun writeShorts(b: ShortArray, off: Int, len: Int) {
         if (audioOut == null) throw IOException("Stream closed or in error state")
@@ -192,16 +211,13 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
             throw IOException ("Error code $result - see codes for AudioTrack write(byte []..)")
         }
    }
-    @Synchronized
         override fun close() {
         stopAndClear()
         audioOut?.release()
         audioOut=null
         closed=true
-        prepared=false
     }
 
-    @Synchronized
     override fun write(b: Int) {
         throw NotImplementedError (" Not implemented, use write(byteArray[] ...)")
     }

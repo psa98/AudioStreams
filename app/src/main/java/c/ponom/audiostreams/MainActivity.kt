@@ -26,7 +26,6 @@ import c.ponom.audiostreams.audio_streams.Mp3OutputAudioStream.EncodingQuality
 import c.ponom.audiostreams.audio_streams.SoundVolumeUtils.getRMSVolume
 import c.ponom.audiostreams.audio_streams.StreamPump.State.PUMPING
 import c.ponom.audiostreams.databinding.ActivityMainBinding
-import c.ponom.recorder2.audio_streams.AudioFileSoundSource
 import c.ponom.recorder2.audio_streams.TAG
 import c.ponom.recorder2.audio_streams.TestSoundInputStream
 import com.google.android.material.snackbar.Snackbar
@@ -150,7 +149,7 @@ class MainActivity : AppCompatActivity() {
         // Это вроде дает вариант открыть файл с допданными из контент провайлдера для медиа
         // - надо разбраться
 
-        val audioIn =AudioFileSoundSource().getStream(this,uri)
+        val audioIn = AudioFileSoundSource().getStream(this,uri)
 
         //return
         //audioIn.onReadCallback = {pos-> Log.e(TAG, "playUri: pos=$pos")}

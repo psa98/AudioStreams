@@ -30,7 +30,12 @@ import java.io.InputStream
 abstract class AudioInputStream :    InputStream, AutoCloseable {
 
 
-    /**
+    /* todo для всех классов где уместно - переопределить toString() выдачей данных о частоте и подобном
+
+     */
+
+
+    /** //todo - перевести доки на остальные методы
      * @param sampleRate the source sample rate expressed in Hz.
      * @param channelNumber describes the number of the audio channels. It is NOT configuration of
      * the audio channels:
@@ -122,8 +127,8 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
         protected set
 
     @Volatile
-    var timestamp=0L //пересчет выведенных байтов в мс.
-        private set
+    open var timestamp=0L //пересчет выведенных байтов в мс.
+        protected set
 
     @Volatile
     open var bytesSent = 0L

@@ -40,7 +40,7 @@ class Mp3OutputAudioStream private constructor() : AudioOutputStream(){
     //todo -
     // в документацию в переводе:
     // - outBitrate не должно превышать  inSampleRate/137,  (но делить на ~150 лучше), к примеру, при 22100
-    // максимум ~160, рекомендуемое 128 .
+    // максимум ~160, рекомендуемое 128, для 44100 - 320 .
     // минимальный размер буфера отправляемого на write должен быть достаточен для помещения туда данных
     // фрейма, зависит от параметров, рекомендуемый не менее inSampleRate сэмплов
 
@@ -89,8 +89,8 @@ class Mp3OutputAudioStream private constructor() : AudioOutputStream(){
 
     /**
      * todo для версии 2- автоувеличить размер буфера передаваемого Lame c сохр. исх. len:Int
-     *  документировать
-     *  минимальный размер буфера для чтения должен быть достаточен для помещения туда данных
+     *  или протестить работу с отдачей туда вдвое увеличенного outBuff
+     *  документировать что минимальный размер буфера для чтения должен быть достаточен для помещения туда данных
      *  фрейма, зависит от параметров LAME, безопасный размер =  не менее inSampleRate сэмплов
      */
 
@@ -125,12 +125,6 @@ class Mp3OutputAudioStream private constructor() : AudioOutputStream(){
     }
 
 
-    /**
-     * todo
-     *  - задокументировать что работа при записи буферов длиннее 1024 сэмплов не гарантируется
-     *  - либо брать буфер любого размера но разбивать его на куски до 1000 сэмплов и отдавать
-     *  LAME
-     */
 
     // документировать что sample here =  L+R pair
     @Synchronized
@@ -172,8 +166,11 @@ class Mp3OutputAudioStream private constructor() : AudioOutputStream(){
         if (finished) throw IllegalStateException("Stream closed, create new encoder")
         val outBuff = ByteArray(inArray.size*2)
         val resultBytes = androidLame.encode(inArray, inArray, inArray.size, outBuff)
-        if (resultBytes<0)
-            throw IOException ("Lame codec error $resultBytes, wrong init params or too small buffer size")
+        if (resultBytes<0){
+            finished=true
+            outputStream.close()
+            throw IOException("Lame codec error $resultBytes, wrong init params or too small buffer size")
+        }
         return outBuff.sliceArray(0 until resultBytes)
     }
 
@@ -182,8 +179,11 @@ class Mp3OutputAudioStream private constructor() : AudioOutputStream(){
         val size = samples.size
         val outBuff = ByteArray(size*2)
         val resultBytes = androidLame.encodeBufferInterLeaved(samples, size/2, outBuff)
-        if (resultBytes<0)
-            throw IOException ("Lame codec error $resultBytes, wrong init params or or too small buffer size")
+        if (resultBytes<0) {
+            finished=true
+            outputStream.close()
+            throw IOException("Lame codec error $resultBytes, wrong init params or too small buffer size")
+            }
         return outBuff.sliceArray(0 until resultBytes)
     }
 

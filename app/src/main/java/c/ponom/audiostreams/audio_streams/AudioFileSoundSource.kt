@@ -1,6 +1,6 @@
 @file:Suppress("DEPRECATION")
 
-package c.ponom.recorder2.audio_streams
+package c.ponom.audiostreams.audio_streams
 
 import android.content.Context
 import android.media.AudioFormat.ENCODING_PCM_16BIT
@@ -11,6 +11,8 @@ import android.media.MediaFormat
 import android.net.Uri
 import android.util.Log
 import c.ponom.audiostreams.audio_streams.ArrayUtils.byteToShortArrayLittleEndian
+import c.ponom.recorder2.audio_streams.AudioInputStream
+import c.ponom.recorder2.audio_streams.TAG
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -185,7 +187,7 @@ open class AudioFileSoundSource { //todo - переделать под
                     try {
                         inputForBuff()
                         val eof = outputToBuff(currentBuffer)
-                        maxPos = MAX_BUFFER_SIZE - (RESERVE_BUFFER_SIZE+maxChunkSize)
+                        maxPos = MAX_BUFFER_SIZE - (RESERVE_BUFFER_SIZE +maxChunkSize)
                         newByteBufferChunk.isLastBuffer = eof
                         newByteBufferChunk.byteBuffer.limit()
                         if (currentBuffer.position() >= maxPos || eof){
