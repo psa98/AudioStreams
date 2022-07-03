@@ -61,6 +61,7 @@ class StreamPump @JvmOverloads constructor(
         }
    }
     // задокументировать что onFinish вызывается всегда, даже при ошибке, после onError
+
     @Suppress("BlockingMethodInNonBlockingContext")
     private fun pump(autoClose: Boolean) {
         CoroutineScope(Dispatchers.IO).launch{
@@ -90,6 +91,7 @@ class StreamPump @JvmOverloads constructor(
                     }
                     if (read < 0) {
                         if (autoClose) try {
+                            //нормальное закрытие без ошибки
                             inputStream.close()
                             outputStream.close()
                             state=FINISHED
@@ -109,19 +111,19 @@ class StreamPump @JvmOverloads constructor(
                     }
                 } catch (e: Exception) { // секция ловит ошибку в чтении записи потоков
                     state = FATAL_ERROR
+                    onFatalError(e)
                     e.printStackTrace()
                     if(autoClose) try {
                         inputStream.close()
                         outputStream.close()
-                        state=FINISHED
-                        onFinish.invoke()
                         break
-                    } catch (e:IOException){ // секция ловит ошибку в *закрытии* потоков
+                    } catch (e:IOException){
+                        // секция ловит ошибку в *закрытии* потоков.
+                        // эта ошибка не передается выше, поскольку она затрет реальную
                         e.printStackTrace()
-                        state=FATAL_ERROR
-                        onFatalError(e)
-                        onFinish.invoke()
                         break
+                     }finally {
+                        onFinish.invoke()
                      }
                  }
             } while (read >= 0&& state!=PAUSED)
@@ -138,10 +140,8 @@ class StreamPump @JvmOverloads constructor(
             PAUSED, PUMPING -> {
                 state=FINISHED
                 if (closeAllStreams) try {
-
                     inputStream.close()
                     outputStream.close()
-
                 } catch (e:IOException){
                     e.printStackTrace()
                     onFatalError(e)

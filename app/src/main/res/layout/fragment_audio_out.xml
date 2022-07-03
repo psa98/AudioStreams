@@ -21,6 +21,17 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
+    <Spinner
+        android:id="@+id/rate_selector"
+        android:layout_width="wrap_content"
+        android:gravity="end"
+        android:layout_margin="@dimen/std_margin"
+        android:popupBackground="@android:drawable/spinner_dropdown_background"
+        android:layout_height="wrap_content"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/text_audio_out_fragment"
+        />
+
     <TextView
         android:id="@+id/secondsPlayed"
         android:layout_width="wrap_content"
@@ -29,18 +40,20 @@
         android:text="0.0"
         android:textAlignment="center"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/text_audio_out_fragment"
+
+        app:layout_constraintTop_toBottomOf="@id/rate_selector"
         />
+
 
 
     <TextView
         android:layout_width="wrap_content"
+        android:id="@+id/seconds_label"
         android:layout_height="wrap_content"
         android:layout_margin="@dimen/std_margin"
         android:text="Seconds played:"
         android:textAlignment="center"
-        app:layout_constraintTop_toBottomOf="@id/text_audio_out_fragment"
+        app:layout_constraintTop_toBottomOf="@id/rate_selector"
         app:layout_constraintEnd_toStartOf="@id/secondsPlayed" />
 
     <TextView
@@ -55,8 +68,9 @@
         app:layout_constraintTop_toBottomOf="@id/secondsPlayed" />
 
     <TextView
-        android:id="@+id/error_message"
+        android:id="@+id/error_message_text"
         android:visibility="gone"
+        android:textColor="@color/design_default_color_error"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_margin="@dimen/std_margin"
@@ -74,7 +88,7 @@
         android:layout_margin="@dimen/std_margin"
         android:text="Play"
         android:textAllCaps="false"
-        app:layout_constraintTop_toBottomOf="@id/error_message"
+        app:layout_constraintTop_toBottomOf="@id/error_message_text"
         app:layout_constraintStart_toStartOf="parent"
         />
     <Button
@@ -87,6 +101,40 @@
         app:layout_constraintTop_toBottomOf="@id/play_button"
         app:layout_constraintStart_toStartOf="parent"
         />
+    <Button
+        android:id="@+id/force_error"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="@dimen/std_margin"
+        android:text="Force AudioTrack error"
+        android:textAllCaps="false"
+        app:layout_constraintTop_toBottomOf="@id/stop_button"
+        app:layout_constraintStart_toStartOf="parent"
+        />
+
+    <TextView
+        android:id="@+id/currentVol"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:layout_margin="@dimen/std_margin"
+        android:text="0.0"
+        app:layout_constraintTop_toBottomOf="@id/force_error"
+        app:layout_constraintStart_toStartOf="parent"
+        android:textSize="12sp" />
+
+    <SeekBar
+        app:layout_constraintStart_toEndOf="@id/currentVol"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toBottomOf="@id/currentVol"
+        app:layout_constraintTop_toTopOf="@id/currentVol"
+        android:id="@+id/seekbar"
+        android:layout_margin="@dimen/std_margin"
+        style="@style/Base.Widget.AppCompat.SeekBar"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:layout_weight="1" />
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>

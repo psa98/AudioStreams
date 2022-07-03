@@ -74,7 +74,7 @@ class AudioDataInfo{
                 .contains("raw",true)){"Track isn't valid audio track"}
             initFields(trackFormat)
         } catch (e:IOException) {
-                // перейти к "всегда эксепшн" или "всегда ошибка и null"
+                // todo перейти к "всегда эксепшн" или "всегда ошибка и null"
                 error=e
                 errorMessage=e.message.toString()
                 e.printStackTrace()

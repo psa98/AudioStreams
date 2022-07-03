@@ -18,7 +18,7 @@ class MicFragment : Fragment() {
 
     private var _binding: FragmentMicBinding? = null
     var source = MediaRecorder.AudioSource.DEFAULT
-    var sampleRate = 8000
+    var sampleRate = 16000
     val sampleRateList = arrayListOf("16000","22050","32000","44100")
     val inputList = arrayListOf("0=DEFAULT","6=VOICE_RECOGNITION","9=UNPROCESSED")
     private val binding get() = _binding!!

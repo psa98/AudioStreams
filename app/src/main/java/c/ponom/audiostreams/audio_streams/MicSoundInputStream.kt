@@ -43,8 +43,7 @@ class MicSoundInputStream private constructor(var audioRecord: AudioRecord? = nu
         if (!(channelConfig== CHANNEL_IN_MONO ||channelConfig== CHANNEL_IN_STEREO))
             throw IllegalArgumentException("Only 1 and 2 channels (CHANNEL_IN_MONO " +
                     "and CHANNEL_IN_STEREO) supported")
-            require(encoding== ENCODING_PCM_8BIT ||
-                    encoding== ENCODING_PCM_16BIT) { "Only 16 and 8 bit encodings supported"}
+            require(encoding== ENCODING_PCM_16BIT) { "Only PCM 16 bit encoding currently supported"}
         val buffer= getMinBufferSize(sampleRate,channelConfig,encoding)
         audioRecord= AudioRecord(source,sampleRate ,channelConfig,encoding,buffer*bufferMult)
          if (audioRecord==null) throw IllegalArgumentException("Audio record init error - wrong params? ")

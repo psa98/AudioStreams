@@ -4,6 +4,8 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.AdapterView
+import android.widget.SeekBar
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.ViewModelProvider
@@ -15,6 +17,9 @@ class AudioOutFragment : Fragment() {
     private lateinit var  viewModel: AudioOutViewModel
     private var _binding: FragmentAudioOutBinding? = null
     private val binding get() = _binding!!
+    var currentVolume=1f
+    var sampleRate = 16000
+    val sampleRateList = arrayListOf("Select sampling rate","16000 (Default)","22050","32000","44100","9999999 (Illegal value)")
     private val volume:Short =16000
     private val freq = 440.0
     private lateinit var secondsPlayed: LiveData<Float>
@@ -46,53 +51,101 @@ class AudioOutFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         setupButtons()
         setupObservers()
+        setupSpinner()
+        setVolumeControl()
     }
 
     private fun setupButtons() {
-        binding.playButton.setOnClickListener{
-            viewModel.play(freq,volume) }
-        binding.stopButton.setOnClickListener{
-            viewModel.stopPlaying() }
-
+        with(binding) {
+            playButton.setOnClickListener {viewModel.play(freq, volume, sampleRate)}
+            stopButton.setOnClickListener {viewModel.stopPlaying()}
+            forceError.setOnClickListener {viewModel.forceError()
+            playButton.isEnabled=true}
+        }
     }
 
 
     private fun setupObservers() {
-        secondsPlayed.observe(this,{
-            binding.secondsPlayed.text=it.toString()})
-        errorMessage.observe(this,{ binding.errorMessage.text=it.toString()})
+        secondsPlayed.observe(this,{binding.secondsPlayed.text=it.toString()})
+        errorMessage.observe(this,{ binding.errorMessageText.text=it.toString()})
         currentState.observe(this,{ setControlsState(it)})
     }
 
     private fun setControlsState(state: AudioOutState) {
+        with (binding){
         // будет управлять видимостью контролей
-        binding.secondsPlayed.text="0.0"
-        when(state) {
-            STOPPED ->{
-                binding.playButton.isEnabled=true
-                binding.stopButton.isEnabled=false
-            }
-            PLAYING -> {
-                binding.playButton.isEnabled=false
-                binding.stopButton.isEnabled=true
-                binding.errorMessage.visibility= View.GONE
-                binding.errorLabel.visibility= View.GONE
-            }
-            ERROR -> {
-                binding.playButton.isEnabled=true
-                binding.stopButton.isEnabled=false
-                binding.errorMessage.visibility= View.VISIBLE
-                binding.errorLabel.visibility= View.VISIBLE
-                binding.errorMessage.text=errorMessage.value
+            secondsPlayed.text="0.0"
+            seekbar.progress=100
+            currentVol.text= 1f.toString()
+            when(state) {
+                STOPPED -> {
+                    seekbar.isEnabled=false
+                    playButton.isEnabled = true
+                    stopButton.isEnabled = false
+                    forceError.isEnabled = false
+                }
+                PLAYING -> {
+                    binding.seekbar.isEnabled=true
+                    playButton.isEnabled = false
+                    stopButton.isEnabled = true
+                    forceError.isEnabled = true
+                    errorMessageText.visibility = View.GONE
+                    errorLabel.visibility = View.GONE
+                }
+                ERROR -> {
+                    seekbar.isEnabled=false
+                    playButton.isEnabled = true
+                    stopButton.isEnabled = false
+                    forceError.isEnabled = false
+                    errorMessageText.visibility = View.VISIBLE
+                    errorLabel.visibility = View.VISIBLE
+                    errorMessageText.text = errorMessage.value
 
+                }
             }
         }
     }
 
+    private fun setupSpinner() {
+
+        val rateAdapter = StandardChoiceAdapter(requireContext(), android.R.layout.simple_spinner_item, sampleRateList)
+        binding.rateSelector.adapter = rateAdapter
+        binding.rateSelector.onItemSelectedListener = SampleRateSelector()
+        binding.rateSelector.prompt = "Select sampling rate"
+
+    }
 
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
     }
+
+
+    inner class  SampleRateSelector : AdapterView.OnItemSelectedListener {
+        override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long): Unit =
+            run {
+                if (position!=0)
+                    sampleRate=sampleRateList[position].substringBefore(" (").toInt()
+                }
+        override fun onNothingSelected(parent: AdapterView<*>?) {}
+    }
+
+
+    private fun setVolumeControl() {
+
+        binding.seekbar.isEnabled=false
+        binding.seekbar.max = 100
+        binding.seekbar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {}
+            override fun onStartTrackingTouch(seekBar: SeekBar) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar) {
+                currentVolume = seekBar.progress.toFloat()/100f
+                viewModel.setVolume(currentVolume)
+                binding.currentVol.text= currentVolume.toString()
+            }
+        })
+
+    }
+
 
 }

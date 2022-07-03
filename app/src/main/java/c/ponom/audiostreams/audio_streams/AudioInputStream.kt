@@ -76,7 +76,7 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
         try {
             encoding= mediaFormat?.getInteger("pcm-encoding")
             if (encoding!= ENCODING_PCM_16BIT)
-                throw IllegalArgumentException (" only 16 bit encoding currently implemented")
+                throw IllegalArgumentException ("Only PCM 16 bit encoding currently supported")
         }catch (e:NullPointerException){
             // если ключа нет, метод бросает это исключение, то все в порядке, 16 битная кодировка
             encoding = ENCODING_PCM_16BIT

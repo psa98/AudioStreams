@@ -40,13 +40,13 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
     @Throws(IllegalArgumentException::class, UnsupportedOperationException::class)
     constructor(
         sampleRate: Int,
-        channelCount: Int,
+        channelsCount: Int,
         encoding: Int = ENCODING_PCM_16BIT,
         minBufferInMs: Int = 0
     ) : this() {
         this.sampleRate = sampleRate
         //todo -- переделать под число каналов на входе, нечего тут
-        channelConfig=channelConfig(channelCount)
+        channelConfig=channelConfig(channelsCount)
         // todo тут будет проверка на законные значения из списка, варнинг для всех законных кроме
         //  8, 16,22, 32 и 44 - 48к
         // доделать буфер!
@@ -54,9 +54,10 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
         if (!(channelConfig== CHANNEL_OUT_MONO ||channelConfig== CHANNEL_OUT_STEREO))
             throw IllegalArgumentException("Only 1 or 2 channels(CHANNEL_OUT_MONO " +
                     "and CHANNEL_OUT_STEREO) supported")
-        if (!(encoding== ENCODING_PCM_8BIT ||encoding== ENCODING_PCM_16BIT))
-            throw IllegalArgumentException("Only 16 and 8 bit encodings supported")
-        this.encoding=encoding
+        if (encoding!=ENCODING_PCM_16BIT)
+            throw IllegalArgumentException("Only PCM 16 bit encoding currently supported")
+        super.encoding=encoding
+        super.channelsCount=channelsCount
         when (encoding){
             ENCODING_PCM_8BIT -> frameSize = channelsCount
             ENCODING_PCM_16BIT-> frameSize= channelsCount*2
@@ -182,7 +183,7 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
         bytesSent += result.coerceAtLeast(0)
         if (result<0){
             close()
-            throw IOException ("Error code $result - see codes for AudioTrack write(byte []..)")
+            throw IOException ("Error code $result - see codes for AudioTrack write(...)")
         }
     }
 
@@ -208,7 +209,7 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
         bytesSent += result.coerceAtLeast(0)*2
         if (result<0){
             close()
-            throw IOException ("Error code $result - see codes for AudioTrack write(byte []..)")
+            throw IOException ("Error code $result - see codes for AudioTrack write(...)")
         }
    }
         override fun close() {

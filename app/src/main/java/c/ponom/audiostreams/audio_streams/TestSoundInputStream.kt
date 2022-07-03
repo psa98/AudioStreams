@@ -78,12 +78,12 @@ class TestSoundInputStream private constructor() : AudioInputStream()  {
         @IntRange(from = 8000, to= 48000 )sampleRate: Int,
         @IntRange(from = 1, to= 16)channelConfig: Int,
         @IntRange(from = 1, to= 2) encoding: Int = ENCODING_PCM_16BIT,
-        mode:TestStreamMode= GENERATOR
+        mode:TestStreamMode= GENERATOR //todo
     ) : this() {
         if (channelConfig!= CHANNEL_IN_MONO) // todo заменить как в AudioOut, 1 и 2 канала
             throw IllegalArgumentException("This constructor usable only for CHANNEL_IN_MONO")
         if (encoding!=ENCODING_PCM_16BIT)
-            throw IllegalArgumentException("Only 16 encoding currently supported")
+            throw IllegalArgumentException("Only PCM 16 bit encoding currently supported")
         // кинуть предупреждение если частоты в неслышимом диапазоне
         if (testFrequencyMono<32||testFrequencyMono>16000||testFrequencyMono>sampleRate/2)
             Log.v(TAG, "Test frequency = $testFrequencyMono Hz, probably inaudible")
@@ -91,10 +91,14 @@ class TestSoundInputStream private constructor() : AudioInputStream()  {
             Log.v(TAG, "Non standard sampling rate of $sampleRate can by problematic for testing" +
                     "of media encoders or players")
         testMode=mode
+        // todo проверить выставление обязательных полей во всех конструкторах
         this.sampleRate = sampleRate
+        this.encoding=encoding
+        this.channelsCount = 1
+        this.frameSize=bytesPerSample*channelsCount
+        this.channelConfig=channelConfig
         monoParams=MonoSoundParameters(volume,testFrequencyMono)
         this.testChannelsMode= MONO
-        channelsCount = 1
         bytesPerSample = if (encoding== ENCODING_PCM_16BIT) 2 else  1
         frameSize=bytesPerSample*channelsCount
     }
@@ -119,7 +123,7 @@ class TestSoundInputStream private constructor() : AudioInputStream()  {
         if (channelConfig!= CHANNEL_IN_STEREO)
             throw IllegalArgumentException("This constructor usable only for CHANNEL_IN_STEREO")
         if (encoding!=ENCODING_PCM_16BIT)
-            throw IllegalArgumentException("Only 16bit encoding currently supported")
+            throw IllegalArgumentException("Only PCM 16 bit encoding currently supported")
         if (testFrequencyLeft<32||testFrequencyLeft>16000||testFrequencyLeft>sampleRate/2)
             Log.v(TAG, "Test frequency L = $testFrequencyLeft Hz, probably inaudible")
         if (testFrequencyRight<32||testFrequencyRight>16000||testFrequencyRight>sampleRate/2)
@@ -131,9 +135,13 @@ class TestSoundInputStream private constructor() : AudioInputStream()  {
         stereoParams=StereoSoundParameters(testFrequencyLeft,testFrequencyRight,volumeLeft,volumeRight)
         testMode=mode
         testChannelsMode=STEREO
-        channelsCount = 2
-        bytesPerSample = 2 //if (encoding == ENCODING_PCM_16BIT) 2 else  1
-        frameSize=bytesPerSample*channelsCount
+        this.sampleRate = sampleRate
+        this.encoding=encoding
+        this.channelsCount = 2
+        this.channelConfig=channelConfig
+        this.frameSize=bytesPerSample*channelsCount
+        bytesPerSample = if (encoding== ENCODING_PCM_16BIT) 2 else  1
+
     }
 
 
@@ -171,14 +179,13 @@ class TestSoundInputStream private constructor() : AudioInputStream()  {
 
 
     // не тестровано пока
-    @Synchronized
     override fun read(): Int {
         val b=ByteArray(1)
         if (closed) return -1
         return read(b)+128
     }
 
-    @Synchronized
+
     @Throws(NullPointerException::class)
     override fun read(b: ByteArray?): Int {
         if (b==null) throw NullPointerException ("Null array passed")
@@ -191,7 +198,6 @@ class TestSoundInputStream private constructor() : AudioInputStream()  {
      *
      */
 
-    @Synchronized
     @Throws(NullPointerException::class,IllegalArgumentException::class)
     override fun read(b: ByteArray?, off: Int, len: Int): Int {
         if (b == null) throw NullPointerException("Null array passed")
@@ -211,7 +217,6 @@ class TestSoundInputStream private constructor() : AudioInputStream()  {
 
 
 
-    @Synchronized
     @Throws(NullPointerException::class)
     override fun readShorts(b: ShortArray, off: Int, len: Int): Int {
         if (closed) return -1
@@ -241,7 +246,6 @@ class TestSoundInputStream private constructor() : AudioInputStream()  {
 
 
 
-    @Synchronized
     override fun readShorts(b: ShortArray): Int {
         if (closed) return -1
         return if (b.isEmpty()) 0 else readShorts(b, 0, b.size)
@@ -249,8 +253,6 @@ class TestSoundInputStream private constructor() : AudioInputStream()  {
 
     override fun canReadShorts():Boolean =true
 
-
-    @Synchronized
     override fun close() {
        closed=true
     }
