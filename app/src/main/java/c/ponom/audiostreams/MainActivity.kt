@@ -43,7 +43,7 @@ import java.lang.System.currentTimeMillis
 private const val ASKING_FOR_FILE=2
 private const val PERMISSION_REQUEST_CODE: Int =1
 
-@Suppress("LocalVariableName", "PropertyName","Deprecation")
+@Suppress("LocalVariableName", "PropertyName","Deprecation","BlockingMethodInNonBlockingContext")
 class MainActivity : AppCompatActivity() {
 
 
@@ -219,7 +219,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    @Suppress("BlockingMethodInNonBlockingContext")
+
     private suspend fun testMic() {
         if (!microphoneStream.isReady) microphoneStream= MicSoundInputStream(16000, bufferMult = 16)
         val askingThread = Thread.currentThread()

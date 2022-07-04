@@ -248,4 +248,21 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
             AudioFormat.CHANNEL_INVALID
         }
     }
+
+
+    // не  SimpleDateFormat для поддержки указания более чем 24 часов записи, время в мс
+    fun timeString(): String {
+        val audioTime: String
+        val dur = timestamp.toInt()
+        val hrs = dur / 3600000
+        val mns = (dur / 60000 % 60000) - hrs * 60
+        val scs = dur % 60000 / 1000
+        audioTime = if (hrs > 0) {
+            String.format("%02d:%02d:%02d", hrs, mns, scs)
+        } else {
+            String.format("%02d:%02d", mns, scs)
+        }
+        return audioTime
+    }
+
 }

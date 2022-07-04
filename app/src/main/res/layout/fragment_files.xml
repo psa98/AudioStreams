@@ -19,7 +19,7 @@
         app:layout_constraintTop_toTopOf="parent" />
 
     <Button
-        android:id="@+id/test_file_playing"
+        android:id="@+id/play_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_margin="@dimen/std_margin"
@@ -28,5 +28,46 @@
         app:layout_constraintTop_toBottomOf="@id/text_files_fragment"
         app:layout_constraintStart_toStartOf="parent"
         />
+
+
+    <TextView
+        android:id="@+id/text_media_data"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/std_margin"
+        android:layout_marginTop="@dimen/std_margin"
+        android:layout_marginEnd="@dimen/std_margin"
+        android:textStyle="bold"
+        android:justificationMode="inter_word"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/play_button" />
+
+    <Button
+        android:id="@+id/stop_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="@dimen/std_margin"
+        android:enabled="false"
+        android:text="Stop"
+        android:textAllCaps="false"
+        app:layout_constraintTop_toBottomOf="@id/text_media_data"
+        app:layout_constraintStart_toStartOf="parent"
+        />
+
+
+    <TextView
+        android:id="@+id/seconds_played"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/std_margin"
+        android:layout_marginTop="@dimen/std_margin"
+        android:layout_marginEnd="@dimen/std_margin"
+        android:textStyle="bold"
+        style="@style/TextAppearance.AppCompat.Medium"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/stop_button" />
+
 
 </androidx.constraintlayout.widget.ConstraintLayout>
