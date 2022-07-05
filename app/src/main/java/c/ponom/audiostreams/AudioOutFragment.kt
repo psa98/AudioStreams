@@ -14,6 +14,12 @@ import c.ponom.audiostreams.databinding.FragmentAudioOutBinding
 
 class AudioOutFragment : Fragment() {
 
+
+    /**
+     * Демонстрируется использование  потоков AudioTrackOutputStream, AudioFileSoundSource,
+     * MicSoundInputStream,  класса StreamPump, обработки ошибок
+     */
+
     private lateinit var  viewModel: AudioOutViewModel
     private var _binding: FragmentAudioOutBinding? = null
     private val binding get() = _binding!!
@@ -26,13 +32,11 @@ class AudioOutFragment : Fragment() {
     private lateinit var errorMessage: LiveData<String>
     private lateinit var currentState: LiveData<AudioOutState>
 
-    /*
-    * проигрыш звука из генератора (пока не выключат)
-    * регулировка громкости (ползунок)
-    * пауза и  продолжение
-    *
-    *
-    */
+    /**
+     * Демонстрируется использование  потоков AudioTrackOutputStream, TestSoundInputStream,
+     * свойства выходного потока  timestamp, низкоуровнего обращения к свойству audioOut
+     * управление громкостью AudioTrackOutputStream
+     */
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,

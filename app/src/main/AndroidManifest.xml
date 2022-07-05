@@ -23,30 +23,22 @@
         <!---activity
             android:name=".audio_streams.BluetoothAudioRecorder"
             android:exported="false" /-->
-        <activity
+        <!---activity
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"
             android:theme="@style/Theme.AudioStreams.NoActionBar">
-
-
-
-        </activity>
-
-
+        </activity-->
         <activity android:name=".BluetoothAudioRecorder" />
-
         <activity android:name=".TestActivity"
-            android:exported="true">
+            android:exported="true"
+            android:screenOrientation="sensorPortrait"
+            tools:ignore="LockedOrientationActivity">
             <intent-filter>
+
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-
         </activity>
-
-
 </application>
-
-
 </manifest>

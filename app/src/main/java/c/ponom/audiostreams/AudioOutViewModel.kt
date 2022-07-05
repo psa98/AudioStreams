@@ -14,6 +14,8 @@ import c.ponom.recorder2.audio_streams.TestSoundInputStream
 
 class AudioOutViewModel : ViewModel() {
 
+
+
     private lateinit var audioInStream: TestSoundInputStream
     private var audioOutStream: AudioTrackOutputStream?=null
     var secondsPlayed: MutableLiveData<Float> = MutableLiveData(0.0f)

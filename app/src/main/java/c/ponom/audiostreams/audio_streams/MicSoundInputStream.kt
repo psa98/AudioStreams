@@ -21,6 +21,7 @@ import java.io.IOException
 private const val BUFFER_SIZE__MULT: Int=4 //todo переделать под мс
 class MicSoundInputStream private constructor(var audioRecord: AudioRecord? = null): AudioInputStream()  {
 
+    private var minBuffer: Int=0
     private var recordingIsOn: Boolean=false
 
     var isReady=false
@@ -44,8 +45,8 @@ class MicSoundInputStream private constructor(var audioRecord: AudioRecord? = nu
             throw IllegalArgumentException("Only 1 and 2 channels (CHANNEL_IN_MONO " +
                     "and CHANNEL_IN_STEREO) supported")
             require(encoding== ENCODING_PCM_16BIT) { "Only PCM 16 bit encoding currently supported"}
-        val buffer= getMinBufferSize(sampleRate,channelConfig,encoding)
-        audioRecord= AudioRecord(source,sampleRate ,channelConfig,encoding,buffer*bufferMult)
+        minBuffer= getMinBufferSize(sampleRate,channelConfig,encoding)
+        audioRecord= AudioRecord(source,sampleRate ,channelConfig,encoding,minBuffer*bufferMult)
          if (audioRecord==null) throw IllegalArgumentException("Audio record init error - wrong params? ")
         this.sampleRate = audioRecord!!.sampleRate
         // todo тут будет проверка на законные значения из списка, варнинг для всех законных кроме 16,22 и 44к
@@ -77,15 +78,15 @@ class MicSoundInputStream private constructor(var audioRecord: AudioRecord? = nu
      * or estimated rest of bytes in stream
      */
    override fun bytesRemainingEstimate(): Long {
-       return -1L
+        return if (audioRecord==null) 0 else -1L
    }
 
     /**
-     * смотри описание исходного. Теоретически тут надо сообщить сколько можно отдать без
-     * блокирования из буферов, подумать реализуемо ли это
+     * смотри описание исходного. тут надо сообщить сколько можно отдать без
+     * блокирования из буфера, но, конечно, лучше брать меньше
      */
    override fun available(): Int {
-       return 0
+       return audioRecord?.bufferSizeInFrames?.times(frameSize)?:0
    }
 
 
@@ -107,8 +108,6 @@ class MicSoundInputStream private constructor(var audioRecord: AudioRecord? = nu
      * In this case, the error is returned at the next read() ERROR in case of other error
      */
 
-
-
     @Synchronized
     @Throws(NullPointerException::class)
     override fun read(b: ByteArray?): Int {
@@ -120,15 +119,6 @@ class MicSoundInputStream private constructor(var audioRecord: AudioRecord? = nu
 
 
 
-    //todo или эксепшн? надо определиться все же однозначно, что мы ВСЕМИ Input отдаем если
-    // - поток уже закрыт через close(). тут хотелось бы -1 все же
-    // - поток не прошел удачно инициализацию
-    // - поток уже бросал исключение по ошибке
-    // Одинаково для Bytes и Shorts
-    // - еще - надо задокументировать что bufferSize =
-
-
-    @Synchronized
     @Throws(NullPointerException::class,IOException::class,IndexOutOfBoundsException::class)
     override fun read(b: ByteArray?, off: Int, len: Int): Int {
         if (b == null) throw NullPointerException ("Null array passed")
@@ -161,8 +151,7 @@ class MicSoundInputStream private constructor(var audioRecord: AudioRecord? = nu
     }
 
 
-    // у меня же onRead коллбэки переделаны, убрать это, сделать единое
-    @Synchronized
+
     fun readShorts(b: ShortArray, off: Int, len: Int,
                    onReady:((samples:Int,dataSamples: ShortArray) -> Unit)?): Int {
         if (off < 0 || len < 0 || len > b.size - off)
@@ -190,7 +179,6 @@ class MicSoundInputStream private constructor(var audioRecord: AudioRecord? = nu
     }
 
 
-    @Synchronized
     override fun readShorts(b: ShortArray, off: Int, len: Int): Int {
         if (off < 0 || len < 0 || len > b.size - off)
             throw IndexOutOfBoundsException("Wrong read(...) params")
@@ -211,13 +199,10 @@ class MicSoundInputStream private constructor(var audioRecord: AudioRecord? = nu
         return samples
     }
 
-    @Synchronized
     override fun readShorts(b: ShortArray): Int {
          return readShorts(b,0,b.size)
     }
 
-
-    @Synchronized
     override fun close() {
        if (audioRecord==null) return
        audioRecord?.release()
@@ -236,7 +221,7 @@ class MicSoundInputStream private constructor(var audioRecord: AudioRecord? = nu
         return recordingIsOn
     }
 
-    @Synchronized
+
     fun startRecordingSession() {
         if (audioRecord?.state==STATE_INITIALIZED &&
                 audioRecord?.recordingState==RECORDSTATE_STOPPED) audioRecord?.startRecording()
@@ -245,7 +230,6 @@ class MicSoundInputStream private constructor(var audioRecord: AudioRecord? = nu
         recordingIsOn=true
     }
 
-    @Synchronized
     fun stopRecordingSession() {
         if(isRecording()) audioRecord?.stop()
             else return
@@ -285,7 +269,7 @@ class MicSoundInputStream private constructor(var audioRecord: AudioRecord? = nu
     fun currentBufferSize(): Int {
         if (audioRecord==null) return 0
         return try {
-            audioRecord?.bufferSizeInFrames!!.div(frameSize)
+            audioRecord?.bufferSizeInFrames!!.times(frameSize)
         } catch (e:IllegalStateException){
             0
         }

@@ -28,6 +28,13 @@ class MicFragment : Fragment() {
     private lateinit var currentState: LiveData<MicRecordState>
 
 
+    /**
+     * Демонстрируется использование  потоков AudioTrackOutputStream, AudioFileSoundSource,
+     * MicSoundInputStream,  класса StreamPump, обработка ошибок, запись публичный медиа
+     * каталог
+     */
+
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -129,7 +136,5 @@ class MicFragment : Fragment() {
             }
         override fun onNothingSelected(parent: AdapterView<*>?) {}
     }
-
-
 
 }

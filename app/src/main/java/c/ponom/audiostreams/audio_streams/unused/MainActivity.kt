@@ -1,4 +1,4 @@
-package c.ponom.audiostreams
+package c.ponom.audiostreams.audio_streams.unused
 
 import android.Manifest
 import android.annotation.SuppressLint
@@ -207,14 +207,14 @@ class MainActivity : AppCompatActivity() {
 
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        menuInflater.inflate(R.menu.menu_main, menu)
+        //menuInflater.inflate(R.menu.menu_main, menu)
         return true
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
 
         return when (item.itemId) {
-            R.id.action_settings -> true
+           // R.id.action_settings -> true
             else -> super.onOptionsItemSelected(item)
         }
     }

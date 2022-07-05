@@ -17,11 +17,17 @@ import c.ponom.audiostreams.databinding.FragmentFilesBinding
 import c.ponom.recorder2.audio_streams.TAG
 
 
-/**
- * A simple [Fragment] subclass as the default destination in the navigation.
- */
+
+
 @Suppress("FoldInitializerAndIfToElvis")
 class FilesFragment : Fragment() {
+
+    /**
+     * Демонстрируется использование  потоков AudioTrackOutputStream, AudioFileSoundSource,
+     * свойства выходного потока  timestamp, получение медиаданных через AudioDataInfo
+     */
+
+
 
     private var _binding: FragmentFilesBinding? = null
     private lateinit var secondsPlayed: LiveData<String>
@@ -30,11 +36,7 @@ class FilesFragment : Fragment() {
     ) { result -> callback(result) }
     private lateinit var  viewModel: FilesViewModel
 
-    /*
-    * проигрывание произвольного файла
-    * вывод медиа данных о нем
-    *
-    */
+
     private val binding get() = _binding!!
 
     override fun onCreateView(

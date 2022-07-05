@@ -97,7 +97,7 @@ class Mp3OutputAudioStream private constructor() : AudioOutputStream(){
 
     @Throws(IndexOutOfBoundsException::class,NullPointerException::class,
         IllegalStateException::class,IOException::class)
-    @Synchronized
+
     override fun write(b: ByteArray?, off: Int, len: Int){
         if (finished) throw IllegalStateException("Stream closed or in error state")
         if (b == null) throw NullPointerException ("Null array passed")
@@ -127,7 +127,7 @@ class Mp3OutputAudioStream private constructor() : AudioOutputStream(){
 
 
     // документировать что sample here =  L+R pair
-    @Synchronized
+
     @Throws(IndexOutOfBoundsException::class,IllegalStateException::class, IOException::class)
     override fun writeShorts(b: ShortArray, off: Int, len: Int) {
         if (finished) throw IllegalStateException("Stream was already closed or in error state")
@@ -146,7 +146,7 @@ class Mp3OutputAudioStream private constructor() : AudioOutputStream(){
      * закрывает выходной поток автоматически! Нет смысла писать туда что-то после финального
      * блока  данных
      */
-    @Synchronized
+
     override fun close() {
         if (finished) return
         val result=encodeEofFrame()
@@ -155,7 +155,7 @@ class Mp3OutputAudioStream private constructor() : AudioOutputStream(){
         finished=true
     }
 
-    @Synchronized
+
     @Throws(IOException::class)
     override fun write(b: Int) {
         throw NoSuchMethodException("Not implemented - use write (byte[]..../ short[]...)")

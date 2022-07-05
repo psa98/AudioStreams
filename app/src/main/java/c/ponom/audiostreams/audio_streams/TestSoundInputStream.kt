@@ -28,7 +28,7 @@ class TestSoundInputStream private constructor() : AudioInputStream()  {
     var fileLen=0L
     private set
 
-    // todo сделать фабрику/строитель
+    // todo переделать на Builder
 
 
 

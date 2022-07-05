@@ -114,7 +114,6 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
 
     }
 
-    @Synchronized
     fun stop(){
         if (closed||audioOut == null||audioOut?.playState!= PLAYSTATE_STOPPED) return
         try {

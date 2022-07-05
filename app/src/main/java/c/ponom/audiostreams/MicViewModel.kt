@@ -11,7 +11,6 @@ import c.ponom.audiostreams.audio_streams.SoundVolumeUtils.getRMSVolume
 import c.ponom.recorder2.audio_streams.TAG
 import com.naman14.androidlame.LameBuilder
 import java.io.File
-import java.io.FileOutputStream
 
 
 class MicTestViewModel : ViewModel() {
@@ -21,14 +20,13 @@ class MicTestViewModel : ViewModel() {
     var recordLevel: MutableLiveData<Float> = MutableLiveData(0.0f)
     var  bytesPassed: MutableLiveData<Int> = MutableLiveData(0)
     var  recorderState: MutableLiveData<MicRecordState> = MutableLiveData(NO_FILE_RECORDED)
-    private lateinit var microphoneStream: MicSoundInputStream
     private val outDirName= Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC).toString()
     private val outDir = File("$outDirName/AudioStreams/").apply { mkdir() }
-
-    var outputMicTest:FileOutputStream? =null
-    private lateinit var mp3TestStream: Mp3OutputAudioStream
     private lateinit var audioPump:StreamPump
-    val testFileMp3 = File(App.appContext.filesDir, "/TestMicStream.mp3")
+    val pathName: String = App.appContext.getExternalFilesDir(Environment.DIRECTORY_MUSIC)
+        .toString()+"/AudioStreams"
+    //при переустановке приложения прежний файл будет реадонли и его надо удалить
+    val testFileMp3 = File(outDir, "/TestMicStream.mp3")
     var recordingIsOn=false
 
 
@@ -36,15 +34,12 @@ class MicTestViewModel : ViewModel() {
     fun record(source: Int, sampleRate: Int) {
         //подготовим входящий микрофонный поток
         recordingIsOn=true
-
+        //подготовим входящий микрофонный поток и исходящий файловый
         val outputFileStream = testFileMp3.outputStream()
         val testMicStream=MicSoundInputStream(sampleRate,source,bufferMult = 16)
-        testMicStream.startRecordingSession()
         // рекомендуемый битрейт для частоты не более (частота/137), аналогично соотношению 44100/320
         val encoderStream=Mp3OutputAudioStream(outputFileStream,
-            sampleRate,sampleRate/137, LameBuilder.Mode.MONO
-        )
-
+            sampleRate,sampleRate/137, LameBuilder.Mode.MONO)
         audioPump=StreamPump(testMicStream, encoderStream,bufferSize=1000,
             onEachPump = {recordLevel.postValue(getRMSVolume(byteToShortArrayLittleEndian(it)).toFloat())},
             onWrite =  { bytesPassed.postValue(it.toInt())},
@@ -59,7 +54,6 @@ class MicTestViewModel : ViewModel() {
         audioPump.start(true)
         recorderState.postValue(RECORDING)
             Log.e(TAG, "Recording $source, $sampleRate")
-
     }
 
     fun stopRecording() {
@@ -69,7 +63,6 @@ class MicTestViewModel : ViewModel() {
     }
 
     fun play() {
-        Log.e(TAG, "Play!")
         val audioIn = AudioFileSoundSource().getStream(testFileMp3.path)
         val audioOut= AudioTrackOutputStream(audioIn.sampleRate,audioIn.channelsCount,
             audioIn.encoding,0)

@@ -48,13 +48,11 @@ private const val QUEUE_SIZE  =8
 
 
 @Suppress("unused")
-open class AudioFileSoundSource { //todo - переделать под
-
+class AudioFileSoundSource {
     private lateinit var currentBuffer: ByteBuffer
     private var maxChunkSize = 0
     private lateinit var codec: MediaCodec
     private var bufferReady: Boolean = false
-
     private val extractor: MediaExtractor = MediaExtractor()
     private lateinit var codecInputBuffers: Array<ByteBuffer>
     private lateinit var codecOutputBuffers: Array<ByteBuffer>
@@ -112,7 +110,7 @@ open class AudioFileSoundSource { //todo - переделать под
     }
 
     /* Берется первая звуковая дорожка файла!
-    * // todo - свернуть исключения кодека в IOException
+    * // todo - свернуть все исключения кодека в IOException
     */
     @Throws(IOException::class,IllegalArgumentException ::class, CodecException::class)
     private fun createStream(): SoundInputStream {

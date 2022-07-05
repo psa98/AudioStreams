@@ -16,10 +16,14 @@ import java.lang.System.currentTimeMillis
 @Suppress("BlockingMethodInNonBlockingContext")
 class FilesViewModel : ViewModel() {
 
-    internal var playing: Boolean=false
-      var secondsPlayed: MutableLiveData<String> = MutableLiveData("")
-    var mediaData: MutableLiveData<String> = MutableLiveData("")
 
+
+
+
+
+    internal var playing: Boolean=false
+    var secondsPlayed: MutableLiveData<String> = MutableLiveData("")
+    var mediaData: MutableLiveData<String> = MutableLiveData("")
 
 
     internal fun playUri(context: Context,uri: Uri){
@@ -36,11 +40,10 @@ class FilesViewModel : ViewModel() {
             return
         }
         playing=true
-
         // используется стандартный вывод, без  StreamPump
         CoroutineScope(Default).launch{
             audioOutStream.play()
-            val bufferArray = ShortArray(1024) // при выводе в динамик желател малый буфер
+            val bufferArray = ShortArray(1024) // при выводе в динамик желателен малый буфер
             var lastSecond = currentTimeMillis() /1000
             do {
                 try {
@@ -57,9 +60,7 @@ class FilesViewModel : ViewModel() {
                         lastSecond=currentSecond
                         secondsPlayed.postValue(audioOutStream.timeString())
                     }
-
                 } catch (e:Exception){
-
                     e.printStackTrace()
                     break
                 }
@@ -67,11 +68,7 @@ class FilesViewModel : ViewModel() {
             playing=false
             audioOutStream.close()
             audioInStream.close()
-
         }
-
     }
-
-
 }
 
