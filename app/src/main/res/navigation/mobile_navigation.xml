@@ -15,11 +15,11 @@
         android:id="@+id/navigation_mic"
         android:name="c.ponom.audiostreams.MicFragment"
         android:label="@string/title_mic"
-        tools:layout="@layout/fragment_dashboard" />
+        tools:layout="@layout/fragment_mic" />
 
     <fragment
         android:id="@+id/navigation_out"
         android:name="c.ponom.audiostreams.AudioOutFragment"
         android:label="@string/title_out"
-        tools:layout="@layout/fragment_notifications" />
+        tools:layout="@layout/fragment_audio_out" />
 </navigation>

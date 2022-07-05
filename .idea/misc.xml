@@ -5,21 +5,17 @@
       <map>
         <entry key="..\:/Users/ponom/AndroidStudioProjects/AudioStreams/app/src/main/res/layout/activity_bluetooth_audio_recorder.xml" value="0.16666666666666666" />
         <entry key="..\:/Users/ponom/AndroidStudioProjects/AudioStreams/app/src/main/res/layout/activity_main.xml" value="0.268" />
-        <entry key="..\:/Users/ponom/AndroidStudioProjects/AudioStreams/app/src/main/res/layout/activity_test.xml" value="0.16666666666666666" />
-        <entry key="..\:/Users/ponom/AndroidStudioProjects/AudioStreams/app/src/main/res/layout/audio_out_test_fragment.xml" value="0.16666666666666666" />
         <entry key="..\:/Users/ponom/AndroidStudioProjects/AudioStreams/app/src/main/res/layout/content_main.xml" value="0.16666666666666666" />
-        <entry key="..\:/Users/ponom/AndroidStudioProjects/AudioStreams/app/src/main/res/layout/fragment_audio_out.xml" value="0.3" />
-        <entry key="..\:/Users/ponom/AndroidStudioProjects/AudioStreams/app/src/main/res/layout/fragment_files.xml" value="0.3" />
         <entry key="..\:/Users/ponom/AndroidStudioProjects/AudioStreams/app/src/main/res/layout/fragment_first.xml" value="0.3" />
-        <entry key="..\:/Users/ponom/AndroidStudioProjects/AudioStreams/app/src/main/res/layout/fragment_home.xml" value="0.16666666666666666" />
-        <entry key="..\:/Users/ponom/AndroidStudioProjects/AudioStreams/app/src/main/res/layout/fragment_mic.xml" value="0.3" />
         <entry key="..\:/Users/ponom/AndroidStudioProjects/AudioStreams/app/src/main/res/layout/fragment_second.xml" value="0.16666666666666666" />
-        <entry key="..\:/Users/ponom/AndroidStudioProjects/AudioStreams/app/src/main/res/menu/bottom_nav_menu.xml" value="0.2" />
-        <entry key="..\:/Users/ponom/AndroidStudioProjects/AudioStreams/app/src/main/res/menu/menu_main.xml" value="0.16666666666666666" />
+        <entry key="app/src/main/res/layout/activity_test.xml" value="0.33" />
+        <entry key="app/src/main/res/layout/fragment_audio_out.xml" value="0.33" />
+        <entry key="app/src/main/res/layout/fragment_files.xml" value="0.1859375" />
+        <entry key="app/src/main/res/layout/fragment_mic.xml" value="0.33" />
       </map>
     </option>
   </component>
-  <component name="ProjectRootManager" version="2" languageLevel="JDK_11" project-jdk-name="1.8" project-jdk-type="JavaSDK">
+  <component name="ProjectRootManager" version="2" languageLevel="JDK_11" default="true" project-jdk-name="1.8" project-jdk-type="JavaSDK">
     <output url="file://$PROJECT_DIR$/build/classes" />
   </component>
   <component name="ProjectType">
