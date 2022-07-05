@@ -22,13 +22,13 @@ class MicTestViewModel : ViewModel() {
     var  bytesPassed: MutableLiveData<Int> = MutableLiveData(0)
     var  recorderState: MutableLiveData<MicRecordState> = MutableLiveData(NO_FILE_RECORDED)
     private lateinit var microphoneStream: MicSoundInputStream
-    val outDirName= Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC).toString()
-    val outDir = File("$outDirName/AudioStreams/").apply { mkdir() }
+    private val outDirName= Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC).toString()
+    private val outDir = File("$outDirName/AudioStreams/").apply { mkdir() }
 
     var outputMicTest:FileOutputStream? =null
     private lateinit var mp3TestStream: Mp3OutputAudioStream
     private lateinit var audioPump:StreamPump
-    val testFileMp3 = File(outDir, "/TestMicStream.mp3")
+    val testFileMp3 = File(App.appContext.filesDir, "/TestMicStream.mp3")
     var recordingIsOn=false
 
 
@@ -38,16 +38,14 @@ class MicTestViewModel : ViewModel() {
         recordingIsOn=true
 
         val outputFileStream = testFileMp3.outputStream()
-        val testMicStream=MicSoundInputStream(sampleRate,source)
+        val testMicStream=MicSoundInputStream(sampleRate,source,bufferMult = 16)
         testMicStream.startRecordingSession()
+        // рекомендуемый битрейт для частоты не более (частота/137), аналогично соотношению 44100/320
         val encoderStream=Mp3OutputAudioStream(outputFileStream,
             sampleRate,sampleRate/137, LameBuilder.Mode.MONO
         )
 
-        //todo размеры буферов документировать так:
-        //в микрофоне сделать в mc, предупредить что запрашивать лучше более мелкими кусками
-
-        audioPump=StreamPump(testMicStream, encoderStream,bufferSize=sampleRate,
+        audioPump=StreamPump(testMicStream, encoderStream,bufferSize=1000,
             onEachPump = {recordLevel.postValue(getRMSVolume(byteToShortArrayLittleEndian(it)).toFloat())},
             onWrite =  { bytesPassed.postValue(it.toInt())},
             onFatalError={
@@ -66,8 +64,7 @@ class MicTestViewModel : ViewModel() {
 
     fun stopRecording() {
         recordingIsOn=false
-        audioPump.stop()
-        Log.e(TAG, "Stop!")
+        audioPump.stop(true)
         recorderState.postValue(STOPPED_READY)
     }
 
@@ -91,7 +88,6 @@ class MicTestViewModel : ViewModel() {
         Log.e(TAG, "Stop!")
         recorderState.postValue(STOPPED_READY)
     }
-
 
 }
 

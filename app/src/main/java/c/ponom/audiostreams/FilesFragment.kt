@@ -73,6 +73,10 @@ class FilesFragment : Fragment() {
         }
     }
 
+    override fun onPause() {
+        super.onPause()
+        viewModel.playing=false
+    }
 
     override fun onDestroyView() {
         super.onDestroyView()
@@ -83,7 +87,7 @@ class FilesFragment : Fragment() {
         val intent = Intent()
         intent.apply {
             action = Intent.ACTION_OPEN_DOCUMENT
-            type = "*/*"
+            type = "audio/*"
         }
         activityResultLaunch.launch(intent)
     }
@@ -96,15 +100,9 @@ class FilesFragment : Fragment() {
         val uri =result.data?.data
         if (uri==null) return
         Log.e(TAG, "callback Uri = $uri")
-        try {
-            val mediaData=AudioDataInfo(requireContext(),uri,1)
-            binding.textMediaData.text="$mediaData"
-            viewModel.playUri(requireContext(),uri)
-
-        }catch (e:Exception){
-            binding.textMediaData.text="File data error: ${e.localizedMessage}"
-
-        }
+        val mediaData=AudioDataInfo(requireContext(),uri)
+        binding.textMediaData.text="$mediaData"
+        viewModel.playUri(requireContext(),uri)
 
     }
 

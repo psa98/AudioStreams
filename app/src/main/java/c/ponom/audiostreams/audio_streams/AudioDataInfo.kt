@@ -43,7 +43,6 @@ class AudioDataInfo{
         extractor.selectTrack(track)
         val trackFormat = extractor.getTrackFormat(track)
         extractor.release()
-
         //документация андроида утверждает что любая
         // дорожка медиафайла имеет этот параметр, но мало ли что нам подсунут
         val mime = trackFormat.getString("mime").toString()

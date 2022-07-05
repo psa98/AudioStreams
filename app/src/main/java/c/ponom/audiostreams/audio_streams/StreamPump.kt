@@ -64,7 +64,7 @@ class StreamPump @JvmOverloads constructor(
 
     @Suppress("BlockingMethodInNonBlockingContext")
     private fun pump(autoClose: Boolean) {
-        CoroutineScope(Dispatchers.IO).launch{
+        CoroutineScope(Dispatchers.Default).launch{
             do {
                 if (state==FINISHED||state==FATAL_ERROR) break
                 var read: Int=0

@@ -38,7 +38,7 @@ class AudioOutFragment : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        viewModel= ViewModelProvider(this)[AudioOutViewModel::class.java]
+        viewModel=ViewModelProvider(this).get(AudioOutViewModel::class.java)
         secondsPlayed=viewModel.secondsPlayed
         errorMessage=viewModel.errorData
         currentState=viewModel.recorderState
