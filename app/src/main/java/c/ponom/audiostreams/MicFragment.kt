@@ -104,6 +104,15 @@ class MicFragment : Fragment() {
     }
 
 
+    override fun onPause() {
+        super.onPause()
+        when (viewModel.recorderState.value) {
+            RECORDING -> viewModel.stopRecording()
+            PLAYING -> viewModel.stopPlaying()
+            else -> {}
+        }
+    }
+
     private fun setupSpinners() {
 
         val rateAdapter = StandardChoiceAdapter(requireContext(), android.R.layout.simple_spinner_item, sampleRateList)
