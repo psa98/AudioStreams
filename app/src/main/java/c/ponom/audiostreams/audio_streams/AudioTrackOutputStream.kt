@@ -181,7 +181,9 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
         val result:Int = audioOut!!.write(b, off, len)
         bytesSent += result.coerceAtLeast(0)
         if (result<0){
-            close()
+            audioOut?.release()
+            audioOut=null
+            closed=true
             throw IOException ("Error code $result - see codes for AudioTrack write(...)")
         }
     }
@@ -207,7 +209,9 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
         val result = audioOut!!.write(b, off, len, WRITE_BLOCKING)
         bytesSent += result.coerceAtLeast(0)*2
         if (result<0){
-            close()
+            audioOut?.release()
+            audioOut=null
+            closed=true
             throw IOException ("Error code $result - see codes for AudioTrack write(...)")
         }
    }
