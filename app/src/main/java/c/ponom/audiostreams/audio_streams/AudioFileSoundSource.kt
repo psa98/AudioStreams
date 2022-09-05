@@ -9,10 +9,8 @@ import android.media.MediaCodec.CodecException
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.net.Uri
-import android.util.Log
 import c.ponom.audiostreams.audio_streams.ArrayUtils.byteToShortArrayLittleEndian
 import c.ponom.recorder2.audio_streams.AudioInputStream
-import c.ponom.recorder2.audio_streams.TAG
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -31,8 +29,7 @@ private const val MAX_BUFFER_SIZE = 512 * 1024
 // к ней плюсуется максимальный размер буфера используемого кодеком (типично 4-16Кб)
 private const val RESERVE_BUFFER_SIZE = 32 * 1024
 private const val TIMEOUT_US = 0L
-private const val LOG_TAG: String = "Decoder"
-private const val QUEUE_SIZE  =8
+private const val QUEUE_SIZE  = 8
 
 
 /**
@@ -61,12 +58,12 @@ class AudioFileSoundSource {
     private var eofReached = false
     private var bufferInfo: MediaCodec.BufferInfo? = null
     private var prepared = false
-    private var currentBufferChunk = BufferedChunck()
+    private var currentBufferChunk = BufferedChunk()
     private var mainBuffer: ByteBuffer = ByteBuffer.allocate(MAX_BUFFER_SIZE)
     private var lastBuffer =false
     private var fatalErrorInBuffer =false
     private var lock = Any()
-    private var bufferQueue:ArrayBlockingQueue<BufferedChunck> = ArrayBlockingQueue(QUEUE_SIZE,true)
+    private var bufferQueue:ArrayBlockingQueue<BufferedChunk> = ArrayBlockingQueue(QUEUE_SIZE,true)
     private var bytesTotalCount = 0
     private var bytesFinalCount = 0
     /**
@@ -156,18 +153,15 @@ class AudioFileSoundSource {
 
     @Throws(IllegalStateException::class, CodecException::class)
     private fun takeNewBuffer() {
-        Log.e(TAG, "takeNewBuffer: IN")
         //берем первый буфер объект из очереди, read будет брать из него пока все не кончится,
         // после чего либо бросит исключение, либо отдаст -1, либо запросит следующий
         if (!prepared || bufferReady || eofReached) throw
             IllegalStateException("Extractor not ready or already released")
         currentBufferChunk = bufferQueue.take()
-        Log.e(TAG, "takeNewBuffer TAKE ${bufferQueue.size}")
         mainBuffer = currentBufferChunk.byteBuffer
         mainBuffer.position(0)
         fatalErrorInBuffer=currentBufferChunk.inFatalError
         lastBuffer=currentBufferChunk.isLastBuffer
-        Log.e(TAG, "fillBufferQueue TAKE ${bufferQueue.size}, last = ${currentBufferChunk.isLastBuffer}")
         bufferReady = true
     }
 
@@ -179,7 +173,7 @@ class AudioFileSoundSource {
         CoroutineScope(Dispatchers.Default).launch {
             maxChunkSize=0
             do {
-                val newByteBufferChunk=BufferedChunck()
+                val newByteBufferChunk=BufferedChunk()
                 currentBuffer = newByteBufferChunk.byteBuffer
                 do {
                     try {
@@ -202,11 +196,7 @@ class AudioFileSoundSource {
                 }while (true)
                 bufferQueue.put(newByteBufferChunk)
                 if (newByteBufferChunk.isLastBuffer||newByteBufferChunk.inFatalError) break
-                Log.e(TAG, "fillBufferQueue put next ${bufferQueue.size}")
             } while (true)
-            Log.e(TAG, "fillBufferQueue last chunk TOTAL size ${bufferQueue.size}")
-            // при чтении из буфера надо будет в конце выкинуть -1 если буфер последний и бросить
-            // ошибку если она поймана
         }
     }
     @Throws(IllegalStateException::class, CodecException::class )
@@ -214,7 +204,6 @@ class AudioFileSoundSource {
         var inputEOS=false
         val inputBufIndex =
             codec.dequeueInputBuffer(TIMEOUT_US)
-        Log.i(LOG_TAG, "inputBufIndex : $inputBufIndex")
         if (inputBufIndex >= 0) {
             val dstBuf = codecInputBuffers[inputBufIndex]
             var sampleSize = extractor.readSampleData(dstBuf, 0)
@@ -282,7 +271,7 @@ class AudioFileSoundSource {
                - оставить метод неподдерживаемым, все нормальные запросы от сторонних API
                требуют не побайтное чтение
                - вернуть данные запрошенные через b = ByteArray(1);read([b]); return b[1].toInt + 128
-
+               - скачать небольшой буфер и отдавать байты из него
              */
         }
 
@@ -292,13 +281,12 @@ class AudioFileSoundSource {
             if (b == null) throw NullPointerException("Null byte array passed")
             if (off != 0) throw IllegalArgumentException("Non zero offset currently not implemented")
             if (len==0) return 0
-            if (((bytesSent >= bytesFinalCount && bytesFinalCount != 0)&&!fatalErrorInBuffer)
-//                ||eofReached
-            ) {
+            if (((bytesSent >= bytesFinalCount && bytesFinalCount != 0)&&!fatalErrorInBuffer)) {
                 //close()
                 //todo - а вообще формально доигранный до конца поток или поток с ошибкой и нормально
                 // закрытый это одно и то же? как я понимаю вроде для доигранного если он mark
-                // поддерживает можно отмотать на начало
+                // поддерживает можно отмотать на начало. Если сделаю поддержку перемотки то
+                // close() тут не нужен
                 return -1
             }
             if ((bytesSent >= bytesFinalCount && bytesFinalCount != 0)&&fatalErrorInBuffer) {
@@ -307,15 +295,12 @@ class AudioFileSoundSource {
                 throw IOException("IO exception in audio codec =${currentBufferChunk.exception}")
             }
             val bytes =  getBytesFromBuffer(b, len)
-            if (b.maxOrNull()!! <=0)
-                Log.e(TAG, "CHUNK: = ZEROLEVEL")
             bytesSent += bytes
             onReadCallback?.invoke(bytesSent)
             return  bytes
         }
         @Synchronized
         override fun close() {
-
             if (released) return
             released=true
             bufferInfo=null
@@ -341,7 +326,7 @@ class AudioFileSoundSource {
             val byteArray =ByteArray(b.size*2)
             //todo - могут вылезать интересные вещи при нечетном числе байт в невалидных файлах
             val bytes = read(byteArray, off, len*2)
-            if (bytes==-1)return -1
+            if (bytes==-1) return -1
             val resultShorts= byteToShortArrayLittleEndian(byteArray)
             resultShorts.copyInto(b,0,0,bytes/2)
             return bytes/2
@@ -350,33 +335,26 @@ class AudioFileSoundSource {
         private fun getBytesFromBuffer(b: ByteArray, len: Int): Int {
             if (!bufferReady && !eofReached) {
                 takeNewBuffer()
-                Log.e(TAG, "getBytesFromBuffer: ASK for next buffer")
                 mainBuffer.get(b, 0, len)
-                if (b.maxOrNull()!! <=0)
-                    Log.e(TAG, "read: = ZEROLEVEL")
-                Log.e(TAG, "getBytesFromBuffer: GET  next buffer")
                 return len
             }
             var length = len
                 if (len >= mainBuffer.remaining()) {
                     length = mainBuffer.remaining()
                     mainBuffer.get(b, 0, length)
-                    if (b.maxOrNull()!! <=0)
-                        Log.e(TAG, "read: = ZEROLEVEL")
-                    Log.e(TAG, "getBytesFromBuffer:  LAST BUFFER IN CHUNK")
                     if (!lastBuffer && !fatalErrorInBuffer) {
                         bufferReady = false
                         takeNewBuffer()
                     }
-                    if (lastBuffer || fatalErrorInBuffer) eofReached = true
+                    if (lastBuffer || fatalErrorInBuffer)
+                        eofReached = true
                     return length
                 }
 
             mainBuffer.get(b, 0, length)
-            if (b.maxOrNull()!! <=0)
-                Log.e(TAG, "read: = ZEROLEVEL")
             return length
         }
+
         /*
         Returns an estimate of the number of bytes that can be read (or skipped over) from this input
         stream without blocking by the next invocation of a method for this input stream.
@@ -388,13 +366,14 @@ class AudioFileSoundSource {
             //или неблокирующий запрос готового
             return max(mainBuffer.remaining(),bytesRemainingEstimate().toInt())
         }
+
         override fun readShorts(b: ShortArray): Int {
             return readShorts(b,0,b.size)
         }
         override fun canReadShorts(): Boolean = true
     }
 
-    inner class BufferedChunck{
+    inner class BufferedChunk{
         val byteBuffer:ByteBuffer= ByteBuffer.allocate(MAX_BUFFER_SIZE)
         var isLastBuffer:Boolean=true
         var inFatalError:Boolean=false

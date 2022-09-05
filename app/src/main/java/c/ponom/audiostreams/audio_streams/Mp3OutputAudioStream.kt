@@ -164,7 +164,7 @@ class Mp3OutputAudioStream private constructor() : AudioOutputStream(){
 
     private fun encodeMonoStream(inArray: ShortArray): ByteArray {
         if (finished) throw IllegalStateException("Stream closed, create new encoder")
-        val outBuff = ByteArray(inArray.size*2)
+        val outBuff = ByteArray(inArray.size*4)
         val resultBytes = androidLame.encode(inArray, inArray, inArray.size, outBuff)
         if (resultBytes<0){
             finished=true
@@ -177,7 +177,7 @@ class Mp3OutputAudioStream private constructor() : AudioOutputStream(){
     private fun encodeInterleavedStream(samples: ShortArray): ByteArray {
         if (finished) throw IllegalStateException("Stream closed, create new encoder")
         val size = samples.size
-        val outBuff = ByteArray(size*2)
+        val outBuff = ByteArray(size*4)
         val resultBytes = androidLame.encodeBufferInterLeaved(samples, size/2, outBuff)
         if (resultBytes<0) {
             finished=true

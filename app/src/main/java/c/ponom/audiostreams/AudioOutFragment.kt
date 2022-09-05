@@ -151,5 +151,10 @@ class AudioOutFragment : Fragment() {
 
     }
 
+    override fun onPause() {
+        super.onPause()
+        viewModel.stopPlaying()
+
+    }
 
 }

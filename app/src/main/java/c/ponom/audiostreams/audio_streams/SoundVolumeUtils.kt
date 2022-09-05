@@ -6,8 +6,6 @@ import kotlin.math.sqrt
 
 object SoundVolumeUtils {
 
-    // документировал
-
     /**
      * @return Peak volume for audio data chunk scaled from 0 to  Short.MAX_VALUE
      * */

@@ -74,7 +74,6 @@ class AudioDataInfo{
         /* According to MediaFormat.getTrackFormat(...) documentation any audio tracks have this 4
          * params, so we shouldn't get an exception
          *
-         * Но, конечно, можем, потому что это андроид!
          */
         try {
             duration = trackFormat.getLong("durationUs").div(1000)

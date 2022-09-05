@@ -132,8 +132,10 @@ class MicSoundInputStream private constructor(var audioRecord: AudioRecord? = nu
         }
         val bytes = audioRecord!!.read(b, off, len)
         if (bytes < 0) logMicError(bytes)
-        if (bytes == ERROR_DEAD_OBJECT) close()
-        //конец потока
+        if (bytes == ERROR_DEAD_OBJECT||bytes == ERROR) {
+            close() //Конец потока
+            return  -1
+        }
         if (bytes>0) bytesSent += bytes
         onReadCallback?.invoke(bytesSent)
         return bytes
@@ -142,9 +144,13 @@ class MicSoundInputStream private constructor(var audioRecord: AudioRecord? = nu
     private fun logMicError(response: Int) {
             val message:String =
             when (response){
-                ERROR_INVALID_OPERATION -> "MicSoundInputStream AudioRecord not initiated or started properly"
-                ERROR_DEAD_OBJECT -> "MicSoundInputStream AudioRecord not valid anymore and stream to be recreated "
-                ERROR_BAD_VALUE -> "MicSoundInputStream#read(..) parameters don't resolve to valid data and indexes"
+                ERROR_INVALID_OPERATION -> "MicSoundInputStream AudioRecord not initiated " +
+                        "or started properly"
+                ERROR_DEAD_OBJECT -> "MicSoundInputStream AudioRecord not valid anymore " +
+                        "and stream to be recreated "
+                ERROR_BAD_VALUE -> "MicSoundInputStream#read(..) parameters don't resolve " +
+                        "to valid data and indexes"
+                ERROR -> "MicSoundInputStream#read(..) error"
                 else -> return
             }
         Log.d(TAG, "Audio Record read result=$response, $message", )
@@ -152,31 +158,6 @@ class MicSoundInputStream private constructor(var audioRecord: AudioRecord? = nu
 
 
 
-    fun readShorts(b: ShortArray, off: Int, len: Int,
-                   onReady:((samples:Int,dataSamples: ShortArray) -> Unit)?): Int {
-        if (off < 0 || len < 0 || len > b.size - off)
-            throw IndexOutOfBoundsException("Wrong read(...) params")
-        if (len == 0) return 0
-        if (audioRecord==null) return -1
-        if (!isRecording()) {
-            logMicError(ERROR_INVALID_OPERATION)
-            return ERROR_INVALID_OPERATION
-        }
-        val samples = audioRecord!!.read(b, off, len)
-        if (samples < 0) logMicError(samples)
-        if (samples== ERROR_DEAD_OBJECT) {
-            close()
-            return  -1
-        }
-        if (samples>0){
-            val data=b.copyOf(samples)
-                if(onReady!=null)
-                onReady(samples,data)
-            bytesSent+=samples*2
-            onReadCallback?.invoke(bytesSent)
-        }
-        return samples
-    }
 
 
     override fun readShorts(b: ShortArray, off: Int, len: Int): Int {
@@ -190,12 +171,11 @@ class MicSoundInputStream private constructor(var audioRecord: AudioRecord? = nu
         }
         val samples = audioRecord!!.read(b, off, len)
         if (samples < 0) logMicError(samples)
-        if (samples== ERROR_DEAD_OBJECT) {
-            close()
+        if (samples == ERROR_DEAD_OBJECT||samples == ERROR) {
+            close() //Конец потока
             return  -1
         }
-            //Конец потока
-        if (samples>0)bytesSent+=samples*2
+         if (samples>0)bytesSent+=samples*2
         return samples
     }
 
@@ -222,12 +202,14 @@ class MicSoundInputStream private constructor(var audioRecord: AudioRecord? = nu
     }
 
 
-    fun startRecordingSession() {
+    fun startRecordingSession(): Boolean {
         if (audioRecord?.state==STATE_INITIALIZED &&
-                audioRecord?.recordingState==RECORDSTATE_STOPPED) audioRecord?.startRecording()
-            else return
+            audioRecord?.recordingState==RECORDSTATE_STOPPED)
+                audioRecord?.startRecording()
+            else return false
         bytesSent=0
         recordingIsOn=true
+        return true
     }
 
     fun stopRecordingSession() {
@@ -261,11 +243,11 @@ class MicSoundInputStream private constructor(var audioRecord: AudioRecord? = nu
 
 
     fun getPreferredDevice(): AudioDeviceInfo? {
-        if (audioRecord==null) return null
-        else return audioRecord!!.preferredDevice
+        return if (audioRecord==null) null
+        else audioRecord!!.preferredDevice
     }
 
-    //  Check for 0!
+    //  Always check for 0! Zero buffer size means than mic didn't initialised properly
     fun currentBufferSize(): Int {
         if (audioRecord==null) return 0
         return try {
@@ -276,8 +258,6 @@ class MicSoundInputStream private constructor(var audioRecord: AudioRecord? = nu
     }
 
     override fun canReadShorts():Boolean = true
-
-
 
 }
 

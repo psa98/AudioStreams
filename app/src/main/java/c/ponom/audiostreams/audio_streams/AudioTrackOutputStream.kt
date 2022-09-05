@@ -10,6 +10,10 @@ import android.media.AudioTrack.*
 import android.util.Log
 import c.ponom.recorder2.audio_streams.AudioOutputStream
 import c.ponom.recorder2.audio_streams.TAG
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers.IO
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.io.IOException
 import java.lang.System.currentTimeMillis
 
@@ -45,7 +49,6 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
         minBufferInMs: Int = 0
     ) : this() {
         this.sampleRate = sampleRate
-        //todo -- переделать под число каналов на входе, нечего тут
         channelConfig=channelConfig(channelsCount)
         // todo тут будет проверка на законные значения из списка, варнинг для всех законных кроме
         //  8, 16,22, 32 и 44 - 48к
@@ -101,13 +104,15 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
         if (closed||audioOut == null||audioOut?.playState!= PLAYSTATE_STOPPED) return
         try {
         audioOut?.setVolume(0.02f)         //это позволяет  убрать клик в конце
-        Thread.sleep(90)
-        //время подобрано на слух, меньше 30 дает клик на частоте 440 гц 16000 сэмплов
+            CoroutineScope(IO).launch {
+                delay(90)
+            //время подобрано на слух, меньше 30 дает клик на частоте 440 гц 16000 сэмплов
             // этого может быть мало для звуков с мощными НЧ, но стоит потестить
-        audioOut?.pause()
-        audioOut?.flush()
-        audioOut?.stop()
-        audioOut?.setVolume(currentVolume)
+                audioOut?.pause()
+                audioOut?.flush()
+                audioOut?.stop()
+                audioOut?.setVolume(currentVolume)
+            }
         } catch (e:IllegalStateException){
             e.printStackTrace()
         }
@@ -127,11 +132,12 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
         if (closed||audioOut == null||audioOut?.playState!= PLAYSTATE_PLAYING) return
         try {
             audioOut?.setVolume(0.02f)         //это позволяет  убрать клик в конце
-            Thread.sleep(60)
             //время подобрано на слух, меньше 30 дает клик на частоте 440 гц 16000 сэмплов
             // этого может быть мало для звуков с мощными НЧ, но стоит потестить
-            audioOut?.pause()
-            audioOut?.setVolume(currentVolume)
+            CoroutineScope(IO).launch {
+                audioOut?.pause()
+                audioOut?.setVolume(currentVolume)
+            }
         } catch (e:IllegalStateException){
             e.printStackTrace()
         }
@@ -140,17 +146,10 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
     fun resume() {
         if (closed||audioOut == null||audioOut?.playState!= PLAYSTATE_PAUSED) return
         try {
-            audioOut?.setVolume(0.02f)         //это позволяет  убрать клик в конце
-            Thread.sleep(60)
-            //время подобрано на слух, меньше 30 дает клик на частоте 440 гц 16000 сэмплов
-            // этого может быть мало для звуков с мощными НЧ, но стоит потестить
-            audioOut?.play()
-            audioOut?.setVolume(currentVolume)
+             audioOut?.play()
         } catch (e:IllegalStateException){
             e.printStackTrace()
         }
-
-
     }
 
     // документировать

@@ -6,11 +6,14 @@ import android.media.AudioTrack.PLAYSTATE_STOPPED
 import android.util.Log
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import c.ponom.audiostreams.AudioOutState.*
 import c.ponom.audiostreams.audio_streams.AudioTrackOutputStream
 import c.ponom.audiostreams.audio_streams.StreamPump
 import c.ponom.recorder2.audio_streams.TAG
 import c.ponom.recorder2.audio_streams.TestSoundInputStream
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 class AudioOutViewModel : ViewModel() {
 
@@ -35,19 +38,23 @@ class AudioOutViewModel : ViewModel() {
             onError(e)
             return
         }
-        /*выбор меньшего буфера чем sampleRate приведет в щелчкам из-за его underruning-a -
+        /*выбор  буфера не подходящего для sampleRate размера  приведет в щелчкам из-за его underruning-a -
         StreamPump будет подавать данные меньшим темпом чем их будет забирать выход звука
         В общем случае размер буферов при использовании библиотечных классов следует подбирать
         в процессе отладки.
         */
-        audioPump=StreamPump(audioInStream, audioOutStream!!, sampleRate*2,
+        audioPump=StreamPump(audioInStream, audioOutStream!!, sampleRate/2,
             // тестируется правильность расчета поля audioInStream.timestamp
             onWrite =  { secondsPlayed.postValue(audioOutStream!!.timestamp/1000.0f)},
             onFinish = {recorderState.postValue(STOPPED)},
             onFatalError= {onError(it)})
-        audioOutStream?.play()
         audioPump.start(false)
         recorderState.postValue(PLAYING)
+        viewModelScope.launch {
+            delay(500) //отсрочка для заполнения буфера
+            audioOutStream?.play()
+        }
+
     }
 
     private fun onError (e:Exception) {
@@ -88,11 +95,16 @@ class AudioOutViewModel : ViewModel() {
     }
 
     fun setVolume(volume: Float) {
-        if (recorderState.value!=PLAYING) return
-        val outStream = audioOutStream
-        if (outStream==null||outStream.closed ) return
-        else outStream.setVolume(volume)
+        if (recorderState.value == PLAYING) {
+            val outStream = audioOutStream
+            if (outStream != null && !outStream.closed)
+                outStream.setVolume(volume)
+        }
+    }
 
+    override fun onCleared() {
+        super.onCleared()
+        stopPlaying()
     }
 }
 

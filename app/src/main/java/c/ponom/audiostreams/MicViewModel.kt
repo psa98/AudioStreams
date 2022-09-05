@@ -2,6 +2,7 @@ package c.ponom.audiostreams
 
 import android.os.Environment
 import android.util.Log
+import android.widget.Toast
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import c.ponom.audiostreams.MicRecordState.*
@@ -11,6 +12,7 @@ import c.ponom.audiostreams.audio_streams.SoundVolumeUtils.getRMSVolume
 import c.ponom.recorder2.audio_streams.TAG
 import com.naman14.androidlame.LameBuilder
 import java.io.File
+import java.io.FileOutputStream
 
 
 class MicTestViewModel : ViewModel() {
@@ -26,7 +28,7 @@ class MicTestViewModel : ViewModel() {
     val pathName: String = App.appContext.getExternalFilesDir(Environment.DIRECTORY_MUSIC)
         .toString()+"/AudioStreams"
     //при переустановке приложения прежний файл будет реадонли и его надо удалить
-    val testFileMp3 = File(outDir, "/TestMicStream.mp3")
+    private val testFileMp3 = File(outDir, "/TestMicStream.mp3")
     var recordingIsOn=false
 
 
@@ -34,12 +36,22 @@ class MicTestViewModel : ViewModel() {
     fun record(source: Int, sampleRate: Int) {
         //подготовим входящий микрофонный поток
         recordingIsOn=true
+
+
+
+
+        val outputFileStream:FileOutputStream
         //подготовим входящий микрофонный поток и исходящий файловый
-        val outputFileStream = testFileMp3.outputStream()
+        try {
+             outputFileStream = testFileMp3.outputStream()
+        } catch (e:Exception){
+            Toast.makeText(App.appContext,"Need permissions to work!", Toast.LENGTH_LONG).show()
+            return
+        }
         val testMicStream=MicSoundInputStream(sampleRate,source,bufferMult = 16)
         // рекомендуемый битрейт для частоты не более (частота/137), аналогично соотношению 44100/320
         val encoderStream=Mp3OutputAudioStream(outputFileStream,
-            sampleRate,sampleRate/137, LameBuilder.Mode.MONO)
+            sampleRate,sampleRate/160, LameBuilder.Mode.MONO)
         audioPump=StreamPump(testMicStream, encoderStream,bufferSize=1000,
             onEachPump = {recordLevel.postValue(getRMSVolume(byteToShortArrayLittleEndian(it)).toFloat())},
             onWrite =  { bytesPassed.postValue(it.toInt())},
