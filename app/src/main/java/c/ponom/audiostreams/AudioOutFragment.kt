@@ -68,6 +68,10 @@ class AudioOutFragment : Fragment() {
         }
     }
 
+    override fun onPause() {
+        super.onPause()
+        viewModel.stopPlaying()
+    }
 
     private fun setupObservers() {
         secondsPlayed.observe(this,{binding.secondsPlayed.text=it.toString()})
