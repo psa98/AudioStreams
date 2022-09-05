@@ -12,6 +12,8 @@ import c.ponom.audiostreams.audio_streams.AudioTrackOutputStream
 import c.ponom.audiostreams.audio_streams.StreamPump
 import c.ponom.recorder2.audio_streams.TAG
 import c.ponom.recorder2.audio_streams.TestSoundInputStream
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -77,13 +79,17 @@ class AudioOutViewModel : ViewModel() {
         if (audioPump.state==StreamPump.State.PUMPING){
             // пример использования - остановит звук без щелчка
             audioOut?.setVolume(0.0f)
-            audioOut?.stop()
-            audioOutStream?.stop()
-            audioPump.stop(false)
-            // тестируется режим неавтоматического закрытие потоков StreamPump
-            audioInStream.close()
-            audioOutStream?.close()
-            recorderState.postValue(STOPPED)
+            CoroutineScope(IO).launch {
+                recorderState.postValue(STOPPED)
+                delay(60)
+                audioOut?.stop()
+                audioOutStream?.stop()
+                audioPump.stop(false)
+                // тестируется режим неавтоматического закрытие потоков StreamPump
+                audioInStream.close()
+                audioOutStream?.close()
+
+            }
         }
     }
 
