@@ -18,14 +18,20 @@ import c.ponom.recorder2.audio_streams.TAG
 import java.io.IOException
 
 
-private const val BUFFER_SIZE__MULT: Int=4 //todo переделать под мс
-class MicSoundInputStream private constructor(var audioRecord: AudioRecord? = null): AudioInputStream()  {
+private const val BUFFER_SIZE__MULT: Int=1 //todo переделать под мс
+class MicSoundInputStream : AudioInputStream {
 
+    private var audioRecord: AudioRecord?=null
+    private constructor()
     private var minBuffer: Int=0
 
+    /**
+     * True if stream was already closed, including after error
+     */
+    var closed:Boolean=false
+    private set
 
-    // если разрешения нет - данные от микрофона будут пустыми. Описать в доках,
-    // это проблема програмиста, а не повод бросать исключение
+
     @JvmOverloads
     @SuppressLint("MissingPermission")
     @Throws(IllegalArgumentException::class,IOException::class)
@@ -34,77 +40,60 @@ class MicSoundInputStream private constructor(var audioRecord: AudioRecord? = nu
         channels: Int = 1,
         encoding: Int = ENCODING_PCM_16BIT,
         bufferMult: Int = BUFFER_SIZE__MULT
-    )
-                : this() {
+    ): this() {
         channelConfig=channelConfig(channels)
         channelsCount=channels
         if (!(channelConfig== CHANNEL_IN_MONO ||channelConfig== CHANNEL_IN_STEREO))
             throw IllegalArgumentException("Only 1 and 2 channels (CHANNEL_IN_MONO " +
                     "and CHANNEL_IN_STEREO) supported")
-            require(encoding== ENCODING_PCM_16BIT) { "Only PCM 16 bit encoding currently supported"}
+            require(encoding== ENCODING_PCM_16BIT)
+            { "Only PCM 16 bit encoding currently supported"}
         minBuffer= getMinBufferSize(sampleRate,channelConfig,encoding)
         audioRecord= AudioRecord(source,sampleRate ,channelConfig,encoding,minBuffer*bufferMult)
-         if (audioRecord==null) throw IllegalArgumentException("Audio record init error - wrong params? ")
+         if (audioRecord==null)
+             throw IllegalArgumentException("Audio record init error - wrong params? ")
         this.sampleRate = audioRecord!!.sampleRate
-        // todo тут будет проверка на законные значения из списка, варнинг для всех законных кроме 16,22 и 44к
-        //  и исключение для совсем левых
         bytesPerSample = if (encoding== ENCODING_PCM_16BIT) 2  else 1
         frameSize=bytesPerSample*channels
+
         // todo - возможно нужны коллбэки на готовность и асинхронный вариант конструктора,
         //  инициализация микрофона может быть не быстрой
     }
 
 
-
+    /** Not implemented for MicSoundInputStream
+     *
+     */
    override fun read(): Int {
        throw NotImplementedError("Not  implemented, use read(....)")
    }
 
 
    /**
-    * Return -1 when there is no estimated stream length (for example,for endless streams)
-    * or estimated rest of bytes in stream
+    * Return -1 since there is no estimated stream length
     */
    override fun totalBytesEstimate(): Long {
        return -1
    }
 
     /**
-     * Return -1 when there is no estimated stream length (for example,for endless streams)
-     * or estimated rest of bytes in stream
+     * Return -1 since there is no estimated stream length
      */
    override fun bytesRemainingEstimate(): Long {
         return if (audioRecord==null) 0 else -1L
    }
 
-    /**
-     * смотри описание исходного. тут надо сообщить сколько можно отдать без
-     * блокирования из буфера, но, конечно, лучше брать меньше
-     */
+    /*
+   Returns current size of MicSoundInputStream internal buffer.
+   */
    override fun available(): Int {
        return audioRecord?.bufferSizeInFrames?.times(frameSize)?:0
    }
 
-
     /**
-     * Params:
-     * audioData – the array to which the recorded audio data is written.
-     * offset – index in audioData to which the data is written.
-     * Must not be negative, or cause the data access to go out of bounds of the array.
-     * size – the number of requested bytes. Must not be negative, or cause the data
-     * access to go out of bounds of the array.
-     * Returns:
-     * zero or the positive number of bytes that were read, or one of the following error codes.
-     * Minus 1 if stream is closed (ended)
-     * The number of shorts will be a multiple of the channel count not to exceed sizeInShorts.
-     *AudioRecord.ERROR_INVALID_OPERATION if the object isn't properly initialized
-     * AudioRecord.ERROR_BAD_VALUE if the parameters don't resolve to valid data and indexes
-     * AudioRecord.ERROR_DEAD_OBJECT if the object is not valid anymore and needs to be recreated.
-     * The dead object error code is not returned if some data was successfully transferred.
-     * In this case, the error is returned at the next read() ERROR in case of other error
+     * Reads up to <code>b.len</code> bytes of data from the MicSoundInputStream into
+     * an array of bytes calling read(b,0, b.size)
      */
-
-
     @Throws(NullPointerException::class)
     override fun read(b: ByteArray?): Int {
         if (b==null) throw NullPointerException ("Null array passed")
@@ -113,6 +102,22 @@ class MicSoundInputStream private constructor(var audioRecord: AudioRecord? = nu
     }
 
 
+    /**
+     * Params:
+     * @param b – the array to which the recorded audio data is written.
+     * @param off – offset in b to which the data is written. Must not be negative.
+     * @param len – the number of requested bytes.
+     * Returns:
+     * @return  zero or the positive number of bytes that were read,
+     * -1  if the MicSoundInputStream not valid anymore due to error, or one of the following error codes:
+     * AudioRecord.ERROR_INVALID_OPERATION if the stream isn't properly initialized OR recording is
+     * not started or was stopped,
+     * AudioRecord.ERROR_BAD_VALUE if the parameters don't resolve to valid data and indexes.
+     * @throws IOException if MicSoundInputStream was closed on previous error or by calling close()
+     * @throws IllegalArgumentException for illegal combinations of b.size, off and len parameters
+     * Method will write zero volume samples values to b if application don't hold
+     * Manifest.permission.RECORD_AUDIO and during phone calls
+     */
     @Throws(NullPointerException::class,IOException::class,IllegalArgumentException::class)
     override fun read(b: ByteArray?, off: Int, len: Int): Int {
         if (b == null) throw NullPointerException ("Null array passed")
@@ -120,7 +125,7 @@ class MicSoundInputStream private constructor(var audioRecord: AudioRecord? = nu
         if (off < 0 || len < 0 || len > b.size - off)
             throw IllegalArgumentException("Wrong read(...) params")
         if (len == 0) return 0
-        if (audioRecord==null) return -1
+        if (closed) throw IOException("Stream already closed")
         if (!isRecording()) {
             logMicError(ERROR_INVALID_OPERATION)
             return ERROR_INVALID_OPERATION
@@ -128,38 +133,37 @@ class MicSoundInputStream private constructor(var audioRecord: AudioRecord? = nu
         val bytes = audioRecord!!.read(b, off, len)
         if (bytes < 0) logMicError(bytes)
         if (bytes == ERROR_DEAD_OBJECT||bytes == ERROR) {
-            close() //Конец потока
+            close()
             return  -1
         }
-        if (bytes>0) bytesSent += bytes
-        onReadCallback?.invoke(bytesSent)
+        if (bytes>0) bytesRead += bytes
+        onReadCallback?.invoke(bytesRead)
         return bytes
     }
 
-    private fun logMicError(response: Int) {
-            val message:String =
-            when (response){
-                ERROR_INVALID_OPERATION -> "MicSoundInputStream AudioRecord not initiated " +
-                        "or started properly"
-                ERROR_DEAD_OBJECT -> "MicSoundInputStream AudioRecord not valid anymore " +
-                        "and stream to be recreated "
-                ERROR_BAD_VALUE -> "MicSoundInputStream#read(..) parameters don't resolve " +
-                        "to valid data and indexes"
-                ERROR -> "MicSoundInputStream#read(..) error"
-                else -> return
-            }
-        Log.d(TAG, "Audio Record read result=$response, $message", )
-    }
 
-
-
-
+    /**
+     * Params:
+     * @param b – the array to which the recorded audio data is written.
+     * @param off – offset in b to which the data is written. Must not be negative.
+     * @param len – the number of requested shorts samples.
+     * Returns:
+     * @return  zero or the positive number of bytes that were read,
+     * -1  if the MicSoundInputStream not valid anymore due to error, or one of the following error codes:
+     * AudioRecord.ERROR_INVALID_OPERATION if the stream isn't properly initialized OR recording is
+     * not started or was stopped,
+     * AudioRecord.ERROR_BAD_VALUE if the parameters don't resolve to valid data and indexes.
+     * @throws IOException if MicSoundInputStream was closed on previous error or by calling close()
+     * @throws IllegalArgumentException for illegal combinations of b.size, off and len parameters
+     * Method will write zero volume samples values to b if application don't hold
+     * Manifest.permission.RECORD_AUDIO and during phone calls
+     */
     @Throws(IOException::class,IllegalArgumentException::class)
     override fun readShorts(b: ShortArray, off: Int, len: Int): Int {
         if (len == 0|| b.isEmpty()) return 0
         if (off < 0 || len < 0 || len > b.size - off)
             throw IllegalArgumentException("Wrong read(...) params")
-        if (audioRecord==null) return -1
+        if (closed) throw IOException("Stream already closed")
         if (!isRecording()) {
             logMicError(ERROR_INVALID_OPERATION)
             return ERROR_INVALID_OPERATION
@@ -167,22 +171,34 @@ class MicSoundInputStream private constructor(var audioRecord: AudioRecord? = nu
         val samples = audioRecord!!.read(b, off, len)
         if (samples < 0) logMicError(samples)
         if (samples == ERROR_DEAD_OBJECT||samples == ERROR) {
-            close() //Конец потока
+            close()
             return  -1
         }
-         if (samples>0)bytesSent+=samples*2
+         if (samples>0)bytesRead+=samples*2
         return samples
     }
 
+    /**
+     * Reads up to <code>b.len</code> samples of audio data from the MicSoundInputStream into
+     * an array of shorts calling read(b,0, b.size)
+     * @see readShorts(b: ShortArray, off: Int, len: Int)
+     *
+     */
     override fun readShorts(b: ShortArray): Int {
          return readShorts(b,0,b.size)
     }
 
+    /**
+     * Closes MicSoundInputStream, releasing resources
+     *
+     */
     override fun close() {
        if (audioRecord==null) return
        audioRecord?.release()
+       closed=true
        audioRecord=null
     }
+
 
     fun isRecording(): Boolean {
         return if (audioRecord != null)
@@ -191,17 +207,23 @@ class MicSoundInputStream private constructor(var audioRecord: AudioRecord? = nu
         else false
     }
 
-
-    fun startRecordingSession(): Boolean {
+    /**
+     * Start recording. No-op if already in recording state
+     * @throws IOException if stream was closed
+     */
+    fun startRecordingSession() {
+        if (closed) throw IOException ("Stream already closed")
         if (audioRecord?.state==STATE_INITIALIZED &&
             audioRecord?.recordingState==RECORDSTATE_STOPPED)
                 audioRecord?.startRecording()
-            else return false
-        bytesSent=0
-        return true
     }
 
+    /**
+     * Stops (pause) recording.
+     * @throws IOException if stream was closed
+     */
     fun stopRecordingSession() {
+        if (closed) throw IOException ("Stream already closed")
         if(isRecording()) audioRecord?.stop()
    }
 
@@ -234,7 +256,26 @@ class MicSoundInputStream private constructor(var audioRecord: AudioRecord? = nu
         else audioRecord!!.preferredDevice
     }
 
-    //  Always check for 0! Zero buffer size means than mic didn't initialised properly
+
+    private fun logMicError(response: Int) {
+        val message:String =
+            when (response){
+                ERROR_INVALID_OPERATION -> "MicSoundInputStream AudioRecord not initiated " +
+                        "or started properly"
+                ERROR_DEAD_OBJECT -> "MicSoundInputStream AudioRecord not valid anymore " +
+                        "and stream to be recreated "
+                ERROR_BAD_VALUE -> "MicSoundInputStream#read(..) parameters don't resolve " +
+                        "to valid data and indexes"
+                ERROR -> "MicSoundInputStream#read(..) error"
+                else -> return
+            }
+        Log.d(TAG, "Audio Record read result=$response, $message", )
+    }
+
+    /** @return Current mic buffer size in bytes.
+     * Always check for 0 value. Zero buffer size means than mic didn't initialised properly
+     *
+     */
     fun currentBufferSize(): Int {
         if (audioRecord==null) return 0
         return try {

@@ -164,7 +164,7 @@ class TestSoundInputStream private constructor() : AudioInputStream()  {
      * or estimated rest of bytes in stream
      */
    override fun bytesRemainingEstimate(): Long {
-        return if (testMode==FILE) fileLen-bytesSent
+        return if (testMode==FILE) fileLen-bytesRead
         else -1L
    }
 
@@ -209,8 +209,8 @@ class TestSoundInputStream private constructor() : AudioInputStream()  {
         val shortArray=ShortArray(min(len/2,b.size/2))
         val bytes= readShorts(shortArray,0,len/2)*2
         shortToByteArrayLittleEndian(shortArray).copyInto(b)
-        bytesSent+=bytes
-        onReadCallback?.invoke(bytesSent)
+        bytesRead+=bytes
+        onReadCallback?.invoke(bytesRead)
         return bytes
    }
 
@@ -236,7 +236,7 @@ class TestSoundInputStream private constructor() : AudioInputStream()  {
             }
         }
         dataArray.copyInto(b)
-        bytesSent+=length*2
+        bytesRead+=length*2
         return len
     }
 

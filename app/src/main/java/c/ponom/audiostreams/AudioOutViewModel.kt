@@ -13,7 +13,7 @@ import c.ponom.audiostreams.audio_streams.StreamPump
 import c.ponom.recorder2.audio_streams.TAG
 import c.ponom.recorder2.audio_streams.TestSoundInputStream
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers.IO
+import kotlinx.coroutines.Dispatchers.Default
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -45,7 +45,7 @@ class AudioOutViewModel : ViewModel() {
         В общем случае размер буферов при использовании библиотечных классов следует подбирать
         в процессе отладки.
         */
-        audioPump=StreamPump(audioInStream, audioOutStream!!, sampleRate/2,
+        audioPump=StreamPump(audioInStream, audioOutStream!!, sampleRate,
             // тестируется правильность расчета поля audioInStream.timestamp
             onWrite =  { secondsPlayed.postValue(audioOutStream!!.timestamp/1000.0f)},
             onFinish = {recorderState.postValue(STOPPED)},
@@ -79,12 +79,12 @@ class AudioOutViewModel : ViewModel() {
         if (audioPump.state==StreamPump.State.PUMPING){
             // пример использования - остановит звук без щелчка
             audioOut?.setVolume(0.0f)
-            CoroutineScope(IO).launch {
+            CoroutineScope(Default).launch {
                 recorderState.postValue(STOPPED)
                 delay(60)
                 audioOut?.stop()
-                audioOutStream?.stop()
                 audioPump.stop(false)
+                audioOutStream?.stop()
                 // тестируется режим неавтоматического закрытие потоков StreamPump
                 audioInStream.close()
                 audioOutStream?.close()

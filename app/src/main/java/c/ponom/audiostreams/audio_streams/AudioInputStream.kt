@@ -11,7 +11,8 @@ import java.io.InputStream
 /**
  * This abstract class is the superclass for classes representing
  * an  stream of bytes implementing standard for android binary representation of low level
- * sound stream: 16bit, little  endian, left channel than right channel two octet pairs.
+ * sound stream: 16bit, little  endian, left channel than right channel signed shorts in two
+ * octet pairs, little-ending bytes.
  * Android audio subsystems use such audio format for raw audio data as input for media codecs
  * and as input and output format for audio devices. Other raw audio formats (more than 2 channels,
  * 8, 24 or 32 bit samples) used in very limited circumstances
@@ -34,19 +35,17 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
      */
 
 
-    /** //todo - перевести доки на остальные методы
-     * @param sampleRate the source sample rate expressed in Hz.
-     * @param channelNumber describes the number of the audio channels. It is NOT configuration of
+    /**
+     * @param samplingRate the source sample rate expressed in Hz.
+     * @param channelsNumber describes the number of the audio channels. It is NOT configuration of
      * the audio channels:
      *   See {@link AudioFormat#CHANNEL_OUT_MONO} and
      *   {@link AudioFormat#CHANNEL_OUT_STEREO}
      *  @param streamDuration is duration in ms of input stream if known,  for example, for streams
-     *  from audio files
+     *  from audio files.
      * The constructor could also  be used for creating potentially endless streams.
      *
      */
-    //
-    //значения частоты с запасом от поддерживаемых в настоящее время
     @JvmOverloads
     constructor(  @IntRange(from = 2400, to= 96000) samplingRate:Int,
                   @IntRange(from = 1, to=2)channelsNumber: Int,
@@ -62,7 +61,9 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
     protected constructor()
 
     /** This constructor can be used, for example, when stream created with data from
-     * AudioDataInfo, MediaExtractor or MediaEncoder classes.
+     * AudioDataInfo, MediaExtractor or MediaEncoder classes.<BR>
+     * @param format valid MediaFormat of media stream source.
+     * todo - переделать что можно на этот конструктор
      */
     @Throws(IllegalArgumentException::class)
     constructor(format: MediaFormat){
@@ -80,6 +81,7 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
             // если ключа нет, метод бросает это исключение, то все в порядке, 16 битная кодировка
             encoding = ENCODING_PCM_16BIT
         }
+        bytesPerSample = if (encoding== ENCODING_PCM_16BIT) 2  else 1
         if (duration != null) this.duration=duration
         if (sampleRate != null) this.sampleRate=sampleRate
         if (channelsCount != null) {
@@ -88,77 +90,101 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
         }
         if (this.sampleRate<=0||channelsCount !in 1..2) throw
             IllegalArgumentException ("Need valid sampleRate and channelsCount parameters in MediaFormat" )
-        bytesPerSample = if (encoding== ENCODING_PCM_16BIT) 2  else 1
+
         frameSize=bytesPerSample*this.channelsCount
    }
 
-    // типичный поддерживаемый аппаратурой диапазон - 16000 - 48000, стандартные значения:
-    // 8000,11025,12000,16000,22050,24000,32000,44100,48000, гарантированно
-    // поддерживается 44100
+    /**
+     * The sample rate of an audio format, in Hz
+     * The associated value is an integer. Android hardware typically support sample rates
+     * from 8000 to 48000, with standard values 8000,11025,12000,16000,22050,24000,32000,
+     * 44100,48000.
+     */
     var sampleRate:Int =0
         protected set
 
-    // будет содержать валидное значение если это возможно, к примеру для потока из файла
+    /**
+     * The audio format of stream as MediaFormat if known or null
+     * */
     var mediaFormat:MediaFormat?=null
         protected set
 
-    // будет содержать валидное значение если это возможно, к примеру для потока из файла
+    /** Must be set in constructor of implementing class
+    * The duration in ms of finite audio stream if known or 0
+    * */
     var duration: Long = 0
         protected set
 
-    // значение 0 не валидно, его использование указывает на незавершенность инциализации
+    /** Must be set in constructor of implementing class
+     * Value = 1 for mono and 2 for stereo audio streams.
+     * Value outside 1..2 range mean unfinished initialisation or non standard audio stream
+     * */
     var channelsCount:Int = 0
         protected set
 
-    // не путать с числом каналов! см. channelConfig(channels: Int)
-    // одно из законных значений - CHANNEL_IN_MONO,CHANNEL_IN_STEREO.
-    //должно быть выставлено при создании канала в конструкторе
+    /**
+     * Must be set in constructor of implementing class as CHANNEL_IN_MONO or CHANNEL_IN_STEREO.
+     * Any other range mean unfinished initialisation or non standard audio stream.
+     * @see channelConfig(channels: Int)
+     * */
     var channelConfig:Int= AudioFormat.CHANNEL_INVALID
         protected set
 
-    var bytesPerSample: Int =2 // для 16 бит всегда, 8 битный звук в настоящее время не поддерживается
+    /** Always 2, as ENCODING_PCM_8BIT currently not supported
+     * */
+    var bytesPerSample: Int =2
         protected set
 
+    /** Must be set in constructor of implementing class to 4 for stereo and 2  for mono streams
+     * */
     var frameSize: Int=bytesPerSample*channelsCount
         protected set
 
+    /** Always  ENCODING_PCM_16BIT as ENCODING_PCM_8BIT currently not supported
+    * */
     var encoding:Int= ENCODING_PCM_16BIT
         protected set
 
+    /**
+     * The current time position of audio stream in ms from begin, calculated from number of bytes
+     * read from stream
+     */
     @Volatile
     open var timestamp=0L //пересчет выведенных байтов в мс.
         protected set
 
+
+    /**
+     * The amount of bytes read from stream
+     * */
     @Volatile
-    open var bytesSent = 0L
+    open var bytesRead = 0L
+        @Synchronized
         protected set(value) {
             field=value
             timestamp=(frameTimeMs(sampleRate)*value).toLong()
-        }
+    }
+
+    /**
+     * A callback will be called on each read(...) and readShorts(...)
+     *
+     */
+    open var onReadCallback: ((sentBytes:Long) -> Unit)? ={  }
 
 
     /**
+     * Estimated total amount of bytes in stream, calculated from stream duration, if known, or
+     * -1 if duration unknown
+     *
      * Override the method to return -1 if there is no estimated stream length (for example,for endless
-     * streams) or return estimated total count bytes in stream if known
+     * streams)
      */
     open fun totalBytesEstimate():Long{
-        val bytesEstimate=((this.sampleRate*this.duration*bytesPerSample*this.channelsCount)/1000.0).toLong()
+        val bytesEstimate=((this.sampleRate*this.duration*bytesPerSample*
+                this.channelsCount)/1000.0).toLong()
         return if (bytesEstimate==0L) -1L else bytesEstimate
 
     }
-
-    @Throws(IOException::class)
-    override fun read(b: ByteArray?): Int {
-        if (b == null) throw NullPointerException("Null byte array passed") else
-            return read(b,0, b.size)
-    }
-
-
-
-    // переопределите коллбэк для возможности учета вызовов методов чтения из стороннего API,
-    // к примеру для реализации индиктора прогресса
-    open var onReadCallback: ((sentBytes:Long) -> Unit)? ={  }
-
 
     /**
      * Returns -1 if there is no estimated stream length (for example,for endless streams)
@@ -166,74 +192,216 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
      */
     open fun bytesRemainingEstimate():Long{
         return if (totalBytesEstimate()<0) -1 else
-            (totalBytesEstimate()-bytesSent).coerceAtLeast(0)
+            (totalBytesEstimate()-bytesRead).coerceAtLeast(0)
     }
 
     /*
     Returns an estimate of the number of bytes that can be read (or skipped over) from this input
-     stream without blocking by the next invocation of a method for this input stream.
-     The next invocation might be the same thread or another thread. A single read or skip of this
-      many bytes will not block, but may read or skip fewer bytes.
+     stream without blocking by the next invocation of a method for this input stream single read
+      or skip of this many bytes will not block, but may read or skip fewer bytes.
 
     Note that while some implementations of InputStream will return the total number of bytes
     in the stream, many will not. It is never correct to use the return value of this method
     to allocate a buffer intended to hold all data in this stream.
      */
     override fun available(): Int {
-        return (totalBytesEstimate()-bytesSent).toInt().coerceAtLeast(0)
+        return (totalBytesEstimate()-bytesRead).toInt().coerceAtLeast(0)
     }
 
 
     /**
      * Closes this input stream and releases any system resources associated.
-     * Read(...) calls are no longer valid after this call and can throw exception,
-     * переопределение обязательно - поскольку надо освободить все ресурсы
+     * Read(...) calls are no longer valid after this call and can throw exception, be ignored
+     * or return -1
      * @exception  IOException  if an I/O error occurs.
      */
     @Throws(IOException::class)
     abstract override fun close()
 
+    /**
+     * Reads the next byte of data from the input stream. The value byte is
+     * returned as an <code>int</code> in the range <code>0</code> to
+     * <code>255</code>. If no byte is available because the end of the stream
+     * has been reached, the value <code>-1</code> is returned. This method
+     * blocks until input data is available, the end of the stream is detected,
+     * or an exception is thrown.
+     *
+     * <p> A subclass must provide an implementation of this method.
+     *
+     * @return     the next byte of data, or <code>-1</code> if the end of the
+     *             stream is reached.
+     * @exception  IOException  if an I/O error occurs.
+     */
     @Throws(IOException::class)
     abstract override fun read(): Int
 
-
+    /**
+     * Reads up to <code>len</code> bytes of data from the audio stream into
+     * an array of bytes.  An attempt is made to read as many as
+     * <code>len</code> bytes, but a smaller number may be read.
+     * The number of bytes actually read is returned as an integer.
+     *
+     * <p> This method blocks until input data is available, end of file is
+     * detected, or an exception is thrown.
+     *
+     * <p> If <code>len</code> is zero, then no bytes are read and
+     * <code>0</code> is returned; otherwise, there is an attempt to read at
+     * least one byte. If no byte is available because the stream is at end of
+     * file, the value <code>-1</code> is returned; otherwise, at least one
+     * byte is read and stored into <code>b</code>.
+     *
+     * <p> The first byte read is stored into element <code>b[off]</code>, the
+     * next one into <code>b[off+1]</code>, and so on. The number of bytes read
+     * is, at most, equal to <code>len</code>. Let <i>k</i> be the number of
+     * bytes actually read; these bytes will be stored in elements
+     * <code>b[off]</code> through <code>b[off+</code><i>k</i><code>-1]</code>,
+     * leaving elements <code>b[off+</code><i>k</i><code>]</code> through
+     * <code>b[off+len-1]</code> unaffected.
+     *
+     * @param      b     the buffer into which the data is read.
+     * @param      off   the start offset in array <code>b</code>
+     *                   at which the data is written.
+     * @param      len   the maximum number of bytes to read.
+     * @return     the total number of bytes read into the buffer, or
+     *             <code>-1</code> if there is no more data because the end of
+     *             the stream has been reached.
+     * @exception  IOException If the first byte cannot be read for any reason
+     * other than end of file, or if the input stream has been closed, or if
+     * some other I/O error occurs.
+     * @exception  NullPointerException If <code>b</code> is <code>null</code>.
+     * @exception  IllegalArgumentException If <code>off</code> is negative,
+     * <code>len</code> is negative, or <code>len</code> is greater than
+     * <code>b.length - off</code>
+     * @see        java.io.InputStream#read()
+     */
     @Throws(IOException::class)
     abstract override fun read(b: ByteArray?, off: Int, len: Int): Int
 
 
+    /**
+     * Reads up to <code>b.len</code> bytes of data from the input stream into
+     * an array of bytes calling read(b,0, b.size)
+     */
+     @Throws(IOException::class)
+    override fun read(b: ByteArray?): Int {
+        if (b == null) throw NullPointerException("Null byte array passed") else
+            return read(b,0, b.size)
+    }
 
+    /**
+     * Reads up to <code>len</code> samples of data from the audio stream into
+     * an array of shorts if implementing class can do that
+     *
+     * @param      b     the buffer into which the data is read.
+     * @param      off   the start offset in array <code>b</code>
+     *                   at which the data is written.
+     * @param      len   the maximum number of short values  to read.
+     * @return     the total number of shorts  read into the buffer, or
+     *             <code>-1</code> if there is no more data because the end of
+     *             the stream has been reached.
+     * @exception  IOException If the first sample cannot be read for any reason
+     * other than end of file, or if the input stream has been closed, or if
+     * some other I/O error occurs.
+     * @exception  NullPointerException If <code>b</code> is <code>null</code>.
+     * @exception  IllegalArgumentException If <code>off</code> is negative,
+     * <code>len</code> is negative, or <code>len</code> is greater than
+     * <code>b.length - off</code>
+     * @see        java.io.InputStream#read()
+     */
     @Throws(IOException::class)
     open fun readShorts(b: ShortArray, off: Int, len: Int): Int {
         throw NoSuchMethodException("Check canReadShorts() value. Implementing class  must override " +
                 "readShorts(b: ShortArray, off: Int, len: Int) and canReadShorts()")
     }
 
+    /**
+     * Reads up to <code>b.len</code> bytes of data from the input stream into
+     * an array of bytes calling read(b,0, b.size)
+     *
+     * @param      b     the buffer into which the data is read.
+     * @return     the total number of shorts  read into the buffer, or
+     *             <code>-1</code> if there is no more data because the end of
+     *             the stream has been reached.
+     * @exception  IOException If the first sample cannot be read for any reason
+     * other than end of file, or if the input stream has been closed, or if
+     * some other I/O error occurs.
+     * @exception  NullPointerException If <code>b</code> is <code>null</code>.
+     * @exception  IllegalArgumentException If <code>off</code> is negative,
+     * <code>len</code> is negative, or <code>len</code> is greater than
+     * <code>b.length - off</code>
+     * @see        java.io.InputStream#read()
+     */
     @Throws(IOException::class)
     open fun readShorts(b: ShortArray): Int {
         throw NoSuchMethodException("Check canReadShorts() value. Implementing class  must override " +
                 "readShorts(b: ShortArray) and canReadShorts()")
     }
 
-
+    /**
+     * Skips over and discards <code>n</code> bytes of data from this audio
+     * stream. The <code>skip</code> method may, for a variety of reasons, end
+     * up skipping over some smaller number of bytes, possibly <code>0</code>.
+     * The implementation may depend on the ability to seek for concrete type
+     * of audio stream
+     *
+     * @param      n   the number of bytes to be skipped.
+     * @return     the actual number of bytes skipped.
+     * @exception  IOException  if the stream does not support seek,
+     *                          or if some other I/O error occurs.
+     */
     @Throws(IOException::class)
     override fun skip(n: Long): Long {
         throw IllegalArgumentException("Skip not supported ")
     }
 
+    /**
+     * Repositions this stream to the position at the time the
+     * <code>mark</code> method was last called on this input stream if implementation of class
+     * support mark() and reset()
+     * @see mark()
+     * @see reset()
+     * @exception  IOException  if this stream has not been marked or if the
+     *               mark has been invalidated.
+     */
     override fun mark(readlimit: Int) {
         throw IllegalArgumentException("Mark/reset not supported ")
-
     }
 
+    /**
+     * Repositions this audio stream to the position at the time the
+     * <code>mark</code> method was last called on this input stream if the implementation of class
+     * support mark() and reset()
+     * @exception  IOException  if this stream has not been marked or if the
+     *               mark has been invalidated.
+     * @see     java.io.InputStream#mark(int)
+     * @see     java.io.IOException
+     */
     @Throws(IOException::class)
     override fun reset() {
         throw IllegalArgumentException("Mark/reset not supported ")
     }
+
+    /**
+     * Tests if this input stream supports the <code>mark</code> and
+     * <code>reset</code> methods. Whether or not <code>mark</code> and
+     * <code>reset</code> are supported is an invariant property of a
+     * particular input stream instance. The <code>markSupported</code> method
+     * of <code>InputStream</code> returns <code>false</code>.
+     *
+     * @return  <code>true</code> if this stream instance supports the mark
+     *          and reset methods; <code>false</code> otherwise.
+     * @see     java.io.InputStream#mark(int)
+     * @see     java.io.InputStream#reset()
+     */
     override fun markSupported(): Boolean {
         return false
     }
 
-    open fun canReadShorts():Boolean =false
+    /**
+     * True if readShorts(b: ShortArray) and readShorts(b: ShortArray, off: Int, len: Int) methods
+     * supported
+     */
+    open fun canReadShorts():Boolean = false
 
 
     private fun frameTimeMs(rate:Int):Double{
@@ -246,22 +414,6 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
         else ->{
             AudioFormat.CHANNEL_INVALID
         }
-    }
-
-
-    // не  SimpleDateFormat для поддержки указания более чем 24 часов записи, время в мс
-    fun timeString(): String {
-        val audioTime: String
-        val dur = timestamp.toInt()
-        val hrs = dur / 3600000
-        val mns = (dur / 60000 % 60000) - hrs * 60
-        val scs = dur % 60000 / 1000
-        audioTime = if (hrs > 0) {
-            String.format("%02d:%02d:%02d", hrs, mns, scs)
-        } else {
-            String.format("%02d:%02d", mns, scs)
-        }
-        return audioTime
     }
 
 }

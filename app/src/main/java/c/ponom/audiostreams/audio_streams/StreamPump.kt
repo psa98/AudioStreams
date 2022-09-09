@@ -64,13 +64,14 @@ class StreamPump @JvmOverloads constructor(
 
     @Suppress("BlockingMethodInNonBlockingContext")
     private fun pump(autoClose: Boolean) {
-        CoroutineScope(Dispatchers.Default).launch{
+        CoroutineScope(Dispatchers.IO).launch{
             do {
                 if (state==FINISHED||state==FATAL_ERROR) break
                 var read: Int=0
                 try {
                     if (canPumpShorts) {
                         read = inputStream.readShorts(shortBuffer)
+                        if (state==FINISHED||state==FATAL_ERROR) break
                         if (read>=0) {
                             bytesSent+=read*2
                             onWrite(bytesSent)

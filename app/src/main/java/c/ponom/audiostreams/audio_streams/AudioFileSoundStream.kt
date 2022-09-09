@@ -32,19 +32,6 @@ private const val TIMEOUT_US = 0L
 private const val QUEUE_SIZE  = 8
 
 
-/**
- * Отдаваемый класс  SoundInputStream содержит:
- * 1. все необходимые данные о медиафайле, включая продолжительность
- * 2. довольно точнную оценку общей длины содержащегося байтового потока
- * 3. Возможность переопределить коллбэк под чтение каждой порции. К примеру, байты
- * из него может читать сторонняя библиотека, и полученные в коллбэке данные позволят
- * определить прогресс
- */
-
-
-
-
-@Suppress("unused")
 class AudioFileSoundStream: AudioInputStream, AutoCloseable{
     private  var path: String=""
     private lateinit var currentBuffer: ByteBuffer
@@ -54,28 +41,19 @@ class AudioFileSoundStream: AudioInputStream, AutoCloseable{
     private val extractor: MediaExtractor = MediaExtractor()
     private lateinit var codecInputBuffers: Array<ByteBuffer>
     private lateinit var codecOutputBuffers: Array<ByteBuffer>
-    private var inputEOS = false
-    private var outputEOS = false
     private var eofReached = false
     private var bufferInfo: MediaCodec.BufferInfo? = null
     private var prepared = false
     private var currentBufferChunk = BufferedChunk()
     private var mainBuffer: ByteBuffer = ByteBuffer.allocate(MAX_BUFFER_SIZE)
     private var lastBuffer =false
+    private var closed=false
     private var fatalErrorInBuffer =false
-    private var lock = Any()
     private var bufferQueue:ArrayBlockingQueue<BufferedChunk> = ArrayBlockingQueue(QUEUE_SIZE,true)
     private var bytesTotalCount = 0
     private var bytesFinalCount = 0
-    /**
-     * значение продолжительности в мс!
-     * */
     private var released = false
     private var uri: Uri= Uri.EMPTY
-    // todo - осталось проверить что доигрывает
-
-
-
 
     @Throws(IOException::class,IllegalArgumentException::class)
     @JvmOverloads
@@ -97,7 +75,6 @@ class AudioFileSoundStream: AudioInputStream, AutoCloseable{
     constructor(context: Context, uri: Uri, track: Int=0,
                 headers: MutableMap<String, String>? =null) {
         this.uri = uri
-        //uri тут может быть вообще чем попало, к примеру, ури от контентпровайдера.
         extractor.setDataSource(context, uri, headers)
         return createStream(track)
     }
@@ -106,12 +83,11 @@ class AudioFileSoundStream: AudioInputStream, AutoCloseable{
     private fun createStream(track:Int) {
         extractor.selectTrack(track)
         val format: MediaFormat
-        var mimeString = ""
+        val mimeString:String
         try {
             format = extractor.getTrackFormat(track)
             mimeString = format.getString("mime").toString()
             if (!mimeString.contains("audio"))
-            // ни одной аудио дорожки, вот незадача!
                 throw IllegalArgumentException("Wrong file - no audio tracks found")
             duration = format.getLong("durationUs").div(1000)
             sampleRate = format.getInteger("sample-rate")
@@ -124,12 +100,12 @@ class AudioFileSoundStream: AudioInputStream, AutoCloseable{
             mediaFormat = format
             channelConfig=channelConfig(channelConfig)
         } catch (e: ClassCastException) {
-            // ничего не делаем, очень битый файл.
             throw IllegalArgumentException(
                 "Wrong file format or track #$track is not audio track")
-            // документация андроида так же обещает что это три параметра декодер добудет
-            // из потока с почти любым audio. Но я бы ограничил список разумным количеством
-            // и документировал расширения, из raw ничего не добыть к примеру
+        }
+        catch (e:NullPointerException){
+            throw IllegalArgumentException(
+                "Wrong file format or track #$track is not audio track")
         }
         bytesPerSample = if (encoding == ENCODING_PCM_16BIT) 2 else 1
         frameSize = bytesPerSample * channelsCount
@@ -168,7 +144,7 @@ class AudioFileSoundStream: AudioInputStream, AutoCloseable{
     private fun fillBufferQueue(){
         var maxPos:Int
         if (!prepared) throw IllegalStateException("Extractor not ready or already released")
-        CoroutineScope(Dispatchers.Default).launch {
+        CoroutineScope(Dispatchers.IO).launch {
             maxChunkSize=0
             do {
                 val newByteBufferChunk=BufferedChunk()
@@ -197,11 +173,11 @@ class AudioFileSoundStream: AudioInputStream, AutoCloseable{
             } while (true)
         }
     }
+
     @Throws(IllegalStateException::class, CodecException::class )
     fun inputForBuff(): Boolean {
         var inputEOS=false
-        val inputBufIndex =
-            codec.dequeueInputBuffer(TIMEOUT_US)
+        val inputBufIndex = codec.dequeueInputBuffer(TIMEOUT_US)
         if (inputBufIndex >= 0) {
             val dstBuf = codecInputBuffers[inputBufIndex]
             var sampleSize = extractor.readSampleData(dstBuf, 0)
@@ -209,19 +185,10 @@ class AudioFileSoundStream: AudioInputStream, AutoCloseable{
             if (sampleSize < 0) {
                 inputEOS = true
                 sampleSize = 0
-            } else {
-                presentationTimeUs = extractor.sampleTime
-            }
-            codec.queueInputBuffer(
-                inputBufIndex,
-                0,
-                sampleSize,
-                presentationTimeUs,
-                if (inputEOS) MediaCodec.BUFFER_FLAG_END_OF_STREAM else 0
-            )
-            if (!inputEOS) {
-                extractor.advance()
-            }
+            } else presentationTimeUs = extractor.sampleTime
+            codec.queueInputBuffer(inputBufIndex,0,sampleSize,
+                presentationTimeUs,if (inputEOS) MediaCodec.BUFFER_FLAG_END_OF_STREAM else 0)
+            if (!inputEOS) extractor.advance()
         }
         return inputEOS
     }
@@ -245,8 +212,6 @@ class AudioFileSoundStream: AudioInputStream, AutoCloseable{
             if (bufferInfo!!.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) {
                 bytesFinalCount = bytesTotalCount
                 eofReached = true
-                released=true
-                extractor.release()
             }
         } else if (res == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED)
             codecOutputBuffers = codec.outputBuffers
@@ -257,96 +222,90 @@ class AudioFileSoundStream: AudioInputStream, AutoCloseable{
 
 
     @Throws(IllegalArgumentException::class,NullPointerException::class, CodecException::class)
-        @Synchronized
-        override fun read(): Int {
-            throw NoSuchMethodException ("Not implemented, use read(b[].... )")
-            /*возможные варианты реализации
-               - оставить метод неподдерживаемым, все нормальные запросы от сторонних API
-               требуют не побайтное чтение
-               - вернуть данные запрошенные через b = ByteArray(1);read([b]); return b[1].toInt + 128
-               - скачать небольшой буфер и отдавать байты из него
-             */
-        }
+    override fun read(): Int {
+        throw NoSuchMethodException ("Not implemented, use read(b[].... )")
+    }
 
-        @Throws(IllegalArgumentException::class,NullPointerException::class, CodecException::class)
-        @Synchronized
-        override fun read(b: ByteArray?, off: Int, len: Int): Int {
-            if (b == null) throw NullPointerException("Null byte array passed")
-            if (off < 0 || len < 0 || len > b.size - off)
-                throw IllegalArgumentException("Wrong read(...) params")
-            if (off != 0) throw IllegalArgumentException("Non zero offset currently not implemented")
-            if (len==0) return 0
-            if (((bytesSent >= bytesFinalCount && bytesFinalCount != 0)&&!fatalErrorInBuffer)) {
-                //close()
-                //todo - а вообще формально доигранный до конца поток или поток с ошибкой и нормально
-                // закрытый это одно и то же? как я понимаю вроде для доигранного если он mark
-                // поддерживает можно отмотать на начало. Если сделаю поддержку перемотки то
-                // close() тут не нужен
-                return -1
-            }
-            if ((bytesSent >= bytesFinalCount && bytesFinalCount != 0)&&fatalErrorInBuffer) {
-                close()
-                currentBufferChunk.exception?.printStackTrace()
-                throw IOException("IO exception in audio codec =${currentBufferChunk.exception}")
-            }
-            val bytes =  getBytesFromBuffer(b, len)
-            bytesSent += bytes
-            onReadCallback?.invoke(bytesSent)
-            return  bytes
+    @Throws(IOException::class,IllegalArgumentException::class,
+        NullPointerException::class)
+    override fun read(b: ByteArray?, off: Int, len: Int): Int {
+        if (b == null) throw NullPointerException("Null byte array passed")
+        if (closed) throw IOException("Stream already closed")
+        if (off < 0 || len < 0 || len > b.size - off)
+            throw IllegalArgumentException("Wrong read(...) params")
+        if (off != 0) throw IllegalArgumentException("Non zero offset currently not implemented")
+        if (len==0) return 0
+        if (((bytesRead >= bytesFinalCount && bytesFinalCount != 0)&&!fatalErrorInBuffer)) {
+            //close()
+            //todo - а вообще формально доигранный до конца поток или поток с ошибкой и нормально
+            // закрытый это одно и то же? как я понимаю вроде для доигранного если он mark
+            // поддерживает можно отмотать на начало. Если сделаю поддержку перемотки то
+            // close() тут не нужен
+            return -1
         }
-        @Synchronized
-        override fun close() {
-            if (released) return
-            released=true
-            bufferInfo=null
-            channelsCount=0
-            sampleRate=0
-            duration=0
-            extractor.release()
-            //отдадим мегабайты памяти обратно системе сразу
-            mainBuffer= ByteBuffer.allocate(1)
-            bufferQueue=ArrayBlockingQueue(1)
-            codecInputBuffers=Array(1){ ByteBuffer.allocate(1)}
-            codecOutputBuffers=Array(1){ ByteBuffer.allocate(1)}
+        if ((bytesRead >= bytesFinalCount && bytesFinalCount != 0)&&fatalErrorInBuffer) {
+            close()
+            currentBufferChunk.exception?.printStackTrace()
+            throw IOException("IO exception in audio codec =${currentBufferChunk.exception}")
         }
+        val bytes =  getBytesFromBuffer(b, len)
+        bytesRead += bytes
+        onReadCallback?.invoke(bytesRead)
+        return  bytes
+    }
 
 
-        @Synchronized
-        @Throws(IllegalArgumentException::class,NullPointerException::class, CodecException::class)
-        override fun skip(n: Long): Long {
-            return read(ByteArray(n.toInt())) .toLong()
-        }
+    override fun close() {
+        closed=true
+        released=true
+        bufferInfo=null
+        channelsCount=0
+        sampleRate=0
+        duration=0
+        if (!released)  extractor.release()
+        mainBuffer= ByteBuffer.allocate(1)
+        bufferQueue=ArrayBlockingQueue(1)
+        codecInputBuffers=Array(1){ ByteBuffer.allocate(1)}
+        codecOutputBuffers=Array(1){ ByteBuffer.allocate(1)}
+    }
 
-        override fun readShorts(b: ShortArray, off: Int, len: Int): Int {
-            val byteArray =ByteArray(b.size*2)
-            val bytes = read(byteArray, off, len*2)
-            if (bytes==-1) return -1
-            val resultShorts= byteToShortArrayLittleEndian(byteArray)
-            resultShorts.copyInto(b,0,0,bytes/2)
-            return bytes/2
-        }
+    @Throws(IllegalArgumentException::class,NullPointerException::class, CodecException::class)
+    override fun skip(n: Long): Long {
+        //todo - разбить на запрос кусков разумного размера, скажем 16K
+        return read(ByteArray(n.toInt())) .toLong()
+    }
 
-        private fun getBytesFromBuffer(b: ByteArray, len: Int): Int {
-            if (!bufferReady && !eofReached) {
-                takeNewBuffer()
-                mainBuffer.get(b, 0, len)
-                return len
-            }
-            var length = len
-                if (len >= mainBuffer.remaining()) {
-                    length = mainBuffer.remaining()
-                    mainBuffer.get(b, 0, length)
-                    if (!lastBuffer && !fatalErrorInBuffer) {
-                        bufferReady = false
-                        takeNewBuffer()
-                    }
-                    if (lastBuffer || fatalErrorInBuffer)
-                        eofReached = true
-                    return length
+
+    override fun readShorts(b: ShortArray, off: Int, len: Int): Int {
+        val byteArray =ByteArray(b.size*2)
+        val bytes = read(byteArray, off, len*2)
+        if (bytes==-1) return -1
+        val resultShorts= byteToShortArrayLittleEndian(byteArray)
+        resultShorts.copyInto(b,0,0,bytes/2)
+        return bytes/2
+    }
+
+    private fun getBytesFromBuffer(b: ByteArray, len: Int): Int {
+        if (!bufferReady && !eofReached) {
+            takeNewBuffer()
+            mainBuffer.get(b, 0, len)
+            return len
+        }
+        var length = len
+            if (len >= mainBuffer.remaining()) {
+                length = mainBuffer.remaining()
+                mainBuffer.get(b, 0, length)
+                if (!lastBuffer && !fatalErrorInBuffer) {
+                    bufferReady = false
+                    takeNewBuffer()
                 }
-            mainBuffer.get(b, 0, length)
-            return length
-        }
+                if (lastBuffer || fatalErrorInBuffer)
+                    eofReached = true
+                return length
+            }
+        mainBuffer.get(b, 0, length)
+        return length
+    }
 
         /*
         Returns an estimate of the number of bytes that can be read (or skipped over) from this input
@@ -357,14 +316,14 @@ class AudioFileSoundStream: AudioInputStream, AutoCloseable{
 
     //Чтение большего количества инициализирует блокирующий запрос на заполнение буфера
     //или неблокирующий запрос готового
-        override fun available(): Int = max(mainBuffer.remaining(),bytesRemainingEstimate().toInt())
+    override fun available(): Int = max(mainBuffer.remaining(),bytesRemainingEstimate().toInt())
 
-        override fun readShorts(b: ShortArray): Int = readShorts(b,0,b.size)
+    override fun readShorts(b: ShortArray): Int = readShorts(b,0,b.size)
 
-        override fun canReadShorts(): Boolean = true
+    override fun canReadShorts(): Boolean = true
 
-        override fun toString(): String = "AudioFileSoundStream path='$path'," +
-                " uri=$uri, media format=$mediaFormat)"
+    override fun toString(): String = "AudioFileSoundStream path='$path'," +
+            " uri=$uri, media format=$mediaFormat)"
 
     inner class BufferedChunk{
         val byteBuffer:ByteBuffer= ByteBuffer.allocate(MAX_BUFFER_SIZE)
