@@ -1,6 +1,5 @@
 package c.ponom.audiostreams
 
-import android.annotation.SuppressLint
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
@@ -95,17 +94,14 @@ class FilesFragment : Fragment() {
     }
 
 
-
-
-    @SuppressLint()
     private fun callback(result:ActivityResult) {
         val uri =result.data?.data
         if (uri==null) return
-        Log.e(TAG, "callback Uri = $uri")
+        Log.v(TAG, "callback Uri = $uri")
+        val tracks =AudioDataInfo.getTrackData(requireContext(),uri)
         val mediaData=AudioDataInfo(requireContext(),uri)
-        binding.textMediaData.text="$mediaData"
+        binding.textMediaData.text="Media Data: $mediaData \n Media Data for track:  $tracks"
         viewModel.playUri(requireContext(),uri)
-
     }
 
 

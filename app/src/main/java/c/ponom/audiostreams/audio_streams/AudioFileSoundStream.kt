@@ -45,7 +45,8 @@ private const val QUEUE_SIZE  = 8
 
 
 @Suppress("unused")
-class AudioFileSoundSource {
+class AudioFileSoundStream: AudioInputStream, AutoCloseable{
+    private  var path: String=""
     private lateinit var currentBuffer: ByteBuffer
     private var maxChunkSize = 0
     private lateinit var codec: MediaCodec
@@ -69,82 +70,81 @@ class AudioFileSoundSource {
     /**
      * значение продолжительности в мс!
      * */
-    private var fileDuration: Long? = null
-    private var channelsCount: Int? = null
-    private var sampleRate: Int? = null
     private var released = false
-    private lateinit var uri: Uri
+    private var uri: Uri= Uri.EMPTY
     // todo - осталось проверить что доигрывает
 
-    /**
-     * файл должен иметь строго один трек!
-     */
+
+
+
     @Throws(IOException::class,IllegalArgumentException::class)
-    fun getStream(fd: FileDescriptor): SoundInputStream {
-        if (prepared || released)
-            throw IllegalStateException("The extractor was already started or released, create new instance")
+    @JvmOverloads
+    constructor (fd: FileDescriptor,track: Int=0){
         extractor.setDataSource(fd)
-        return createStream()
+        return createStream(track)
     }
 
     @Throws(IOException::class,IllegalArgumentException::class)
-    fun getStream(path: String): SoundInputStream {
-        if (prepared || released)
-            throw IllegalStateException("The extractor was already started or released, create new instance")
+    @JvmOverloads
+    constructor(path: String,track: Int=0){
+        this.path = path
         extractor.setDataSource(path)
-        return createStream()
+        return createStream(track)
     }
 
     @JvmOverloads
-    @Throws(IOException::class,IllegalArgumentException::class, CodecException::class)
-    fun getStream(context: Context, uri: Uri, headers: MutableMap<String, String>? =null): SoundInputStream {
-        if (prepared || released)
-            throw IllegalStateException("The extractor was already started or released, create new instance")
+    @Throws(IOException::class,IllegalArgumentException::class)
+    constructor(context: Context, uri: Uri, track: Int=0,
+                headers: MutableMap<String, String>? =null) {
         this.uri = uri
         //uri тут может быть вообще чем попало, к примеру, ури от контентпровайдера.
         extractor.setDataSource(context, uri, headers)
-        return createStream()
+        return createStream(track)
     }
 
-    /* Берется первая звуковая дорожка файла!
-    * // todo - свернуть все исключения кодека в IOException
-    */
-    @Throws(IOException::class,IllegalArgumentException ::class, CodecException::class)
-    private fun createStream(): SoundInputStream {
-        extractor.selectTrack(0)
-        var mediaFormat:MediaFormat = extractor.getTrackFormat(0)
-        var mimeString =""
+    @Throws(IOException::class,IllegalArgumentException ::class)
+    private fun createStream(track:Int) {
+        extractor.selectTrack(track)
+        val format: MediaFormat
+        var mimeString = ""
         try {
-            for (i:Int in 0 until extractor.trackCount) {
-                mediaFormat = extractor.getTrackFormat(i)
-                mimeString = mediaFormat.getString("mime").toString()
-                if (mimeString.contains("audio")) break
-            }
+            format = extractor.getTrackFormat(track)
+            mimeString = format.getString("mime").toString()
             if (!mimeString.contains("audio"))
-                // ни одной аудио дорожки, вот незадача!
-                throw IllegalArgumentException ("Wrong file - no audio tracks found")
-            fileDuration = mediaFormat.getLong("durationUs").div(1000)
-            sampleRate = mediaFormat.getInteger("sample-rate")
-            channelsCount = mediaFormat.getInteger("channel-count")
-
-
-        } catch (e:ClassCastException){
+            // ни одной аудио дорожки, вот незадача!
+                throw IllegalArgumentException("Wrong file - no audio tracks found")
+            duration = format.getLong("durationUs").div(1000)
+            sampleRate = format.getInteger("sample-rate")
+            channelsCount = format.getInteger("channel-count")
+            encoding = if (format.containsKey("pcm-encoding")) {
+                format.getInteger("pcm-encoding")
+            } else ENCODING_PCM_16BIT //если ключа нет то 16 битный звук
+            if (encoding != ENCODING_PCM_16BIT)
+                throw IllegalArgumentException("audio track is not ENCODING_PCM_16BIT")
+            mediaFormat = format
+            channelConfig=channelConfig(channelConfig)
+        } catch (e: ClassCastException) {
             // ничего не делаем, очень битый файл.
-            throw IllegalArgumentException("Wrong file format")
-            // todo документация андроида так же обещает что это три параметра декодер добудет
+            throw IllegalArgumentException(
+                "Wrong file format or track #$track is not audio track")
+            // документация андроида так же обещает что это три параметра декодер добудет
             // из потока с почти любым audio. Но я бы ограничил список разумным количеством
             // и документировал расширения, из raw ничего не добыть к примеру
         }
+        bytesPerSample = if (encoding == ENCODING_PCM_16BIT) 2 else 1
+        frameSize = bytesPerSample * channelsCount
         codec = MediaCodec.createDecoderByType(mimeString)
-        // todo если тут могут таки бросить исключение - надо их все обработать.
-        codec.configure(mediaFormat, null, null, 0)
-        codec.start()
-        codecInputBuffers = codec.inputBuffers
-        codecOutputBuffers = codec.outputBuffers
-        bufferInfo = MediaCodec.BufferInfo()
-        prepared = true
+        try {
+            codec.configure(format, null, null, 0)
+            codec.start()
+            codecInputBuffers = codec.inputBuffers
+            codecOutputBuffers = codec.outputBuffers
+            bufferInfo = MediaCodec.BufferInfo()
+            prepared = true
+        }catch (exception:Exception){
+            throw IllegalArgumentException("Wrong format or track #$track is DRM protected")
+        }
         fillBufferQueue()
-        return SoundInputStream(mediaFormat)
     }
 
     //todo - протестить, погоняв на мини приложении с самыми разными форматами
@@ -165,10 +165,8 @@ class AudioFileSoundSource {
         bufferReady = true
     }
 
-
-
     private fun fillBufferQueue(){
-        var maxPos=0
+        var maxPos:Int
         if (!prepared) throw IllegalStateException("Extractor not ready or already released")
         CoroutineScope(Dispatchers.Default).launch {
             maxChunkSize=0
@@ -255,19 +253,14 @@ class AudioFileSoundSource {
         return eofReached
     }
 
-    inner class SoundInputStream(format: MediaFormat) : AudioInputStream(format), AutoCloseable {
-        init {
-            bytesPerSample = if (encoding== ENCODING_PCM_16BIT) 2
-                    else throw IllegalArgumentException("Only 16bit Encoding media files accepted ")
-            frameSize=bytesPerSample*channelsCount
-        }
 
 
-        @Throws(IllegalArgumentException::class,NullPointerException::class, CodecException::class)
+
+    @Throws(IllegalArgumentException::class,NullPointerException::class, CodecException::class)
         @Synchronized
         override fun read(): Int {
-            throw NoSuchMethodException ("Not implemented, use read(b [].... )")
-            /*todo тестить, возможны варианты реализации
+            throw NoSuchMethodException ("Not implemented, use read(b[].... )")
+            /*возможные варианты реализации
                - оставить метод неподдерживаемым, все нормальные запросы от сторонних API
                требуют не побайтное чтение
                - вернуть данные запрошенные через b = ByteArray(1);read([b]); return b[1].toInt + 128
@@ -279,6 +272,8 @@ class AudioFileSoundSource {
         @Synchronized
         override fun read(b: ByteArray?, off: Int, len: Int): Int {
             if (b == null) throw NullPointerException("Null byte array passed")
+            if (off < 0 || len < 0 || len > b.size - off)
+                throw IllegalArgumentException("Wrong read(...) params")
             if (off != 0) throw IllegalArgumentException("Non zero offset currently not implemented")
             if (len==0) return 0
             if (((bytesSent >= bytesFinalCount && bytesFinalCount != 0)&&!fatalErrorInBuffer)) {
@@ -324,7 +319,6 @@ class AudioFileSoundSource {
 
         override fun readShorts(b: ShortArray, off: Int, len: Int): Int {
             val byteArray =ByteArray(b.size*2)
-            //todo - могут вылезать интересные вещи при нечетном числе байт в невалидных файлах
             val bytes = read(byteArray, off, len*2)
             if (bytes==-1) return -1
             val resultShorts= byteToShortArrayLittleEndian(byteArray)
@@ -350,7 +344,6 @@ class AudioFileSoundSource {
                         eofReached = true
                     return length
                 }
-
             mainBuffer.get(b, 0, length)
             return length
         }
@@ -361,17 +354,17 @@ class AudioFileSoundSource {
         The next invocation might be the same thread or another thread. A single read or skip of this
         many bytes will not block, but may read or skip fewer bytes.
         */
-        override fun available(): Int {
-            //Чтение большего количества инициализирует блокирующий запрос на заполнение буфера
-            //или неблокирующий запрос готового
-            return max(mainBuffer.remaining(),bytesRemainingEstimate().toInt())
-        }
 
-        override fun readShorts(b: ShortArray): Int {
-            return readShorts(b,0,b.size)
-        }
+    //Чтение большего количества инициализирует блокирующий запрос на заполнение буфера
+    //или неблокирующий запрос готового
+        override fun available(): Int = max(mainBuffer.remaining(),bytesRemainingEstimate().toInt())
+
+        override fun readShorts(b: ShortArray): Int = readShorts(b,0,b.size)
+
         override fun canReadShorts(): Boolean = true
-    }
+
+        override fun toString(): String = "AudioFileSoundStream path='$path'," +
+                " uri=$uri, media format=$mediaFormat)"
 
     inner class BufferedChunk{
         val byteBuffer:ByteBuffer= ByteBuffer.allocate(MAX_BUFFER_SIZE)
@@ -379,6 +372,10 @@ class AudioFileSoundSource {
         var inFatalError:Boolean=false
         var exception:Exception?=null
     }
-
 }
+
+
+
+
+
 

@@ -5,11 +5,11 @@ import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import c.ponom.audiostreams.audio_streams.AudioFileSoundSource
+import c.ponom.audiostreams.audio_streams.AudioFileSoundStream
 import c.ponom.audiostreams.audio_streams.AudioTrackOutputStream
 import c.ponom.recorder2.audio_streams.TAG
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers.Default
+import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.launch
 import java.lang.System.currentTimeMillis
 
@@ -29,19 +29,19 @@ class FilesViewModel : ViewModel() {
     internal fun playUri(context: Context,uri: Uri){
         if (playing)return
         if (uri == Uri.EMPTY) return
-        val audioInStream: AudioFileSoundSource.SoundInputStream
+        val audioInStream: AudioFileSoundStream
         val audioOutStream:AudioTrackOutputStream
         try {
-            audioInStream = AudioFileSoundSource().getStream(context,uri)
-            audioOutStream= AudioTrackOutputStream(audioInStream.sampleRate,audioInStream.channelsCount,
-                audioInStream.encoding,1000)
+            audioInStream = AudioFileSoundStream(context,uri)
+            audioOutStream= AudioTrackOutputStream(audioInStream.sampleRate,
+                audioInStream.channelsCount,audioInStream.encoding,1000)
         }catch (e:java.lang.Exception){
             mediaData.postValue("Error in media file - ${e.localizedMessage} ")
             return
         }
         playing=true
         // используется стандартный вывод, без  StreamPump
-        CoroutineScope(Default).launch{
+        CoroutineScope(IO).launch{
             audioOutStream.play()
             val bufferArray = ShortArray(1024) // при выводе в динамик желателен малый буфер
             var lastSecond = currentTimeMillis() /1000
@@ -58,7 +58,7 @@ class FilesViewModel : ViewModel() {
                     val currentSecond = currentTimeMillis() /1000
                     if (currentSecond>lastSecond){
                         lastSecond=currentSecond
-                        secondsPlayed.postValue(audioOutStream.timeString())
+                        secondsPlayed.postValue(timeString(audioOutStream.timestamp))
                     }
                 } catch (e:Exception){
                     e.printStackTrace()
@@ -69,6 +69,21 @@ class FilesViewModel : ViewModel() {
             audioOutStream.close()
             audioInStream.close()
         }
+    }
+
+
+    private fun timeString(msTime:Long): String {
+        val audioTime: String
+        val dur = msTime.toInt()
+        val hrs = dur / 3600000
+        val mns = (dur / 60000 % 60000) - hrs * 60
+        val scs = dur % 60000 / 1000
+        audioTime = if (hrs > 0) {
+            String.format("%02d:%02d:%02d", hrs, mns, scs)
+        } else {
+            String.format("%02d:%02d", mns, scs)
+        }
+        return audioTime
     }
 }
 

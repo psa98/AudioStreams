@@ -22,9 +22,6 @@ private const val BUFFER_SIZE__MULT: Int=4 //todo переделать под м
 class MicSoundInputStream private constructor(var audioRecord: AudioRecord? = null): AudioInputStream()  {
 
     private var minBuffer: Int=0
-    private var recordingIsOn: Boolean=false
-
-    var isReady=false
 
 
     // если разрешения нет - данные от микрофона будут пустыми. Описать в доках,
@@ -53,7 +50,6 @@ class MicSoundInputStream private constructor(var audioRecord: AudioRecord? = nu
         //  и исключение для совсем левых
         bytesPerSample = if (encoding== ENCODING_PCM_16BIT) 2  else 1
         frameSize=bytesPerSample*channels
-        isReady=true
         // todo - возможно нужны коллбэки на готовность и асинхронный вариант конструктора,
         //  инициализация микрофона может быть не быстрой
     }
@@ -108,7 +104,7 @@ class MicSoundInputStream private constructor(var audioRecord: AudioRecord? = nu
      * In this case, the error is returned at the next read() ERROR in case of other error
      */
 
-    @Synchronized
+
     @Throws(NullPointerException::class)
     override fun read(b: ByteArray?): Int {
         if (b==null) throw NullPointerException ("Null array passed")
@@ -117,13 +113,12 @@ class MicSoundInputStream private constructor(var audioRecord: AudioRecord? = nu
     }
 
 
-
-
-    @Throws(NullPointerException::class,IOException::class,IndexOutOfBoundsException::class)
+    @Throws(NullPointerException::class,IOException::class,IllegalArgumentException::class)
     override fun read(b: ByteArray?, off: Int, len: Int): Int {
         if (b == null) throw NullPointerException ("Null array passed")
+        if (len == 0|| b.isEmpty()) return 0
         if (off < 0 || len < 0 || len > b.size - off)
-            throw IndexOutOfBoundsException("Wrong read(...) params")
+            throw IllegalArgumentException("Wrong read(...) params")
         if (len == 0) return 0
         if (audioRecord==null) return -1
         if (!isRecording()) {
@@ -159,11 +154,11 @@ class MicSoundInputStream private constructor(var audioRecord: AudioRecord? = nu
 
 
 
-
+    @Throws(IOException::class,IllegalArgumentException::class)
     override fun readShorts(b: ShortArray, off: Int, len: Int): Int {
+        if (len == 0|| b.isEmpty()) return 0
         if (off < 0 || len < 0 || len > b.size - off)
-            throw IndexOutOfBoundsException("Wrong read(...) params")
-        if (len == 0) return 0
+            throw IllegalArgumentException("Wrong read(...) params")
         if (audioRecord==null) return -1
         if (!isRecording()) {
             logMicError(ERROR_INVALID_OPERATION)
@@ -186,19 +181,14 @@ class MicSoundInputStream private constructor(var audioRecord: AudioRecord? = nu
     override fun close() {
        if (audioRecord==null) return
        audioRecord?.release()
-       recordingIsOn=false
-       isReady=false
        audioRecord=null
     }
 
     fun isRecording(): Boolean {
-        if (audioRecord==null){
-            recordingIsOn=false
-            return false
-        }
-        recordingIsOn= (audioRecord?.state==STATE_INITIALIZED &&
-                audioRecord?.recordingState==RECORDSTATE_RECORDING)
-        return recordingIsOn
+        return if (audioRecord != null)
+            (audioRecord?.state==STATE_INITIALIZED &&
+                    audioRecord?.recordingState==RECORDSTATE_RECORDING)
+        else false
     }
 
 
@@ -208,14 +198,11 @@ class MicSoundInputStream private constructor(var audioRecord: AudioRecord? = nu
                 audioRecord?.startRecording()
             else return false
         bytesSent=0
-        recordingIsOn=true
         return true
     }
 
     fun stopRecordingSession() {
         if(isRecording()) audioRecord?.stop()
-            else return
-        recordingIsOn=false
    }
 
 

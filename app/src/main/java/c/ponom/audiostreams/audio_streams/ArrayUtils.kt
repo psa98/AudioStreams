@@ -20,6 +20,18 @@ object ArrayUtils {
         return shorts
     }
 
+    /** Convert bytes array to shorts array using little-endian ordering.<BR>
+     * In android sound subsystem and most of native 16 bit audio formats audio samples in
+     * form of signed short values stored and processed by hardware as little-endian byte
+     * array representation.<BR>
+     * Mono samples:<BR>
+     * [Short value,...] - > [byte1,byte2,...]
+     * <BR>
+     * Stereo samples: <BR>
+     * [Short value left,value right,...] - > [byte1 left,byte2 left, byte1 right,byte2 right]
+     *
+     *
+     */
     @JvmStatic
     fun byteToShortArrayLittleEndian(bytes: ByteArray): ShortArray {
         val shorts = ShortArray(bytes.size / 2)
@@ -27,6 +39,17 @@ object ArrayUtils {
         return shorts
     }
 
+    /** Convert shorts array to bytes array using little-endian ordering.<BR>
+     * In android sound subsystem and most of native 16 bit audio formats audio samples in
+     * form of signed short values stored and processed by hardware as little-endian byte
+     * array representation.<BR>
+     * Mono samples:<BR>
+     * [Short value,...] - > [byte1,byte2,...]
+     * <BR>
+     * Stereo samples: <BR>
+     * [Short value left,value right,...] - > [byte1 left,byte2 left, byte1 right,byte2 right]
+     *
+     */
     @JvmStatic
     fun shortToByteArrayLittleEndian(shorts: ShortArray): ByteArray {
         val byteBuffer = ByteBuffer.allocate(shorts.size * 2).order(ByteOrder.LITTLE_ENDIAN)
@@ -34,12 +57,16 @@ object ArrayUtils {
         return byteBuffer.array()
     }
 
-    //возвращает "скользящее окно" из последних n отсчетов в массиве
-    // нужны тесты для основных вариантов покрытия, включая окно =1, 0, = размеру буфера
+    /** Return array with size winLength containing last winLength Short samples of the data Array.
+     *  If winLength > data.size, last winLength samples located in the end of the resulting
+     *  array and the beginning of array is filled with zeroes.
+     * <p>
+     *  @return Shorts array filled with last winLength samples of data array
+     */
     @JvmStatic
-    fun getSlidingWindow(data: ShortArray, len: Int): ShortArray {
-        val copyWindowSize = len.coerceAtMost(data.size)
-        val resultingArray = ShortArray(len)
+    fun getSlidingWindow(data: ShortArray, winLength: Int): ShortArray {
+        val copyWindowSize = winLength.coerceAtMost(data.size)
+        val resultingArray = ShortArray(winLength)
         val startingPosSource = (data.size - copyWindowSize).coerceAtLeast(0)
         System.arraycopy(
             data, startingPosSource, resultingArray,

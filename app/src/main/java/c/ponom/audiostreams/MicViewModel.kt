@@ -25,21 +25,16 @@ class MicTestViewModel : ViewModel() {
     private val outDirName= Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC).toString()
     private val outDir = File("$outDirName/AudioStreams/").apply { mkdir() }
     private lateinit var audioPump:StreamPump
-    val pathName: String = App.appContext.getExternalFilesDir(Environment.DIRECTORY_MUSIC)
-        .toString()+"/AudioStreams"
-    //при переустановке приложения прежний файл будет реадонли и его надо удалить
+    //todo - сделать имена файлов переменными от времени
+    // иначе при переустановке приложения прежний
+    // файл будет реадонли и его надо удалить
     private val testFileMp3 = File(outDir, "/TestMicStream.mp3")
     var recordingIsOn=false
-
 
 
     fun record(source: Int, sampleRate: Int) {
         //подготовим входящий микрофонный поток
         recordingIsOn=true
-
-
-
-
         val outputFileStream:FileOutputStream
         //подготовим входящий микрофонный поток и исходящий файловый
         try {
@@ -75,7 +70,7 @@ class MicTestViewModel : ViewModel() {
     }
 
     fun play() {
-        val audioIn = AudioFileSoundSource().getStream(testFileMp3.path)
+        val audioIn = AudioFileSoundStream(testFileMp3.path)
         val audioOut= AudioTrackOutputStream(audioIn.sampleRate,audioIn.channelsCount,
             audioIn.encoding,0)
         audioPump=StreamPump(audioIn, audioOut, 4096,
@@ -90,7 +85,6 @@ class MicTestViewModel : ViewModel() {
 
     fun stopPlaying() {
         if (audioPump.state==StreamPump.State.PUMPING) audioPump.stop()
-        Log.e(TAG, "Stop!")
         recorderState.postValue(STOPPED_READY)
     }
 

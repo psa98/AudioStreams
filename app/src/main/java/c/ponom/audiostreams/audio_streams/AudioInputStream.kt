@@ -23,7 +23,6 @@ import java.io.InputStream
  *
  * @see     java.io.ByteArrayInputStream
  * @see     java.io.InputStream#read(byte b[], int off, int len)
-
  */
 
 
@@ -186,11 +185,11 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
 
 
     /**
-     * Closes this input stream and releases any system resources associated
+     * Closes this input stream and releases any system resources associated.
+     * Read(...) calls are no longer valid after this call and can throw exception,
      * переопределение обязательно - поскольку надо освободить все ресурсы
      * @exception  IOException  if an I/O error occurs.
      */
-
     @Throws(IOException::class)
     abstract override fun close()
 
