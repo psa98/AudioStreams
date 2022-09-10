@@ -2,8 +2,6 @@ package c.ponom.audiostreams.audio_streams
 
 import c.ponom.audiostreams.audio_streams.ArrayUtils.shortToByteArrayLittleEndian
 import c.ponom.audiostreams.audio_streams.StreamPump.State.*
-import c.ponom.recorder2.audio_streams.AudioInputStream
-import c.ponom.recorder2.audio_streams.AudioOutputStream
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

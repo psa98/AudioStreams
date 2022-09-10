@@ -1,4 +1,4 @@
-package c.ponom.recorder2.audio_streams
+package c.ponom.audiostreams.audio_streams
 
 import android.media.AudioFormat.*
 import android.media.MediaFormat

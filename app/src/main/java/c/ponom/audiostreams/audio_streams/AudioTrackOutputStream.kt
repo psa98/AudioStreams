@@ -1,6 +1,6 @@
 
 
-@file:Suppress("unused")
+
 package c.ponom.audiostreams.audio_streams
 import android.media.AudioFormat
 import android.media.AudioFormat.*
@@ -8,18 +8,13 @@ import android.media.AudioFormat.Builder
 import android.media.AudioTrack
 import android.media.AudioTrack.*
 import android.util.Log
-import c.ponom.recorder2.audio_streams.AudioOutputStream
 import c.ponom.recorder2.audio_streams.TAG
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.IOException
-import java.lang.System.currentTimeMillis
 
-
-private  const val MAX_BUFFER_SIZE = 512 * 1024
-private const val RESERVE_BUFFER_SIZE = 24 * 1024
 
 class AudioTrackOutputStream private constructor() : AudioOutputStream(){
 
@@ -29,8 +24,8 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
     // поле не приватное что позволяет менять доступные свойства проигрывателя - частоты, роутинг,
     // ставить слушатели и тп
     var audioOut:AudioTrack?=null
-    var prepared = false
-    private set
+    private var prepared = false
+
     /* todo - сделать State? а может глобальный enum со стейтом универсальный для всех потоков
     *   включая PAUSE для тех что его поддерживают?
     *   в v. 2 - удобное управление audioOut!!.setPreferredDevice(AudioDeviceInfo), с выбором
@@ -195,14 +190,12 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
     }
 
     override fun canWriteShorts(): Boolean = true
-    private var lastWrite= currentTimeMillis()
+
 
     @Throws(IllegalArgumentException::class,IOException::class)
     override fun writeShorts(b: ShortArray, off: Int, len: Int) {
         if (audioOut == null) throw IOException("Stream closed or in error state")
         val size=b.size
-        val time= currentTimeMillis()
-        lastWrite=time
         if (off > len ||len>size||off>size||off<0||len<0)
             throw IllegalArgumentException("Wrong write(....) parameters")
         val result = audioOut!!.write(b, off, len, WRITE_BLOCKING)

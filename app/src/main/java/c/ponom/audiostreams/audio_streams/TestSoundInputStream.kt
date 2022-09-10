@@ -8,6 +8,7 @@ import android.media.AudioFormat.*
 import android.util.Log
 import androidx.annotation.IntRange
 import c.ponom.audiostreams.audio_streams.ArrayUtils.shortToByteArrayLittleEndian
+import c.ponom.audiostreams.audio_streams.AudioInputStream
 import c.ponom.recorder2.audio_streams.TestSoundInputStream.TestSignalType.MONO
 import c.ponom.recorder2.audio_streams.TestSoundInputStream.TestSignalType.STEREO
 import c.ponom.recorder2.audio_streams.TestSoundInputStream.TestStreamMode.FILE

@@ -1,4 +1,4 @@
-package c.ponom.recorder2.audio_streams
+package c.ponom.audiostreams.audio_streams
 
 import android.media.AudioFormat
 import android.media.AudioFormat.ENCODING_PCM_16BIT
@@ -27,6 +27,7 @@ import java.io.InputStream
  */
 
 
+@Suppress("unused")
 abstract class AudioInputStream :    InputStream, AutoCloseable {
 
 
@@ -155,7 +156,7 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
 
 
     /**
-     * The amount of bytes read from stream
+     * The amount of bytes already read from stream
      * */
     @Volatile
     open var bytesRead = 0L

@@ -3,17 +3,11 @@
 package c.ponom.audiostreams.audio_streams
 
 import android.annotation.SuppressLint
-import android.content.Context
-import android.media.AudioDeviceInfo
-import android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO
-import android.media.AudioDeviceInfo.TYPE_WIRED_HEADSET
 import android.media.AudioFormat.*
-import android.media.AudioManager
 import android.media.AudioRecord
 import android.media.AudioRecord.*
 import android.media.MediaRecorder
 import android.util.Log
-import c.ponom.recorder2.audio_streams.AudioInputStream
 import c.ponom.recorder2.audio_streams.TAG
 import java.io.IOException
 
@@ -28,8 +22,8 @@ class MicSoundInputStream : AudioInputStream {
     /**
      * True if stream was already closed, including after error
      */
-    var closed:Boolean=false
-    private set
+    private var closed:Boolean=false
+
 
 
     @JvmOverloads
@@ -40,6 +34,7 @@ class MicSoundInputStream : AudioInputStream {
         channels: Int = 1,
         encoding: Int = ENCODING_PCM_16BIT,
         bufferMult: Int = BUFFER_SIZE__MULT
+    //todo - переделать под мс
     ): this() {
         channelConfig=channelConfig(channels)
         channelsCount=channels
@@ -49,7 +44,8 @@ class MicSoundInputStream : AudioInputStream {
             require(encoding== ENCODING_PCM_16BIT)
             { "Only PCM 16 bit encoding currently supported"}
         minBuffer= getMinBufferSize(sampleRate,channelConfig,encoding)
-        audioRecord= AudioRecord(source,sampleRate ,channelConfig,encoding,minBuffer*bufferMult)
+        audioRecord= AudioRecord(source,sampleRate ,channelConfig,encoding,
+            minBuffer*bufferMult)
          if (audioRecord==null)
              throw IllegalArgumentException("Audio record init error - wrong params? ")
         this.sampleRate = audioRecord!!.sampleRate
@@ -228,35 +224,6 @@ class MicSoundInputStream : AudioInputStream {
    }
 
 
-    fun getInputDeviceList(context: Context): List<AudioDeviceInfo> {
-        val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager?
-        if (audioManager==null) return ArrayList()
-        val audioDeviceInfo = audioManager.getDevices(AudioManager.GET_DEVICES_INPUTS)
-        return audioDeviceInfo!!.asList()
-    }
-
-
-    fun chooseWiredMicIfAvailable(context: Context){
-        val micList=getInputDeviceList(context)
-        val device = micList.firstOrNull { it.type == TYPE_WIRED_HEADSET
-        }
-        if (device!=null) audioRecord?.preferredDevice = device
-    }
-
-
-    fun isBluetoothSCOMicAvailable(context: Context): Boolean {
-        val micList=getInputDeviceList(context)
-        val device = micList.firstOrNull { it.type == TYPE_BLUETOOTH_SCO}
-        return device != null
-    }
-
-
-    fun getPreferredDevice(): AudioDeviceInfo? {
-        return if (audioRecord==null) null
-        else audioRecord!!.preferredDevice
-    }
-
-
     private fun logMicError(response: Int) {
         val message:String =
             when (response){
@@ -269,7 +236,7 @@ class MicSoundInputStream : AudioInputStream {
                 ERROR -> "MicSoundInputStream#read(..) error"
                 else -> return
             }
-        Log.d(TAG, "Audio Record read result=$response, $message", )
+        Log.d(TAG, "Audio Record read result=$response, $message" )
     }
 
     /** @return Current mic buffer size in bytes.

@@ -10,7 +10,6 @@ import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.net.Uri
 import c.ponom.audiostreams.audio_streams.ArrayUtils.byteToShortArrayLittleEndian
-import c.ponom.recorder2.audio_streams.AudioInputStream
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -31,7 +30,7 @@ private const val RESERVE_BUFFER_SIZE = 32 * 1024
 private const val TIMEOUT_US = 0L
 private const val QUEUE_SIZE  = 8
 
-
+@Suppress("unused")
 class AudioFileSoundStream: AudioInputStream, AutoCloseable{
     private  var path: String=""
     private lateinit var currentBuffer: ByteBuffer
@@ -141,6 +140,7 @@ class AudioFileSoundStream: AudioInputStream, AutoCloseable{
         bufferReady = true
     }
 
+    @Suppress("BlockingMethodInNonBlockingContext")
     private fun fillBufferQueue(){
         var maxPos:Int
         if (!prepared) throw IllegalStateException("Extractor not ready or already released")

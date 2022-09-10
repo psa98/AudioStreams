@@ -12,6 +12,7 @@ import kotlinx.coroutines.async
 import java.io.IOException
 
 
+@Suppress("MemberVisibilityCanBePrivate")
 class AudioDataInfo{
     private var uri: Uri=Uri.EMPTY
     private var path: String=""
@@ -26,12 +27,6 @@ class AudioDataInfo{
     var mediaFormat:MediaFormat= MediaFormat()
         private set
     private var extractor:MediaExtractor= MediaExtractor()
-
-
-
-    //todo - отдать карту, возвращающую список только аудио дорожек с параметрами
-
-
 
     /**
      * Returns the AudioDataInfo object containing basic info for media properties of media
@@ -152,10 +147,10 @@ class AudioDataInfo{
          */
         @JvmOverloads
         @JvmStatic
+        @Suppress("BlockingMethodInNonBlockingContext")
         fun getMediaDataAsync(
             context: Context, uri: Uri, track: Int = 0,
-            headers: Map<String, String>? = null
-        ) = CoroutineScope(IO)
+            headers: Map<String, String>? = null) = CoroutineScope(IO)
             .async { AudioDataInfo(context, uri, track, headers) }
 
         /**
@@ -175,6 +170,7 @@ class AudioDataInfo{
          */
         @JvmStatic
         @JvmOverloads
+        @Suppress("BlockingMethodInNonBlockingContext")
         fun getMediaDataAsync(path: String, track: Int = 0) = CoroutineScope(IO)
             .async { AudioDataInfo(path, track) }
 

@@ -4,7 +4,6 @@ import android.media.AudioFormat.ENCODING_PCM_16BIT
 import android.util.Log
 import androidx.annotation.IntRange
 import c.ponom.audiostreams.audio_streams.ArrayUtils.byteToShortArrayLittleEndian
-import c.ponom.recorder2.audio_streams.AudioOutputStream
 import c.ponom.recorder2.audio_streams.TAG
 import com.naman14.androidlame.AndroidLame
 import com.naman14.androidlame.LameBuilder
