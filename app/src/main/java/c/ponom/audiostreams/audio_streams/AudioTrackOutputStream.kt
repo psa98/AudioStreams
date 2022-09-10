@@ -38,12 +38,12 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
     @JvmOverloads
     @Throws(IllegalArgumentException::class, UnsupportedOperationException::class)
     constructor(
-        sampleRate: Int,
+        sampleFreq: Int,
         channelsCount: Int,
         encoding: Int = ENCODING_PCM_16BIT,
         minBufferInMs: Int = 0
     ) : this() {
-        this.sampleRate = sampleRate
+        sampleRate = sampleFreq
         channelConfig=channelConfig(channelsCount)
         // todo тут будет проверка на законные значения из списка, варнинг для всех законных кроме
         //  8, 16,22, 32 и 44 - 48к
@@ -59,7 +59,6 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
         when (encoding){
             ENCODING_PCM_8BIT -> frameSize = channelsCount
             ENCODING_PCM_16BIT-> frameSize= channelsCount*2
-
         }
         val minBufferInBytes=frameSize*(sampleRate/1000)*(minBufferInMs/1000.0).toInt()
 
@@ -154,21 +153,49 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
     }
 
     /**
-     *Writes the audio data to the audio sink for playback (streaming mode), or copies audio data for later playback
-     * (static buffer mode). The format specified in the AudioTrack constructor should be AudioFormat.ENCODING_PCM_8BIT
-     * to correspond to the data in the array.
+     *Writes the audio data to the audio sink for playback (streaming mode), or copies audio
+     * data for later playback.
+    *
      * In streaming mode, the write will normally block until all the data has been enqueued for playback,
      * and will return a full transfer count. However, if the track is stopped or paused on entry, or another
      * thread interrupts the write by calling stop or pause, or an I/O error occurs during the write, then
      * the write may return a short transfer count.
-     * In static buffer mode, copies the data to the buffer starting at offset 0. Note that the actual
-     * playback of this data might occur after this function returns.
+     *
+     *
+     * @param b the array that holds the data to play.
+     * @param off the offset expressed in bytes in audioData where the data to write
+     *    starts.
+     *    Must not be negative, or cause the data access to go out of bounds of the array.
+     * @param len the number of bytes to write in audioData after the offset.
+     *    Must not be negative, or cause the data access to go out of bounds of the array.
+     * @return zero or the positive number of bytes that were written, or one of the following
+     *    error codes. The number of bytes will be a multiple of the frame size in bytes
+     *    not to exceed sizeInBytes.
+     * <ul>
+     * <li>{@link #ERROR_INVALID_OPERATION} if the track isn't properly initialized</li>
+     * <li>{@link #ERROR_BAD_VALUE} if the parameters don't resolve to valid data and indexes</li>
+     * <li>{@link #ERROR_DEAD_OBJECT} if the AudioTrack is not valid anymore and
+     *    needs to be recreated. The dead object error code is not returned if some data was
+     *    successfully transferred. In this case, the error is returned at the next write()</li>
+     * <li>{@link #ERROR} in case of other error</li>
+     * </ul>
+     * @throws IOException if the track isn't properly initialized, or he AudioTrack is not valid
+     * anymore and needs to be recreated
+     * @throws IllegalArgumentException if the parameters don't resolve to valid data and indexes
+     * @throws NullPointerException if null array passed
      */
 
+    /*todo - переписать через вызов пишущего шорты и протестить
+
+    The format specified in the AudioTrack constructor should be
+     * {@link AudioFormat#ENCODING_PCM_8BIT} to correspond to the data in the array.
+     * todo The format can be {@link AudioFormat#ENCODING_PCM_16BIT}, but this is deprecated.
+
+     */
 
     @Throws(IOException::class,NullPointerException::class,IllegalArgumentException::class)
     override fun write(b: ByteArray?, off: Int, len: Int){
-        if (audioOut == null) throw IOException("Stream closed or in error state")
+        if (audioOut == null||closed) throw IOException("Stream closed or in error state")
         if (b == null) throw NullPointerException ("Null array passed")
         if (off < 0 || len < 0 || len > b.size - off)
             throw IllegalArgumentException("Wrong write(....) parameters")
@@ -184,17 +211,51 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
 
 
 
+    /**
+     *Writes the audio data to the audio sink for playback (streaming mode), or copies audio
+     * data for later playback calling writeShorts(b,0,b.size)
+     * @param b the array that holds the data to play.
+     * @return zero or the positive number of bytes that were written, or one of the following
+     *    error codes. The number of bytes will be a multiple of the frame size in bytes
+     *    not to exceed sizeInBytes.
+     * @throws IOException if the track isn't properly initialized, or he AudioTrack is not valid
+     * anymore and needs to be recreated
+     * */
     @Throws(IOException::class,NullPointerException::class,IllegalArgumentException::class)
     override fun writeShorts(b: ShortArray) {
         writeShorts(b,0,b.size)
     }
 
+
     override fun canWriteShorts(): Boolean = true
 
-
+    /**
+     *Writes the audio data to the audio sink for playback (streaming mode), or copies audio
+     * data for later playback.
+     *
+     * In streaming mode, the write will normally block until all the data has been enqueued for playback,
+     * and will return a full transfer count. However, if the track is stopped or paused on entry, or another
+     * thread interrupts the write by calling stop or pause, or an I/O error occurs during the write, then
+     * the write may return a short transfer count.
+     *
+     *
+     * @param b the array that holds the data to play.
+     * @param off the offset expressed in bytes in audioData where the data to write
+     *    starts.
+     *    Must not be negative, or cause the data access to go out of bounds of the array.
+     * @param len the number of bytes to write in audioData after the offset.
+     *    Must not be negative, or cause the data access to go out of bounds of the array.
+     * @return zero or the positive number of bytes that were written, or one of the following
+     *    error codes. The number of bytes will be a multiple of the frame size in bytes
+     *    not to exceed sizeInBytes.
+     * @throws IOException if the track isn't properly initialized, or he AudioTrack is not valid
+     * anymore and needs to be recreated
+     * @throws IllegalArgumentException if the parameters don't resolve to valid data and indexes
+     * @throws NullPointerException if null array passed
+     */
     @Throws(IllegalArgumentException::class,IOException::class)
     override fun writeShorts(b: ShortArray, off: Int, len: Int) {
-        if (audioOut == null) throw IOException("Stream closed or in error state")
+        if (audioOut == null||closed) throw IOException("Stream closed or in error state")
         val size=b.size
         if (off > len ||len>size||off>size||off<0||len<0)
             throw IllegalArgumentException("Wrong write(....) parameters")

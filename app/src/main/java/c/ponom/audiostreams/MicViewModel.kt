@@ -43,7 +43,7 @@ class MicTestViewModel : ViewModel() {
             Toast.makeText(App.appContext,"Need permissions to work!", Toast.LENGTH_LONG).show()
             return
         }
-        val testMicStream=MicSoundInputStream(sampleRate,source,bufferMult = 16)
+        val testMicStream=MicSoundInputStream(sampleRate, source)
         // рекомендуемый битрейт для частоты не более (частота/137), аналогично соотношению 44100/320
         val encoderStream=Mp3OutputAudioStream(outputFileStream,
             sampleRate,sampleRate/160, LameBuilder.Mode.MONO)

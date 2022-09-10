@@ -6,9 +6,6 @@ import android.content.Context
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.net.Uri
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers.IO
-import kotlinx.coroutines.async
 import java.io.IOException
 
 
@@ -127,10 +124,10 @@ class AudioDataInfo{
     companion object {
 
         /**
-         * Returns the  Deferred<AudioDataInfo> object containing basic info for media
+         * Returns the  Result&lt;AudioDataInfo&gt; object containing basic info for media
          *
-         * @return  the  Deferred<AudioDataInfo>  object containing basic info for media
-         * properties of media  located at uri.
+         * @return the  Result&lt;AudioDataInfo&gt; object containing basic info for media properties
+         * of media located at uri  or Throwable.
          * @throws IllegalArgumentException if the data at uri is not a valid audio source,
          * @throws IOException if file or url is not available
          *
@@ -145,39 +142,36 @@ class AudioDataInfo{
          *        This can be {@code null} if no specific headers are to be sent with the
          *        request.
          */
-        @JvmOverloads
+
         @JvmStatic
         @Suppress("BlockingMethodInNonBlockingContext")
         fun getMediaDataAsync(
             context: Context, uri: Uri, track: Int = 0,
-            headers: Map<String, String>? = null) = CoroutineScope(IO)
-            .async { AudioDataInfo(context, uri, track, headers) }
+            headers: Map<String, String>? = null): Result<AudioDataInfo> =
+            runCatching { AudioDataInfo(context, uri, track, headers) }
 
         /**
-         * Returns the  Deferred<AudioDataInfo> object containing basic info for media
+         * Returns the Result&lt;AudioDataInfo&gt; object containing basic info for media
          *properties of media located at file-path or http URL.
          *
-         * @return  he AudioDataInfo object containing basic info for media properties of media
-         * located at file-path or http URL.
+         * @return  the  Result&lt;AudioDataInfo&gt; object containing basic info for media properties
+         * of media located at uri file-path or http URL or Throwable
+         *
          * @throws IllegalArgumentException if the data at path is not a valid audio source,
          * @throws IOException if file or url is not available
-         *
-         * @param path the path to audio file
-         * <p>When <code>uri</code> refers to a network file the
+         * @param path the path to audio file. When <code>path</code> refers to a network file the
          * {@link android.Manifest.permission#INTERNET} permission is required.
          * @param track  the number of audio track in source. For most audio sources track #0
          * contains audio data, for most video sources audio tracks starts from #1
          */
         @JvmStatic
-        @JvmOverloads
-        @Suppress("BlockingMethodInNonBlockingContext")
-        fun getMediaDataAsync(path: String, track: Int = 0) = CoroutineScope(IO)
-            .async { AudioDataInfo(path, track) }
+        fun getMediaDataAsync(path: String, track: Int = 0): Result<AudioDataInfo> =
+            runCatching{AudioDataInfo(path,track) }
 
 
         /**
-         *Static API for class.
-         * Returns the AudioDataInfo object containing basic info for media properties of media
+         *
+         * Returns AudioDataInfo containing basic info for media properties of media
          * located at uri.
          *
          * @return  the AudioDataInfo object containing basic info for media properties of media
@@ -186,9 +180,7 @@ class AudioDataInfo{
          * @throws IOException if file or url is not available
          *
          * @param context the Context to use when resolving the Uri
-         * @param uri the Content URI of the data you want to extract from.
-         *
-         * <p>When <code>uri</code> refers to a network file the
+         * @param path the path to audio file. When <code>uri</code> refers to a network file the
          * {@link android.Manifest.permission#INTERNET} permission is required.
          * @param track  the number of audio track ib source. For most audio sources track #0
          * contains audio data, for most video sources audio tracks starts from #1
@@ -206,17 +198,16 @@ class AudioDataInfo{
             return AudioDataInfo(context, uri, track, headers)
         }
 
-        /**Static API for class.
-         * Returns the AudioDataInfo object containing basic info for media properties of media
-         * located at file-path or http URL.
+        /**
+         * Returns the AudioDataInfo object containing basic info for media properties
+         * of media located at file-path or http URL.
          *
-         * @return  he AudioDataInfo object containing basic info for media properties of media
-         * located at file-path or http URL.
+         * @return  the AudioDataInfo object containing basic info for media properties
+         * of media located at file-path or http URL.
          * @throws IllegalArgumentException if the data at path is not a valid audio source,
          * @throws IOException if file or url is not available
          *
-         * @param path the path to audio file
-         * <p>When <code>uri</code> refers to a network file the
+         * @param path the path to audio file. When <code>path</code> refers to a network file the
          * {@link android.Manifest.permission#INTERNET} permission is required.
          * @param track  the number of audio track in source. For most audio sources track 0
          * contains audio data, for most video sources audio tracks starts from #1
@@ -227,7 +218,6 @@ class AudioDataInfo{
         fun getMediaData(path: String, track: Int = 0): AudioDataInfo {
             return AudioDataInfo(path, track)
         }
-
 
         @JvmStatic
         @Throws(IllegalArgumentException::class, IOException::class)

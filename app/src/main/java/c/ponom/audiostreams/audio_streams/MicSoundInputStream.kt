@@ -12,12 +12,20 @@ import c.ponom.recorder2.audio_streams.TAG
 import java.io.IOException
 
 
-private const val BUFFER_SIZE__MULT: Int=1 //todo переделать под мс
 class MicSoundInputStream : AudioInputStream {
 
-    private var audioRecord: AudioRecord?=null
+
+    /**
+     * After initialisation, internal AudioRecord object can be accessed for low level control of
+     * microphone recording.
+     * See registerAudioRecordingCallback(), setPreferredDevice(), setRecordPositionUpdateListener()
+     *
+     *
+     */
+    var audioRecord: AudioRecord?=null
+    private set
+
     private constructor()
-    private var minBuffer: Int=0
 
     /**
      * True if stream was already closed, including after error
@@ -25,30 +33,46 @@ class MicSoundInputStream : AudioInputStream {
     private var closed:Boolean=false
 
 
-
+    /**
+     * Class constructor.
+       * @param source the recording source.
+     *   See {@link MediaRecorder.AudioSource} for the recording source definitions.
+     * @param sampleRateInHz the sample rate expressed in Hertz. 44100Hz is currently the only
+     *   rate that is guaranteed to work on all devices, but other rates such as 22050,
+     *   16000, and 11025 may work on some devices.
+     * @param channels describes the number of the audio channels. Must be equal 1 or 2.
+     *   Mono recording  is guaranteed to work on all devices.
+     * @param encoding the format in which the audio data is to be returned.
+     *   See AudioFormat.ENCODING_PCM_8BIT, AudioFormat.ENCODING_PCM_16BIT.
+     *   Only AudioFormat#ENCODING_PCM_16BIT currently supported.
+     * @param bufferSizeMs the minimal size (in ms) of the buffer where audio data is written
+     *   to during the recording. New audio data can be read from this buffer in smaller chunks
+     *   than this size.
+     * @throws java.lang.IllegalArgumentException
+     */
     @JvmOverloads
     @SuppressLint("MissingPermission")
     @Throws(IllegalArgumentException::class,IOException::class)
-    constructor(
-        sampleRate: Int, source: Int = MediaRecorder.AudioSource.DEFAULT,
+    constructor(sampleRateInHz: Int, source: Int = MediaRecorder.AudioSource.DEFAULT,
         channels: Int = 1,
         encoding: Int = ENCODING_PCM_16BIT,
-        bufferMult: Int = BUFFER_SIZE__MULT
-    //todo - переделать под мс
-    ): this() {
+        bufferSizeMs: Int = 0): this() {
         channelConfig=channelConfig(channels)
         channelsCount=channels
         if (!(channelConfig== CHANNEL_IN_MONO ||channelConfig== CHANNEL_IN_STEREO))
             throw IllegalArgumentException("Only 1 and 2 channels (CHANNEL_IN_MONO " +
                     "and CHANNEL_IN_STEREO) supported")
-            require(encoding== ENCODING_PCM_16BIT)
+        require(encoding== ENCODING_PCM_16BIT)
             { "Only PCM 16 bit encoding currently supported"}
-        minBuffer= getMinBufferSize(sampleRate,channelConfig,encoding)
+        bytesPerSample = if (encoding== ENCODING_PCM_16BIT) 2  else 1
+        sampleRate=sampleRateInHz
+        frameSize=bytesPerSample*channels
+        val bufferSize=frameSize*(sampleRate/1000)*(bufferSizeMs/1000.0).toInt()
+        val minBuffer= getMinBufferSize(sampleRate,channelConfig,encoding)
         audioRecord= AudioRecord(source,sampleRate ,channelConfig,encoding,
-            minBuffer*bufferMult)
-         if (audioRecord==null)
+            minBuffer.coerceAtLeast(bufferSize))
+         if (audioRecord==null||audioRecord?.state!= STATE_INITIALIZED)
              throw IllegalArgumentException("Audio record init error - wrong params? ")
-        this.sampleRate = audioRecord!!.sampleRate
         bytesPerSample = if (encoding== ENCODING_PCM_16BIT) 2  else 1
         frameSize=bytesPerSample*channels
 
@@ -99,13 +123,15 @@ class MicSoundInputStream : AudioInputStream {
 
 
     /**
+     * This method blocks until some input data is available
      * Params:
      * @param b – the array to which the recorded audio data is written.
      * @param off – offset in b to which the data is written. Must not be negative.
      * @param len – the number of requested bytes.
      * Returns:
      * @return  zero or the positive number of bytes that were read,
-     * -1  if the MicSoundInputStream not valid anymore due to error, or one of the following error codes:
+     * -1  if the MicSoundInputStream not valid anymore due to error, or one of the following error
+     * codes:
      * AudioRecord.ERROR_INVALID_OPERATION if the stream isn't properly initialized OR recording is
      * not started or was stopped,
      * AudioRecord.ERROR_BAD_VALUE if the parameters don't resolve to valid data and indexes.
@@ -139,13 +165,15 @@ class MicSoundInputStream : AudioInputStream {
 
 
     /**
+     * This method blocks until some input data is available
      * Params:
      * @param b – the array to which the recorded audio data is written.
      * @param off – offset in b to which the data is written. Must not be negative.
      * @param len – the number of requested shorts samples.
      * Returns:
      * @return  zero or the positive number of bytes that were read,
-     * -1  if the MicSoundInputStream not valid anymore due to error, or one of the following error codes:
+     * -1  if the MicSoundInputStream not valid anymore due to error, or one of the following
+     * error codes:
      * AudioRecord.ERROR_INVALID_OPERATION if the stream isn't properly initialized OR recording is
      * not started or was stopped,
      * AudioRecord.ERROR_BAD_VALUE if the parameters don't resolve to valid data and indexes.
@@ -167,7 +195,6 @@ class MicSoundInputStream : AudioInputStream {
         val samples = audioRecord!!.read(b, off, len)
         if (samples < 0) logMicError(samples)
         if (samples == ERROR_DEAD_OBJECT||samples == ERROR) {
-            close()
             return  -1
         }
          if (samples>0)bytesRead+=samples*2
@@ -205,7 +232,7 @@ class MicSoundInputStream : AudioInputStream {
 
     /**
      * Start recording. No-op if already in recording state
-     * @throws IOException if stream was closed
+     * @throws IOException if stream was already closed
      */
     fun startRecordingSession() {
         if (closed) throw IOException ("Stream already closed")
@@ -216,10 +243,8 @@ class MicSoundInputStream : AudioInputStream {
 
     /**
      * Stops (pause) recording.
-     * @throws IOException if stream was closed
      */
     fun stopRecordingSession() {
-        if (closed) throw IOException ("Stream already closed")
         if(isRecording()) audioRecord?.stop()
    }
 
@@ -239,7 +264,7 @@ class MicSoundInputStream : AudioInputStream {
         Log.d(TAG, "Audio Record read result=$response, $message" )
     }
 
-    /** @return Current mic buffer size in bytes.
+    /** @return current mic buffer size in bytes.
      * Always check for 0 value. Zero buffer size means than mic didn't initialised properly
      *
      */
@@ -253,6 +278,35 @@ class MicSoundInputStream : AudioInputStream {
     }
 
     override fun canReadShorts():Boolean = true
+
+
+    /* Static and async API for class */
+    companion object {
+
+        /**
+         * Async creation of microphone input audio stream.
+         *
+         * @return  the  Result&lt;MicSoundInputStream&gt; object containing created stream or
+         * Throwable
+         * @param sampleRateInHz the sample rate expressed in Hertz. 44100Hz is currently the only
+         *   rate that is guaranteed to work on all devices, but other rates such as 22050,
+         *   16000, and 11025 may work on some devices.
+         * @param channels describes the number of the audio channels. Must be equal 1 or 2.
+         *   Mono recording  is guaranteed to work on all devices.
+         * @param encoding the format in which the audio data is to be returned.
+         *   See AudioFormat.ENCODING_PCM_8BIT, AudioFormat.ENCODING_PCM_16BIT.
+         *   Only AudioFormat.ENCODING_PCM_16BIT currently supported.
+         * @param bufferSizeMs the minimal size (in ms) of the buffer where audio data is written
+         *   to during the recording. New audio data can be read from this buffer in smaller chunks
+         *   than this size.*/
+        @JvmStatic
+        fun createChannelAsync(sampleRateInHz: Int,
+                               source: Int = MediaRecorder.AudioSource.DEFAULT,
+                               channels: Int = 1,
+                               encoding: Int = ENCODING_PCM_16BIT,
+                               bufferSizeMs: Int = 0):Result<MicSoundInputStream> = runCatching{            MicSoundInputStream(sampleRateInHz,source,channels, encoding, bufferSizeMs)  }
+
+    }
 
 }
 

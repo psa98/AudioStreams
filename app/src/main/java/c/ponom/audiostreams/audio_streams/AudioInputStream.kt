@@ -36,7 +36,7 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
      */
 
 
-    /**
+    /**  Class constructor.
      * @param samplingRate the source sample rate expressed in Hz.
      * @param channelsNumber describes the number of the audio channels. It is NOT configuration of
      * the audio channels:
@@ -61,7 +61,8 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
 
     protected constructor()
 
-    /** This constructor can be used, for example, when stream created with data from
+    /** Class constructor.
+     *  This constructor can be used, for example, when stream created with data from
      * AudioDataInfo, MediaExtractor or MediaEncoder classes.<BR>
      * @param format valid MediaFormat of media stream source.
      * todo - переделать что можно на этот конструктор
@@ -174,7 +175,7 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
 
 
     /**
-     * Estimated total amount of bytes in stream, calculated from stream duration, if known, or
+     * @return estimated total amount of bytes in stream, calculated from stream duration, if known, or
      * -1 if duration unknown
      *
      * Override the method to return -1 if there is no estimated stream length (for example,for endless
@@ -188,7 +189,7 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
     }
 
     /**
-     * Returns -1 if there is no estimated stream length (for example,for endless streams)
+     * @return -1 if there is no estimated stream length (for example,for endless streams)
      * or estimated number of rest of bytes in the stream
      */
     open fun bytesRemainingEstimate():Long{
@@ -196,12 +197,11 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
             (totalBytesEstimate()-bytesRead).coerceAtLeast(0)
     }
 
-    /*
-    Returns an estimate of the number of bytes that can be read (or skipped over) from this input
+    /**
+    * @return an estimate of the number of bytes that can be read (or skipped over) from this input
      stream without blocking by the next invocation of a method for this input stream single read
-      or skip of this many bytes will not block, but may read or skip fewer bytes.
-
-    Note that while some implementations of InputStream will return the total number of bytes
+     or skip of this many bytes will not block, but may read or skip fewer bytes.
+    Note that while some implementations of AudioInputStream will return the total number of bytes
     in the stream, many will not. It is never correct to use the return value of this method
     to allocate a buffer intended to hold all data in this stream.
      */
@@ -399,8 +399,8 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
     }
 
     /**
-     * True if readShorts(b: ShortArray) and readShorts(b: ShortArray, off: Int, len: Int) methods
-     * supported
+     * True if readShorts(b: ShortArray) and readShorts(b: ShortArray, off: Int, len: Int)
+     * methods supported by class
      */
     open fun canReadShorts():Boolean = false
 
@@ -415,6 +415,10 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
         else ->{
             AudioFormat.CHANNEL_INVALID
         }
+    }
+
+    override fun toString(): String {
+        return "AudioInputStream(sampleRate=$sampleRate, duration=$duration, channelsCount=$channelsCount, encoding=$encoding)"
     }
 
 }
