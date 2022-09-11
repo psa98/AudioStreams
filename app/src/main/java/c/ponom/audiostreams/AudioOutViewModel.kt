@@ -34,8 +34,8 @@ class AudioOutViewModel : ViewModel() {
         //тестируется поведение конструктора AudioTrackOutputStream при заведомо неправильных значениях параметров
         try {
             audioInStream = TestSoundInputStream(freq,volume, sampleRate, CHANNEL_IN_MONO,)
-            audioOutStream= AudioTrackOutputStream(audioInStream.sampleRate,1,
-                audioInStream.encoding,500)
+            audioOutStream= AudioTrackOutputStream(audioInStream.sampleRate,
+                audioInStream.channelsCount,500)
          }catch (e:Exception){
             onError(e)
             return
@@ -45,11 +45,14 @@ class AudioOutViewModel : ViewModel() {
         В общем случае размер буферов при использовании библиотечных классов следует подбирать
         в процессе отладки.
         */
-        audioPump=StreamPump(audioInStream, audioOutStream!!, sampleRate,
+        audioPump=StreamPump(audioInStream, audioOutStream!!,
+            sampleRate,
             // тестируется правильность расчета поля audioInStream.timestamp
-            onWrite =  { secondsPlayed.postValue(audioOutStream!!.timestamp/1000.0f)},
+            onWrite =  { secondsPlayed.postValue(audioOutStream!!.timestamp/100/10f)},
             onFinish = {recorderState.postValue(STOPPED)},
             onFatalError= {onError(it)})
+        Log.i(TAG, "play: AudioTrackOutputStream buffer =" +
+                "${audioOutStream?.audioOut?.bufferSizeInFrames} frames" )
         audioPump.start(false)
         recorderState.postValue(PLAYING)
         viewModelScope.launch {

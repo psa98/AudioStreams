@@ -33,7 +33,8 @@ class FilesFragment : Fragment() {
     private lateinit var mediaData: LiveData<String>
     private var activityResultLaunch = registerForActivityResult(StartActivityForResult()
     ) { result -> callback(result) }
-    private lateinit var  viewModel: FilesViewModel
+    private  val  viewModel: FilesViewModel by lazy {
+        ViewModelProvider(this)[FilesViewModel::class.java]}
 
 
     private val binding get() = _binding!!
@@ -42,15 +43,14 @@ class FilesFragment : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?): View {
         _binding = FragmentFilesBinding.inflate(inflater, container, false)
-        viewModel= ViewModelProvider(this)[FilesViewModel::class.java]
-        secondsPlayed=viewModel.secondsPlayed
-        mediaData=viewModel.mediaData
         return binding.root
     }
 
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        secondsPlayed=viewModel.secondsPlayed
+        mediaData=viewModel.mediaData
         setupButtons()
         setupObservers()
     }
@@ -76,7 +76,10 @@ class FilesFragment : Fragment() {
 
     override fun onPause() {
         super.onPause()
+        binding.playButton.isEnabled = true
+        binding.stopButton.isEnabled = false
         viewModel.playing=false
+        binding.textMediaData.text=""
     }
 
     override fun onDestroyView() {

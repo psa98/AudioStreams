@@ -12,6 +12,7 @@ import c.ponom.recorder2.audio_streams.TAG
 import java.io.IOException
 
 
+@Suppress("MemberVisibilityCanBePrivate")
 class MicSoundInputStream : AudioInputStream {
 
 
@@ -265,8 +266,8 @@ class MicSoundInputStream : AudioInputStream {
     }
 
     /** @return current mic buffer size in bytes.
-     * Always check for 0 value. Zero buffer size means than mic didn't initialised properly
-     *
+     * Always check for value before setting own buffers size. Zero buffer size means than
+     * device didn't initialised properly or stream is already closed
      */
     fun currentBufferSize(): Int {
         if (audioRecord==null) return 0
@@ -277,6 +278,11 @@ class MicSoundInputStream : AudioInputStream {
         }
     }
 
+    /**
+     * True if readShorts(b: ShortArray) and readShorts(b: ShortArray, off: Int, len: Int)
+     * methods supported by class.
+     * @return true for MicSoundInputStream
+     */
     override fun canReadShorts():Boolean = true
 
 

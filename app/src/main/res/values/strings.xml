@@ -15,4 +15,5 @@
     <string name="audio_track_audio_stream_test">Audio Track audio stream test</string>
     <string name="microphone_audio_input_stream_test">Microphone audio input stream test \n</string>
     <string name="title_activity_main">MainActivity</string>
+    <string name="need_permissions">Need both RECORD_AUDIO and WRITE_EXTERNAL_STORAGE</string>
 </resources>

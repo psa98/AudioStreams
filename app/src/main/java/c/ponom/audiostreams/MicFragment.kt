@@ -1,5 +1,8 @@
 package c.ponom.audiostreams
 
+import android.Manifest.permission.RECORD_AUDIO
+import android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+import android.graphics.Color
 import android.media.MediaRecorder
 import android.os.Bundle
 import android.util.Log
@@ -7,6 +10,8 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.AdapterView
+import androidx.core.content.ContextCompat.checkSelfPermission
+import androidx.core.content.PermissionChecker.PERMISSION_GRANTED
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.LiveData
@@ -26,7 +31,10 @@ class MicFragment : Fragment() {
     private lateinit var recordLevel: LiveData<Float>
     private lateinit var bytesPassed: LiveData<Int>
     private lateinit var currentState: LiveData<MicRecordState>
-
+    private val recordButton by lazy { binding.recordButton }
+    private val stopRecordingButton by lazy { binding.stopRecording}
+    private val playRecordButton by lazy { binding.playRecord}
+    private val stopPlayingButton by lazy { binding.stopPlaying}
 
     /**
      * Демонстрируется использование  потоков AudioTrackOutputStream, AudioFileSoundSource,
@@ -54,10 +62,13 @@ class MicFragment : Fragment() {
     }
 
     private fun setupButtons() {
-        binding.recordButton.setOnClickListener { viewModel.record(source, sampleRate) }
-        binding.stopRecording.setOnClickListener{ viewModel.stopRecording() }
-        binding.playRecord.setOnClickListener{ viewModel.play() }
-        binding.stopPlaying.setOnClickListener{ viewModel.stopPlaying() }
+        recordButton.setOnClickListener { viewModel.record(source, sampleRate) }
+        stopRecordingButton.setOnClickListener{ viewModel.stopRecording() }
+        playRecordButton.setOnClickListener{ viewModel.play() }
+        stopPlayingButton.setOnClickListener{
+            viewModel.stopPlaying()
+            binding.meterLevel.level=0f
+            binding.textMicCurrentLevel.text=""}
 
     }
 
@@ -70,35 +81,40 @@ class MicFragment : Fragment() {
     }
 
     private fun setControlsState(state: MicRecordState) {
-        // будет управлять видимостью контролей
+
+        if (!isPermissionsGranted()) {
+            binding.textMicTest.text = getString(R.string.need_permissions)
+            binding.textMicTest.setTextColor(Color.RED)
+
+        }
         binding.textMicBytesWritten.text="0"
         binding.meterLevel.level=0.0f
         binding.textMicCurrentLevel.text="0.0"
+
         when(state) {
             NO_FILE_RECORDED ->{
-                binding.recordButton.isEnabled=true
-                binding.stopRecording.isEnabled=false
-                binding.playRecord.isEnabled=false
-                binding.stopPlaying.isEnabled=false
+                recordButton.isEnabled=true
+                stopRecordingButton.isEnabled=false
+                playRecordButton.isEnabled=false
+                stopPlayingButton.isEnabled=false
             }
             STOPPED_READY -> {
-                binding.recordButton.isEnabled=true
-                binding.stopRecording.isEnabled=false
-                binding.playRecord.isEnabled=true
-                binding.stopPlaying.isEnabled=false
-
+                recordButton.isEnabled=true
+                stopRecordingButton.isEnabled=false
+                playRecordButton.isEnabled=true
+                stopPlayingButton.isEnabled=false
             }
             RECORDING -> {
-                binding.recordButton.isEnabled=false
-                binding.stopRecording.isEnabled=true
-                binding.playRecord.isEnabled=false
-                binding.stopPlaying.isEnabled=false
+                recordButton.isEnabled=false
+                stopRecordingButton.isEnabled=true
+                playRecordButton.isEnabled=false
+                stopPlayingButton.isEnabled=false
             }
             PLAYING -> {
-                binding.recordButton.isEnabled=false
-                binding.stopRecording.isEnabled=false
-                binding.playRecord.isEnabled=false
-                binding.stopPlaying.isEnabled=true
+                recordButton.isEnabled=false
+                stopRecordingButton.isEnabled=false
+                playRecordButton.isEnabled=false
+                stopPlayingButton.isEnabled=true
             }
         }
     }
@@ -128,7 +144,7 @@ class MicFragment : Fragment() {
         _binding = null
     }
 
-    inner class  SampleRateSelector : AdapterView.OnItemSelectedListener {
+    private inner class  SampleRateSelector : AdapterView.OnItemSelectedListener {
         override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long): Unit =
             run {
                 sampleRate=sampleRateList[position].toInt()
@@ -137,7 +153,7 @@ class MicFragment : Fragment() {
         override fun onNothingSelected(parent: AdapterView<*>?) {}
     }
 
-    inner class  InputSelector : AdapterView.OnItemSelectedListener {
+    private inner class  InputSelector : AdapterView.OnItemSelectedListener {
         override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long): Unit =
             run{
                 source = inputList[position].split("=")[0]. toInt()
@@ -146,5 +162,12 @@ class MicFragment : Fragment() {
         override fun onNothingSelected(parent: AdapterView<*>?) {}
     }
 
+    private fun isPermissionsGranted(): Boolean {
+        val recordPermission = checkSelfPermission(requireContext(), RECORD_AUDIO) ==
+                PERMISSION_GRANTED
+        val writePermission = checkSelfPermission(requireContext(),WRITE_EXTERNAL_STORAGE) ==
+                PERMISSION_GRANTED
+        return recordPermission && writePermission
+    }
 
 }

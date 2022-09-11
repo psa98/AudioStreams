@@ -27,7 +27,7 @@ import java.io.InputStream
  */
 
 
-@Suppress("unused")
+//@Suppress("unused")
 abstract class AudioInputStream :    InputStream, AutoCloseable {
 
 
@@ -161,8 +161,8 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
      * */
     @Volatile
     open var bytesRead = 0L
-        @Synchronized
-        protected set(value) {
+    @Synchronized
+    protected set(value) {
             field=value
             timestamp=(frameTimeMs(sampleRate)*value).toLong()
     }

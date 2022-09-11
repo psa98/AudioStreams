@@ -15,7 +15,7 @@ class Mp3OutputAudioStream private constructor() : AudioOutputStream(){
 
 
     private lateinit var androidLame: AndroidLame
-    private var finished = false
+    private var closed = false
     lateinit var  outputStream:OutputStream
     lateinit var stereoMode:LameBuilder.Mode
 
@@ -98,7 +98,7 @@ class Mp3OutputAudioStream private constructor() : AudioOutputStream(){
         IllegalStateException::class,IOException::class)
 
     override fun write(b: ByteArray?, off: Int, len: Int){
-        if (finished) throw IllegalStateException("Stream closed or in error state")
+        if (closed) throw IllegalStateException("Stream closed or in error state")
         if (b == null) throw NullPointerException ("Null array passed")
         if (off < 0 || len < 0 || len > b.size - off)
             throw IndexOutOfBoundsException("Wrong write(...) params")
@@ -129,13 +129,12 @@ class Mp3OutputAudioStream private constructor() : AudioOutputStream(){
 
     @Throws(IndexOutOfBoundsException::class,IllegalStateException::class, IOException::class)
     override fun writeShorts(b: ShortArray, off: Int, len: Int) {
-        if (finished) throw IllegalStateException("Stream was already closed or in error state")
+        if (closed) throw IllegalStateException("Stream was already closed or in error state")
         if (off < 0 || len < 0 || len > b.size - off)
             throw IndexOutOfBoundsException("Wrong write(...) params")
         val samples=b.copyOf(len)
-        val result:ByteArray
-        if (channelsCount==1) result =  encodeMonoStream(samples)
-        else result =  encodeInterleavedStream(samples)
+        val result:ByteArray = if (channelsCount==1) encodeMonoStream(samples)
+            else encodeInterleavedStream(samples)
         bytesSent += b.size.coerceAtMost(len) *2
         onWriteCallback?.invoke(bytesSent)
         outputStream.write(result)
@@ -147,11 +146,11 @@ class Mp3OutputAudioStream private constructor() : AudioOutputStream(){
      */
 
     override fun close() {
-        if (finished) return
+        if (closed) return
         val result=encodeEofFrame()
         outputStream.write(result)
         outputStream.close()
-        finished=true
+        closed=true
     }
 
 
@@ -161,40 +160,41 @@ class Mp3OutputAudioStream private constructor() : AudioOutputStream(){
     }
 
 
+    // todo - lame error code  -3 = wrong initialisation, -2 = bad buffers size
     private fun encodeMonoStream(inArray: ShortArray): ByteArray {
-        if (finished) throw IllegalStateException("Stream closed, create new encoder")
+        if (closed) throw IllegalStateException("Stream closed, create new encoder")
         val outBuff = ByteArray(inArray.size*4)
         val resultBytes = androidLame.encode(inArray, inArray, inArray.size, outBuff)
         if (resultBytes<0){
-            finished=true
+            closed=true
             outputStream.close()
-            throw IOException("Lame codec error $resultBytes, wrong init params or too small buffer size")
+            throw IOException("Lame codec error $resultBytes, wrong init params or buffer size")
         }
         return outBuff.sliceArray(0 until resultBytes)
     }
 
     private fun encodeInterleavedStream(samples: ShortArray): ByteArray {
-        if (finished) throw IllegalStateException("Stream closed, create new encoder")
+        if (closed) throw IllegalStateException("Stream closed, create new encoder")
         val size = samples.size
         val outBuff = ByteArray(size*4)
         val resultBytes = androidLame.encodeBufferInterLeaved(samples, size/2, outBuff)
         if (resultBytes<0) {
-            finished=true
+            closed=true
             outputStream.close()
-            throw IOException("Lame codec error $resultBytes, wrong init params or too small buffer size")
+            throw IOException("Lame codec error $resultBytes, wrong init params or buffer size")
             }
         return outBuff.sliceArray(0 until resultBytes)
     }
 
     private fun encodeEofFrame(): ByteArray {
-        if (finished) throw IllegalStateException("Stream was already closed")
-        finished = true
-        val outBuff = ByteArray(16 * 1024)
-        // вообще оно заведомо до 2048 + ограниченный размер тегов, но пусть
+        if (closed) throw IllegalStateException("Stream was already closed")
+        closed = true
+        val outBuff = ByteArray(32 * 1024)
+        // real size = ~2048 bytes + tags, should be enough
         val resultBytes = androidLame.flush(outBuff)
-        Log.e(TAG, "encodeMonoStream: MP3 bytes closed=")
+        Log.v(TAG, "Mp3OutputAudioStream, EOF chunk $resultBytes bytes, stream closed")
         androidLame.close()
-        return outBuff.sliceArray(0 until resultBytes)
+        return outBuff.sliceArray(0 until resultBytes.coerceAtLeast(0))
     }
 
     enum class EncodingQuality {

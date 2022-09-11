@@ -2,7 +2,6 @@
 
 
 package c.ponom.audiostreams.audio_streams
-import android.media.AudioFormat
 import android.media.AudioFormat.*
 import android.media.AudioFormat.Builder
 import android.media.AudioTrack
@@ -16,53 +15,66 @@ import kotlinx.coroutines.launch
 import java.io.IOException
 
 
+@Suppress("MemberVisibilityCanBePrivate", "unused")
 class AudioTrackOutputStream private constructor() : AudioOutputStream(){
 
 
     private var currentVolume: Float=1f
-    lateinit var audioFormat: AudioFormat
-    // поле не приватное что позволяет менять доступные свойства проигрывателя - частоты, роутинг,
-    // ставить слушатели и тп
+
+    /**
+     * After initialisation, internal AudioRecord object can be accessed for low level control of
+     * microphone recording.
+     * See registerAudioRecordingCallback(), setPreferredDevice(), setRecordPositionUpdateListener()
+     *
+     *
+     */
+
     var audioOut:AudioTrack?=null
-    private var prepared = false
 
     /* todo - сделать State? а может глобальный enum со стейтом универсальный для всех потоков
     *   включая PAUSE для тех что его поддерживают?
     *   в v. 2 - удобное управление audioOut!!.setPreferredDevice(AudioDeviceInfo), с выбором
     *   "Первый динамик", "первый динамик телефона"
     *
-    * */
+    */
     var closed = false
     private set
+
+    /**
+     * Class constructor.
+     * @param sampleRateInHz the sample rate expressed in Hertz. 44100Hz is currently the only
+     *   rate that is guaranteed to work on all devices, but other rates such as 22050,
+     *   16000, and 11025 may work on some devices.
+     * @param channels describes the number of the audio channels. Must be equal 1 or 2.
+     *   Mono recording  is guaranteed to work on all devices.
+     *   Only AudioFormat.ENCODING_PCM_16BIT currently supported.
+     * @param minBufferMs the minimal size (in ms) of the buffer where audio data is written
+     *   to during the recording. New audio data can be written to this buffer in smaller chunks
+     *   than this size.
+     *
+    * @throws UnsupportedOperationException – if the parameters  were incompatible,
+     * or if they are not supported by the device, or if the device was not available
+     * @throws IllegalArgumentException if channels is not equal 1 or 2
+    * */
 
     @JvmOverloads
     @Throws(IllegalArgumentException::class, UnsupportedOperationException::class)
     constructor(
-        sampleFreq: Int,
-        channelsCount: Int,
-        encoding: Int = ENCODING_PCM_16BIT,
-        minBufferInMs: Int = 0
+        sampleRateInHz: Int,
+        channels: Int,
+        minBufferMs: Int = 0
     ) : this() {
-        sampleRate = sampleFreq
-        channelConfig=channelConfig(channelsCount)
-        // todo тут будет проверка на законные значения из списка, варнинг для всех законных кроме
-        //  8, 16,22, 32 и 44 - 48к
-        // доделать буфер!
-        //  и исключение для совсем левых
-        if (!(channelConfig== CHANNEL_OUT_MONO ||channelConfig== CHANNEL_OUT_STEREO))
+        sampleRate = sampleRateInHz
+        channelConfig=channelConfig(channels)
+         if (!(channelConfig== CHANNEL_OUT_MONO ||channelConfig== CHANNEL_OUT_STEREO))
             throw IllegalArgumentException("Only 1 or 2 channels(CHANNEL_OUT_MONO " +
                     "and CHANNEL_OUT_STEREO) supported")
-        if (encoding!=ENCODING_PCM_16BIT)
-            throw IllegalArgumentException("Only PCM 16 bit encoding currently supported")
-        super.encoding=encoding
-        super.channelsCount=channelsCount
-        when (encoding){
-            ENCODING_PCM_8BIT -> frameSize = channelsCount
-            ENCODING_PCM_16BIT-> frameSize= channelsCount*2
-        }
-        val minBufferInBytes=frameSize*(sampleRate/1000)*(minBufferInMs/1000.0).toInt()
-
-        audioFormat= Builder()
+        encoding= ENCODING_PCM_16BIT
+        channelsCount=channels
+        bytesPerSample = 2
+        frameSize =bytesPerSample*channelsCount
+        val minBufferInBytes=frameSize*(sampleRate/1000)*(minBufferMs/1000.0).toInt()
+        val audioFormat= Builder()
             .setEncoding(encoding)
             .setSampleRate(sampleRate)
             .setChannelMask(channelConfig)
@@ -74,13 +86,22 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
             .setBufferSizeInBytes(minBuffer.coerceAtLeast(minBufferInBytes))
             .setTransferMode(MODE_STREAM)
             .build()
-        prepared=true
     }
 
+
     /**
-     *стартовать следует: либо заранее, будучи готовым напихать туда секунду-другую
-     *звука в буфер и далее подавать с достаточным темпом, либо уже уже подав звук в буфер
-     * до заполнения, тогда по play() начнется его проигрывание
+     * Starts playing an AudioTrack.
+     * You can optionally prime the data path prior to calling play(), by writing data to buffer
+     * If you don't call write() first, or if you call write() but with an insufficient amount of
+     * data, then the track will be in underrun state at play().  In this case,
+     * playback will not actually start playing until the data path is filled to a
+     * device-specific minimum level.  This requirement for the path to be filled
+     * to a minimum level is also true when resuming audio playback after calling stop().
+     * Similarly the buffer will need to be filled up again after
+     * the track underruns due to failure to call write() in a timely manner with sufficient data.
+     * This allows play() to start immediately, and reduces the chance of underrun.
+     *
+     * @throws IllegalStateException if the track isn't properly initialized or was already closed
      */
     @Throws(IOException::class)
     fun play(){
@@ -90,18 +111,15 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
     }
 
     /**
-     * Использовать для немедленной  остановки с очисткой остатков в буфере. Убирает "щелчок"
-     * возникающий при внезапной остановке громкого звука при обычном stop()
+     * Stops playing the audio data, discarding audio data that hasn't been played
+     * back yet.
      */
-
     fun stopAndClear(){
         if (closed||audioOut == null||audioOut?.playState!= PLAYSTATE_STOPPED) return
         try {
         audioOut?.setVolume(0.02f)         //это позволяет  убрать клик в конце
             CoroutineScope(IO).launch {
-                delay(90)
-            //время подобрано на слух, меньше 30 дает клик на частоте 440 гц 16000 сэмплов
-            // этого может быть мало для звуков с мощными НЧ, но стоит потестить
+                delay(90) // shorter delay can give audible click
                 audioOut?.pause()
                 audioOut?.flush()
                 audioOut?.stop()
@@ -110,9 +128,12 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
         } catch (e:IllegalStateException){
             e.printStackTrace()
         }
-
     }
 
+    /**
+     * Stops playing the audio data, without discarding audio data that hasn't been played
+     * back yet.
+     */
     fun stop(){
         if (closed||audioOut == null||audioOut?.playState!= PLAYSTATE_STOPPED) return
         try {
@@ -122,13 +143,18 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
         }
     }
 
+    /**
+    * Pauses the playback of the audio data. Data that has not been played
+    * back will not be discarded. Subsequent calls to play() will play
+    * this data back. See flush() to discard this data.
+    *
+    */
     fun pause (){
         if (closed||audioOut == null||audioOut?.playState!= PLAYSTATE_PLAYING) return
         try {
-            audioOut?.setVolume(0.02f)         //это позволяет  убрать клик в конце
-            //время подобрано на слух, меньше 30 дает клик на частоте 440 гц 16000 сэмплов
-            // этого может быть мало для звуков с мощными НЧ, но стоит потестить
+            audioOut?.setVolume(0.02f)
             CoroutineScope(IO).launch {
+                delay(90) // shorter delay can give audible click
                 audioOut?.pause()
                 audioOut?.setVolume(currentVolume)
             }
@@ -137,6 +163,12 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
         }
     }
 
+
+    /**
+     * Resume  playing an AudioTrack if in was paused before
+     *
+     * @throws IllegalStateException if the track isn't properly initialized or was already closed
+     */
     fun resume() {
         if (closed||audioOut == null||audioOut?.playState!= PLAYSTATE_PAUSED) return
         try {
@@ -146,7 +178,16 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
         }
     }
 
-    // документировать
+    /**
+     * Sets the specified output gain value on all channels of this track.
+     * A value of 0.0 results in zero gain (silence), and
+     * a value of 1.0 means unity gain (signal unchanged).
+     * Gain values are clamped to the closed interval [0.0, max] where max is the value of
+     * audioOut.getMaxVolume() if it was set previously
+     *
+     * The default value is 1.0 meaning unity gain.
+     * @param vol output gain for all channels.
+     */
     override fun setVolume(vol: Float) {
        currentVolume =vol
        audioOut?.setVolume(vol.coerceAtLeast(0f).coerceAtMost(1f))
@@ -155,51 +196,29 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
     /**
      *Writes the audio data to the audio sink for playback (streaming mode), or copies audio
      * data for later playback.
-    *
-     * In streaming mode, the write will normally block until all the data has been enqueued for playback,
-     * and will return a full transfer count. However, if the track is stopped or paused on entry, or another
-     * thread interrupts the write by calling stop or pause, or an I/O error occurs during the write, then
-     * the write may return a short transfer count.
      *
-     *
-     * @param b the array that holds the data to play.
-     * @param off the offset expressed in bytes in audioData where the data to write
-     *    starts.
+     * The write will normally block until all the data has been enqueued for playback.
+     * @param b the byte array that holds the data to play.
+     * @param off the offset expressed in bytes in b where the data to write starts.
      *    Must not be negative, or cause the data access to go out of bounds of the array.
      * @param len the number of bytes to write in audioData after the offset.
      *    Must not be negative, or cause the data access to go out of bounds of the array.
-     * @return zero or the positive number of bytes that were written, or one of the following
-     *    error codes. The number of bytes will be a multiple of the frame size in bytes
-     *    not to exceed sizeInBytes.
-     * <ul>
-     * <li>{@link #ERROR_INVALID_OPERATION} if the track isn't properly initialized</li>
-     * <li>{@link #ERROR_BAD_VALUE} if the parameters don't resolve to valid data and indexes</li>
-     * <li>{@link #ERROR_DEAD_OBJECT} if the AudioTrack is not valid anymore and
-     *    needs to be recreated. The dead object error code is not returned if some data was
-     *    successfully transferred. In this case, the error is returned at the next write()</li>
-     * <li>{@link #ERROR} in case of other error</li>
-     * </ul>
      * @throws IOException if the track isn't properly initialized, or he AudioTrack is not valid
      * anymore and needs to be recreated
      * @throws IllegalArgumentException if the parameters don't resolve to valid data and indexes
      * @throws NullPointerException if null array passed
      */
 
-    /*todo - переписать через вызов пишущего шорты и протестить
-
-    The format specified in the AudioTrack constructor should be
-     * {@link AudioFormat#ENCODING_PCM_8BIT} to correspond to the data in the array.
-     * todo The format can be {@link AudioFormat#ENCODING_PCM_16BIT}, but this is deprecated.
-
-     */
-
     @Throws(IOException::class,NullPointerException::class,IllegalArgumentException::class)
     override fun write(b: ByteArray?, off: Int, len: Int){
+        // should add evenness checks for all params in all byte writes converted to samples in
+        //library
         if (audioOut == null||closed) throw IOException("Stream closed or in error state")
         if (b == null) throw NullPointerException ("Null array passed")
         if (off < 0 || len < 0 || len > b.size - off)
             throw IllegalArgumentException("Wrong write(....) parameters")
-        val result:Int = audioOut!!.write(b, off, len)
+        val samplesShorts = ArrayUtils.byteToShortArrayLittleEndian(b)
+        val result:Int = audioOut!!.write(samplesShorts, off/2, len/2)
         bytesSent += result.coerceAtLeast(0)
         if (result<0){
             audioOut?.release()
@@ -210,48 +229,40 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
     }
 
 
-
     /**
      *Writes the audio data to the audio sink for playback (streaming mode), or copies audio
      * data for later playback calling writeShorts(b,0,b.size)
-     * @param b the array that holds the data to play.
-     * @return zero or the positive number of bytes that were written, or one of the following
-     *    error codes. The number of bytes will be a multiple of the frame size in bytes
-     *    not to exceed sizeInBytes.
+     *
+     * In streaming mode, the write will normally block until all the data has been enqueued
+     * for playback.
+     * @param b the shorts array that holds the data to play.
      * @throws IOException if the track isn't properly initialized, or he AudioTrack is not valid
      * anymore and needs to be recreated
-     * */
+    */
     @Throws(IOException::class,NullPointerException::class,IllegalArgumentException::class)
     override fun writeShorts(b: ShortArray) {
         writeShorts(b,0,b.size)
     }
 
-
+    /**
+     * True if writeShorts(b: ShortArray) and writeShorts(b: ShortArray, off: Int, len: Int)
+     * methods supported by class.
+     * @return true for AudioTrackOutputStream
+     */
     override fun canWriteShorts(): Boolean = true
 
     /**
      *Writes the audio data to the audio sink for playback (streaming mode), or copies audio
      * data for later playback.
-     *
-     * In streaming mode, the write will normally block until all the data has been enqueued for playback,
-     * and will return a full transfer count. However, if the track is stopped or paused on entry, or another
-     * thread interrupts the write by calling stop or pause, or an I/O error occurs during the write, then
-     * the write may return a short transfer count.
-     *
-     *
+     * In streaming mode, the write will normally block until all the data has been enqueued
+     * for playback.
      * @param b the array that holds the data to play.
      * @param off the offset expressed in bytes in audioData where the data to write
      *    starts.
-     *    Must not be negative, or cause the data access to go out of bounds of the array.
      * @param len the number of bytes to write in audioData after the offset.
-     *    Must not be negative, or cause the data access to go out of bounds of the array.
-     * @return zero or the positive number of bytes that were written, or one of the following
-     *    error codes. The number of bytes will be a multiple of the frame size in bytes
-     *    not to exceed sizeInBytes.
      * @throws IOException if the track isn't properly initialized, or he AudioTrack is not valid
      * anymore and needs to be recreated
      * @throws IllegalArgumentException if the parameters don't resolve to valid data and indexes
-     * @throws NullPointerException if null array passed
      */
     @Throws(IllegalArgumentException::class,IOException::class)
     override fun writeShorts(b: ShortArray, off: Int, len: Int) {
@@ -268,15 +279,42 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
             throw IOException ("Error code $result - see codes for AudioTrack write(...)")
         }
    }
-        override fun close() {
+
+
+    /**
+     * Stops playback and closes this input stream and releases any system resources associated.
+     * write(...) calls are no longer valid after this call and will  throw exception
+     *  Do nothing if stream already closed
+     */
+    override fun close() {
         stopAndClear()
         audioOut?.release()
         audioOut=null
         closed=true
     }
 
+    /**
+     * True if writeShorts(b: ShortArray) and writeShorts(b: ShortArray, off: Int, len: Int)
+     * methods supported by class.
+     * @return true for AudioTrackOutputStream
+     */
     override fun write(b: Int) {
-        throw NotImplementedError (" Not implemented, use write(byteArray[] ...)")
+        throw NotImplementedError ("Not implemented, use write(...), writeShorts(...)")
+    }
+
+    /**
+     * Returns the effective size of the AudioTrack buffer that the application writes to.
+     * @return current mic buffer size in bytes.
+     * Always check value before setting own buffers size. Zero buffer size means than
+     * device didn't initialised properly or stream is already closed
+     */
+    fun currentBufferSize(): Int {
+        if (audioOut==null) return 0
+        return try {
+            audioOut?.bufferSizeInFrames!!.times(frameSize)
+        } catch (e:IllegalStateException){
+            0
+        }
     }
 
 }

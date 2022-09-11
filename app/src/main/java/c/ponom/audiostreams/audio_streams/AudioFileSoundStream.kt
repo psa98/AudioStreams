@@ -182,12 +182,9 @@ class AudioFileSoundStream: AudioInputStream, AutoCloseable{
         if (off < 0 || len < 0 || len > b.size - off)
             throw IllegalArgumentException("Wrong read(...) params")
         if (off != 0) throw IllegalArgumentException("Non zero offset currently not supported")
-
-        if (((bytesRead >= bytesFinalCount && bytesFinalCount != 0)&&!fatalErrorInBuffer)) {
-            //close()
-
+        //close()
+        if (((bytesRead >= bytesFinalCount && bytesFinalCount != 0)&&!fatalErrorInBuffer))
             return -1
-        }
         if ((bytesRead >= bytesFinalCount && bytesFinalCount != 0)&&fatalErrorInBuffer) {
             close()
             currentBufferChunk.exception?.printStackTrace()
@@ -205,12 +202,12 @@ class AudioFileSoundStream: AudioInputStream, AutoCloseable{
      */
     override fun close() {
         closed=true
+        if (!released)  extractor.release()
         released=true
         bufferInfo=null
         channelsCount=0
         sampleRate=0
         duration=0
-        if (!released)  extractor.release()
         mainBuffer= ByteBuffer.allocate(1)
         bufferQueue=ArrayBlockingQueue(1)
         codecInputBuffers=Array(1){ ByteBuffer.allocate(1)}

@@ -65,7 +65,7 @@ class StreamPump @JvmOverloads constructor(
         CoroutineScope(Dispatchers.IO).launch{
             do {
                 if (state==FINISHED||state==FATAL_ERROR) break
-                var read: Int=0
+                var read = 0
                 try {
                     if (canPumpShorts) {
                         read = inputStream.readShorts(shortBuffer)
@@ -73,7 +73,8 @@ class StreamPump @JvmOverloads constructor(
                         if (read>=0) {
                             bytesSent+=read*2
                             onWrite(bytesSent)
-                        //у меня микрофонный поток может вернуть не -1 при ошибке, поэтому не на -1 проверка
+                        //у меня микрофонный поток может вернуть не -1 при ошибке,
+                            // поэтому не на -1 проверка
                             outputStream.writeShorts(shortBuffer)
                             onEachPump(shortToByteArrayLittleEndian(shortBuffer))
                             continue

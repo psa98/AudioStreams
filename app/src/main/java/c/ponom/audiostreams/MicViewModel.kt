@@ -1,6 +1,7 @@
 package c.ponom.audiostreams
 
 import android.os.Environment
+import android.os.Environment.getExternalStoragePublicDirectory
 import android.util.Log
 import android.widget.Toast
 import androidx.lifecycle.MutableLiveData
@@ -13,22 +14,21 @@ import c.ponom.recorder2.audio_streams.TAG
 import com.naman14.androidlame.LameBuilder
 import java.io.File
 import java.io.FileOutputStream
+import kotlin.random.Random
 
 
 class MicTestViewModel : ViewModel() {
 
 
-
+    // using different filenames for different instances
+    private val testFileNum = Random(137).nextInt(100000).toString(16)
     var recordLevel: MutableLiveData<Float> = MutableLiveData(0.0f)
     var  bytesPassed: MutableLiveData<Int> = MutableLiveData(0)
     var  recorderState: MutableLiveData<MicRecordState> = MutableLiveData(NO_FILE_RECORDED)
-    private val outDirName= Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC).toString()
+    private val outDirName= getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC).toString()
     private val outDir = File("$outDirName/AudioStreams/").apply { mkdir() }
     private lateinit var audioPump:StreamPump
-    //todo - сделать имена файлов переменными от времени
-    // иначе при переустановке приложения прежний
-    // файл будет реадонли и его надо удалить
-    private val testFileMp3 = File(outDir, "/TestMicStream.mp3")
+    private val testFileMp3 = File(outDir, "/TestMicStream_$testFileNum.mp3")
     var recordingIsOn=false
 
 
@@ -71,9 +71,8 @@ class MicTestViewModel : ViewModel() {
 
     fun play() {
         val audioIn = AudioFileSoundStream(testFileMp3.path)
-        val audioOut= AudioTrackOutputStream(audioIn.sampleRate,audioIn.channelsCount,
-            audioIn.encoding,0)
-        audioPump=StreamPump(audioIn, audioOut, 4096,
+        val audioOut= AudioTrackOutputStream(audioIn.sampleRate,audioIn.channelsCount,0)
+        audioPump=StreamPump(audioIn, audioOut, 2048,
             onEachPump = {recordLevel.postValue(getRMSVolume(byteToShortArrayLittleEndian(it)).toFloat())},
             onWrite =  { bytesPassed.postValue(it.toInt())},
             onFinish = {recorderState.postValue(STOPPED_READY)},

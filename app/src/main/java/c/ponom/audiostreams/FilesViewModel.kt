@@ -11,7 +11,6 @@ import c.ponom.recorder2.audio_streams.TAG
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.launch
-import java.lang.System.currentTimeMillis
 
 @Suppress("BlockingMethodInNonBlockingContext")
 class FilesViewModel : ViewModel() {
@@ -34,30 +33,29 @@ class FilesViewModel : ViewModel() {
         try {
             audioInStream = AudioFileSoundStream(context,uri)
             audioOutStream= AudioTrackOutputStream(audioInStream.sampleRate,
-                audioInStream.channelsCount,audioInStream.encoding,1000)
+                audioInStream.channelsCount,1000)
         }catch (e:java.lang.Exception){
             mediaData.postValue("Error in media file - ${e.localizedMessage} ")
             return
         }
         playing=true
-        // используется стандартный вывод, без  StreamPump
         CoroutineScope(IO).launch{
             audioOutStream.play()
             val bufferArray = ShortArray(1024) // при выводе в динамик желателен малый буфер
-            var lastSecond = currentTimeMillis() /1000
+            var lastTime =""
             do {
                 try {
                     if (!playing) break
                     val samples = audioInStream.readShorts(bufferArray)
                     if (samples > 0) audioOutStream.writeShorts(bufferArray)
                     else{
-                        Log.e(TAG, "playUri: samples=$samples")
+                        Log.e(TAG, "playUri - eof or error, samples=$samples")
                         break
                     }
                     //вывод временной метки раз в секунду
-                    val currentSecond = currentTimeMillis() /1000
-                    if (currentSecond>lastSecond){
-                        lastSecond=currentSecond
+                    val time =timeString(audioOutStream.timestamp)
+                    if (lastTime!=time){
+                        lastTime=time
                         secondsPlayed.postValue(timeString(audioOutStream.timestamp))
                     }
                 } catch (e:Exception){

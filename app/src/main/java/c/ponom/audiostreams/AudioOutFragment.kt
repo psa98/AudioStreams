@@ -16,11 +16,13 @@ class AudioOutFragment : Fragment() {
 
 
     /**
-     * Демонстрируется использование  потоков AudioTrackOutputStream, AudioFileSoundSource,
-     * MicSoundInputStream,  класса StreamPump, обработки ошибок
+     * Using of  AudioTrackOutputStream, AudioFileSoundSource,
+     * MicSoundInputStream,   StreamPump classes demonstrated
      */
 
-    private lateinit var  viewModel: AudioOutViewModel
+    private val  viewModel: AudioOutViewModel by lazy {
+        ViewModelProvider(this)[AudioOutViewModel::class.java]
+    }
     private var _binding: FragmentAudioOutBinding? = null
     private val binding get() = _binding!!
     var currentVolume=1f
@@ -42,17 +44,15 @@ class AudioOutFragment : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        viewModel=ViewModelProvider(this).get(AudioOutViewModel::class.java)
-        secondsPlayed=viewModel.secondsPlayed
-        errorMessage=viewModel.errorData
-        currentState=viewModel.recorderState
         _binding = FragmentAudioOutBinding.inflate(inflater, container, false)
         return binding.root
-
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        secondsPlayed=viewModel.secondsPlayed
+        errorMessage=viewModel.errorData
+        currentState=viewModel.recorderState
         setupButtons()
         setupObservers()
         setupSpinner()
@@ -77,7 +77,6 @@ class AudioOutFragment : Fragment() {
 
     private fun setControlsState(state: AudioOutState) {
         with (binding){
-        // будет управлять видимостью контролей
             secondsPlayed.text="0.0"
             seekbar.progress=100
             currentVol.text= 1f.toString()
@@ -89,7 +88,7 @@ class AudioOutFragment : Fragment() {
                     forceError.isEnabled = false
                 }
                 PLAYING -> {
-                    binding.seekbar.isEnabled=true
+                    seekbar.isEnabled=true
                     playButton.isEnabled = false
                     stopButton.isEnabled = true
                     forceError.isEnabled = true
@@ -112,7 +111,8 @@ class AudioOutFragment : Fragment() {
 
     private fun setupSpinner() {
 
-        val rateAdapter = StandardChoiceAdapter(requireContext(), android.R.layout.simple_spinner_item, sampleRateList)
+        val rateAdapter = StandardChoiceAdapter(requireContext(),
+            android.R.layout.simple_spinner_item, sampleRateList)
         binding.rateSelector.adapter = rateAdapter
         binding.rateSelector.onItemSelectedListener = SampleRateSelector()
         binding.rateSelector.prompt = "Select sampling rate"
@@ -126,7 +126,8 @@ class AudioOutFragment : Fragment() {
 
 
     inner class  SampleRateSelector : AdapterView.OnItemSelectedListener {
-        override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long): Unit =
+        override fun onItemSelected(parent: AdapterView<*>?, view: View?,
+                                    position: Int, id: Long): Unit =
             run {
                 if (position!=0)
                     sampleRate=sampleRateList[position].substringBefore(" (").toInt()
