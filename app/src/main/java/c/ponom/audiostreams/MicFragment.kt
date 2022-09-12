@@ -10,6 +10,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import androidx.core.content.ContextCompat.checkSelfPermission
 import androidx.core.content.PermissionChecker.PERMISSION_GRANTED
 import androidx.fragment.app.Fragment
@@ -24,8 +25,8 @@ class MicFragment : Fragment() {
     private var _binding: FragmentMicBinding? = null
     var source = MediaRecorder.AudioSource.DEFAULT
     var sampleRate = 16000
-    val sampleRateList = arrayListOf("16000","22050","32000","44100")
-    val inputList = arrayListOf("0=DEFAULT","6=VOICE_RECOGNITION","9=UNPROCESSED")
+    val sampleRateList = arrayOf("16000","22050","32000","44100")
+    val inputList = arrayOf("0=DEFAULT","6=VOICE_RECOGNITION","9=UNPROCESSED")
     private val binding get() = _binding!!
     private val viewModel:MicTestViewModel by viewModels()
     private lateinit var recordLevel: LiveData<Float>
@@ -131,10 +132,12 @@ class MicFragment : Fragment() {
 
     private fun setupSpinners() {
 
-        val rateAdapter = StandardChoiceAdapter(requireContext(), android.R.layout.simple_spinner_item, sampleRateList)
+        val rateAdapter = ArrayAdapter(requireContext(),
+            android.R.layout.simple_spinner_item, sampleRateList)
         binding.rateSelector.adapter = rateAdapter
         binding.rateSelector.onItemSelectedListener = SampleRateSelector()
-        val inputAdapter = StandardChoiceAdapter(requireContext(), android.R.layout.simple_spinner_item, inputList)
+        val inputAdapter = ArrayAdapter(requireContext(),
+            android.R.layout.simple_spinner_item, inputList)
         binding.inputSelector.adapter = inputAdapter
         binding.inputSelector.onItemSelectedListener = InputSelector()
     }

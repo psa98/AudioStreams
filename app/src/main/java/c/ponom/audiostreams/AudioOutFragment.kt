@@ -5,6 +5,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import android.widget.SeekBar
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.LiveData
@@ -27,7 +28,7 @@ class AudioOutFragment : Fragment() {
     private val binding get() = _binding!!
     var currentVolume=1f
     var sampleRate = 16000
-    val sampleRateList = arrayListOf("Select sampling rate","16000 (Default)","22050","32000","44100","9999999 (Illegal value)")
+    val sampleRateList = arrayOf("Select sampling rate","16000 (Default)","22050","32000","44100","9999999 (Illegal value)")
     private val volume:Short =16000
     private val freq = 440.0
     private lateinit var secondsPlayed: LiveData<Float>
@@ -111,7 +112,7 @@ class AudioOutFragment : Fragment() {
 
     private fun setupSpinner() {
 
-        val rateAdapter = StandardChoiceAdapter(requireContext(),
+        val rateAdapter = ArrayAdapter(requireContext(),
             android.R.layout.simple_spinner_item, sampleRateList)
         binding.rateSelector.adapter = rateAdapter
         binding.rateSelector.onItemSelectedListener = SampleRateSelector()
