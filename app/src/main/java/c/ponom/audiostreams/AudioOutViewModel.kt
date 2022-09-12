@@ -20,7 +20,6 @@ import kotlinx.coroutines.launch
 class AudioOutViewModel : ViewModel() {
 
 
-
     private lateinit var audioInStream: TestSoundInputStream
     private var audioOutStream: AudioTrackOutputStream?=null
     var secondsPlayed: MutableLiveData<Float> = MutableLiveData(0.0f)
@@ -28,10 +27,11 @@ class AudioOutViewModel : ViewModel() {
     var errorData: MutableLiveData<String> = MutableLiveData("")
     private lateinit var audioPump: StreamPump
 
+
+
     fun play(freq: Double, volume: Short, sampleRate: Int) {
-
-
-        //тестируется поведение конструктора AudioTrackOutputStream при заведомо неправильных значениях параметров
+        //тестируется поведение конструктора AudioTrackOutputStream при заведомо
+        // неправильных значениях параметров
         try {
             audioInStream = TestSoundInputStream(freq,volume, sampleRate, CHANNEL_IN_MONO,)
             audioOutStream= AudioTrackOutputStream(audioInStream.sampleRate,
