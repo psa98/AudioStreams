@@ -104,6 +104,7 @@ class FilesFragment : Fragment() {
         val tracks =AudioDataInfo.getTrackData(requireContext(),uri)
         val mediaData=AudioDataInfo(requireContext(),uri)
         binding.textMediaData.text="Media Data: $mediaData \n Media Data for track:  $tracks"
+        binding.stopButton.isEnabled=true
         viewModel.playUri(requireContext(),uri)
     }
 
