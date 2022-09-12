@@ -26,7 +26,7 @@ object SoundVolumeUtils {
     fun getRMSVolume(data: ShortArray): Short {
         var sum = 0.0
         for (element in data) sum += (element * element)
-        return sqrt(sum / data.size).coerceAtMost(Short.MAX_VALUE - 1.0).toInt().toShort()
+        return sqrt(sum / data.size).coerceAtMost(Short.MAX_VALUE.toDouble()).toInt().toShort()
     }
 
 

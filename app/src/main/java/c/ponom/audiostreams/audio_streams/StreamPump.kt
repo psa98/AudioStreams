@@ -12,6 +12,7 @@ import java.io.IOException
 
 
 // todo - перетестить
+@Suppress("MemberVisibilityCanBePrivate")
 class StreamPump @JvmOverloads constructor(
     val inputStream: AudioInputStream,
     val outputStream: AudioOutputStream,
@@ -19,19 +20,9 @@ class StreamPump @JvmOverloads constructor(
     var onEachPump: ((b: ByteArray) -> Unit) = {},
     var onWrite:(bytesWritten:Long) -> Unit ={},
     var onFinish: () -> Unit = {},
-    var onFatalError: (e: Exception) -> Unit = {}
+    var onFatalError: (e: Exception) -> Unit = {}) {
 
-    ) {
-
-
-
-        /*
-        * поток читает (жадным образом, блокирующим чтением), все из входного потока до получения там -1,
-        * либо команды stop. команда стоп или ошибка возможно передается потом в оба потока как close().
-        * доступные методы:
-        * stop, start, pause, resume, setmaxspeed, setbuffersize, getIn|OutStream, get state
-        */
-
+    //todo - javadoc
     var state: State=NOT_READY
         private set
     private var canPumpShorts=false
@@ -131,15 +122,15 @@ class StreamPump @JvmOverloads constructor(
         }
     }
 
-    // документировать параметр
+
     @JvmOverloads
     @Throws(IllegalStateException::class,IOException::class)
-    fun stop(closeAllStreams:Boolean=false){
+    fun stop(autoClose:Boolean=false){
         when(state){
             NOT_READY, PREPARED -> return
             PAUSED, PUMPING -> {
                 state=FINISHED
-                if (closeAllStreams) try {
+                if (autoClose) try {
                     inputStream.close()
                     outputStream.close()
                 } catch (e:IOException){

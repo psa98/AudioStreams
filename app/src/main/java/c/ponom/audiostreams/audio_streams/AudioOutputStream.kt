@@ -115,7 +115,7 @@ abstract class AudioOutputStream :
 
 
     /**
-     *Writes the audio data to the output stream by calling write(b,0,b.size)
+     *Writes the audio data to the output stream
      * @param b the byte array that holds the data to transfer.
      * @param off the offset expressed in bytes in b  where the data to write starts.
      * @param len the number of bytes to write in audioData after the offset.
@@ -141,6 +141,8 @@ abstract class AudioOutputStream :
     /**
      * If implemented, writes the audio data to the output stream.
      * @param b the shorts array that holds the data to transfer.
+     * @param off the offset in b  where the data to write starts.
+     * @param len the number of samples to write in audioData after the offset.
      * @throws IOException if an I/O error occurs.
      */
     @Throws(IOException::class)
@@ -150,7 +152,8 @@ abstract class AudioOutputStream :
     }
 
     /**
-     * If implemented, writes the audio data to the output stream.
+     * If implemented, writes the audio data to the output stream by calling
+     * writeShorts(b,0,b.size)
      * @param b the shorts array that holds the data to transfer.
      * @throws IOException if an I/O error occurs.
      */

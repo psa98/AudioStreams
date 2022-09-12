@@ -12,7 +12,7 @@ import c.ponom.recorder2.audio_streams.TAG
 import java.io.IOException
 
 
-@Suppress("MemberVisibilityCanBePrivate")
+@Suppress("MemberVisibilityCanBePrivate", "unused")
 class MicSoundInputStream : AudioInputStream {
 
 

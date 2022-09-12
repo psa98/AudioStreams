@@ -26,9 +26,7 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
      * microphone recording.
      * See registerAudioRecordingCallback(), setPreferredDevice(), setRecordPositionUpdateListener()
      *
-     *
      */
-
     var audioOut:AudioTrack?=null
 
     /* todo - сделать State? а может глобальный enum со стейтом универсальный для всех потоков
@@ -44,7 +42,7 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
      * Class constructor.
      * @param sampleRateInHz the sample rate expressed in Hertz. 44100Hz is currently the only
      *   rate that is guaranteed to work on all devices, but other rates such as 22050,
-     *   16000, and 11025 may work on some devices.
+     *   16000, and 11025 should work on most devices.
      * @param channels describes the number of the audio channels. Must be equal 1 or 2.
      *   Mono recording  is guaranteed to work on all devices.
      *   Only AudioFormat.ENCODING_PCM_16BIT currently supported.
@@ -211,8 +209,7 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
 
     @Throws(IOException::class,NullPointerException::class,IllegalArgumentException::class)
     override fun write(b: ByteArray?, off: Int, len: Int){
-        // should add evenness checks for all params in all byte writes converted to samples in
-        //library
+        // should add evenness checks for all params in all byte writes converted to short
         if (audioOut == null||closed) throw IOException("Stream closed or in error state")
         if (b == null) throw NullPointerException ("Null array passed")
         if (off < 0 || len < 0 || len > b.size - off)
@@ -257,9 +254,8 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
      * In streaming mode, the write will normally block until all the data has been enqueued
      * for playback.
      * @param b the array that holds the data to play.
-     * @param off the offset expressed in bytes in audioData where the data to write
-     *    starts.
-     * @param len the number of bytes to write in audioData after the offset.
+     * @param off the offset  in b where the data to write   starts.
+     * @param len the number of samples to write in b after the offset.
      * @throws IOException if the track isn't properly initialized, or he AudioTrack is not valid
      * anymore and needs to be recreated
      * @throws IllegalArgumentException if the parameters don't resolve to valid data and indexes
@@ -317,6 +313,33 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
         }
     }
 
-    //todo - сделать статический апи + протестить его сразу  и еще один статический
+    /* Static and async API for class */
+    companion object {
+
+        /**
+         * Async creation of AudioTrack audio stream.
+         *
+         * @return  the  Result&lt;AudioTrackOutputStream&gt; object containing created stream or
+         * Throwable
+         * @param sampleRateInHz the sample rate expressed in Hertz. 44100Hz is currently the only
+         *   rate that is guaranteed to work on all devices, but other rates such as 22050,
+         *   16000, and 11025 should work on most devices.
+         * @param channels describes the number of the audio channels. Must be equal 1 or 2.
+         *   Mono recording  is guaranteed to work on all devices.
+         *   Only AudioFormat.ENCODING_PCM_16BIT currently supported.
+         * @param minBufferMs the minimal size (in ms) of the buffer where audio data is written
+         *   to during the recording. New audio data can be written to this buffer in smaller chunks
+         *   than this size.
+         *
+         */
+        @JvmStatic
+        fun createChannelAsync(
+            sampleRateInHz: Int,
+            channels: Int,
+            minBufferMs: Int = 0
+        ):Result<AudioTrackOutputStream> = runCatching{AudioTrackOutputStream (sampleRateInHz,
+            channels,minBufferMs)  }
+
+    }
 
 }

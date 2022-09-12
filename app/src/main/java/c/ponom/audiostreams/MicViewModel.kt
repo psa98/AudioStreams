@@ -3,7 +3,8 @@ package c.ponom.audiostreams
 import android.os.Environment
 import android.os.Environment.getExternalStoragePublicDirectory
 import android.util.Log
-import android.widget.Toast
+import android.widget.Toast.LENGTH_LONG
+import android.widget.Toast.makeText
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import c.ponom.audiostreams.MicRecordState.*
@@ -40,11 +41,12 @@ class MicTestViewModel : ViewModel() {
         try {
              outputFileStream = testFileMp3.outputStream()
         } catch (e:Exception){
-            Toast.makeText(App.appContext,"Need permissions to work!", Toast.LENGTH_LONG).show()
+            makeText(App.appContext,"Need all permissions to work!", LENGTH_LONG).show()
             return
         }
         val testMicStream=MicSoundInputStream(sampleRate, source)
-        // рекомендуемый битрейт для частоты не более (частота/137), аналогично соотношению 44100/320
+        // recommended mp3 bitrate should be no more than sampleRate/137, like in 44100/320,
+        // or even sampleRate/160
         val encoderStream=Mp3OutputAudioStream(outputFileStream,
             sampleRate,sampleRate/160, LameBuilder.Mode.MONO)
         audioPump=StreamPump(testMicStream, encoderStream,bufferSize=1000,
