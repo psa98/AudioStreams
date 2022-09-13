@@ -127,7 +127,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintBottom_toBottomOf="@id/currentVol"
         app:layout_constraintTop_toTopOf="@id/currentVol"
-        android:id="@+id/seekbar"
+        android:id="@+id/volumeSlider"
         android:layout_margin="@dimen/std_margin"
         style="@style/Base.Widget.AppCompat.SeekBar"
         android:layout_width="0dp"

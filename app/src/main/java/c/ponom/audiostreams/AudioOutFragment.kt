@@ -71,25 +71,25 @@ class AudioOutFragment : Fragment() {
 
 
     private fun setupObservers() {
-        secondsPlayed.observe(this,{binding.secondsPlayed.text=it.toString()})
-        errorMessage.observe(this,{ binding.errorMessageText.text=it.toString()})
-        currentState.observe(this,{ setControlsState(it)})
+        secondsPlayed.observe(viewLifecycleOwner,{binding.secondsPlayed.text=it.toString()})
+        errorMessage.observe(viewLifecycleOwner,{ binding.errorMessageText.text=it.toString()})
+        currentState.observe(viewLifecycleOwner,{ setControlsState(it)})
     }
 
     private fun setControlsState(state: AudioOutState) {
         with (binding){
             secondsPlayed.text="0.0"
-            seekbar.progress=100
+            volumeSlider.progress=100
             currentVol.text= 1f.toString()
             when(state) {
                 STOPPED -> {
-                    seekbar.isEnabled=false
+                    volumeSlider.isEnabled=false
                     playButton.isEnabled = true
                     stopButton.isEnabled = false
                     forceError.isEnabled = false
                 }
                 PLAYING -> {
-                    seekbar.isEnabled=true
+                    volumeSlider.isEnabled=true
                     playButton.isEnabled = false
                     stopButton.isEnabled = true
                     forceError.isEnabled = true
@@ -97,7 +97,7 @@ class AudioOutFragment : Fragment() {
                     errorLabel.visibility = View.GONE
                 }
                 ERROR -> {
-                    seekbar.isEnabled=false
+                    volumeSlider.isEnabled=false
                     playButton.isEnabled = true
                     stopButton.isEnabled = false
                     forceError.isEnabled = false
@@ -138,10 +138,9 @@ class AudioOutFragment : Fragment() {
 
 
     private fun setVolumeControl() {
-
-        binding.seekbar.isEnabled=false
-        binding.seekbar.max = 100
-        binding.seekbar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+        binding.volumeSlider.isEnabled=false
+        binding.volumeSlider.max = 100
+        binding.volumeSlider.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {}
             override fun onStartTrackingTouch(seekBar: SeekBar) {}
             override fun onStopTrackingTouch(seekBar: SeekBar) {
@@ -150,7 +149,6 @@ class AudioOutFragment : Fragment() {
                 binding.currentVol.text= currentVolume.toString()
             }
         })
-
     }
 
     override fun onPause() {

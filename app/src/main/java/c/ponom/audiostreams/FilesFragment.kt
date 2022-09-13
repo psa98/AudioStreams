@@ -56,8 +56,8 @@ class FilesFragment : Fragment() {
     }
 
     private fun setupObservers() {
-        secondsPlayed.observe(this,{binding.secondsPlayed.text=it.toString()})
-        mediaData.observe(this,{ binding.textMediaData.text=it.toString()})
+        secondsPlayed.observe(this.viewLifecycleOwner,{binding.secondsPlayed.text=it.toString()})
+        mediaData.observe(this.viewLifecycleOwner,{ binding.textMediaData.text=it.toString()})
     }
 
     private fun setupButtons() {
@@ -65,7 +65,6 @@ class FilesFragment : Fragment() {
             playExternalFile()
             it.isEnabled=false
             binding.stopButton.isEnabled=true
-
         }
         binding.stopButton.setOnClickListener {
             viewModel.playing=false

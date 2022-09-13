@@ -27,6 +27,7 @@ private const val MAX_BUFFER_SIZE = 512 * 1024
 // резервная зона в конце буфера, что бы избежать его переполнения,
 // к ней плюсуется максимальный размер буфера используемого кодеком (типично 4-16Кб)
 private const val RESERVE_BUFFER_SIZE = 32 * 1024
+const val MAX_READ_SIZE = MAX_BUFFER_SIZE - 128 *1024
 private const val TIMEOUT_US = 0L
 private const val QUEUE_SIZE  = 8
 
@@ -107,9 +108,18 @@ class AudioFileSoundStream: AudioInputStream, AutoCloseable{
         return createStream(track)
     }
 
+    /*
+    TODO: .wav files support. Their content marked as audio/raw, sample rate
+     must be read from header or set externally
+     */
+
     @Throws(IOException::class,IllegalArgumentException ::class)
     private fun createStream(track:Int) {
         extractor.selectTrack(track)
+        if (track>extractor.trackCount-1||track<0){
+            extractor.release()
+            throw IllegalArgumentException("No such track in file")
+        }
         val format: MediaFormat
         val mimeString:String
         try {
@@ -123,15 +133,19 @@ class AudioFileSoundStream: AudioInputStream, AutoCloseable{
             encoding = if (format.containsKey("pcm-encoding")) {
                 format.getInteger("pcm-encoding")
             } else ENCODING_PCM_16BIT //если ключа нет то 16 битный звук
-            if (encoding != ENCODING_PCM_16BIT)
+            if (encoding != ENCODING_PCM_16BIT) {
+                extractor.release()
                 throw IllegalArgumentException("audio track is not ENCODING_PCM_16BIT")
+            }
             mediaFormat = format
-            channelConfig=channelConfig(channelConfig)
+            channelConfig=channelConfig(channelsCount)
         } catch (e: ClassCastException) {
+            extractor.release()
             throw IllegalArgumentException(
                 "Wrong file format or track #$track is not audio track")
         }
         catch (e:NullPointerException){
+            extractor.release()
             throw IllegalArgumentException(
                 "Wrong file format or track #$track is not audio track")
         }
@@ -146,6 +160,7 @@ class AudioFileSoundStream: AudioInputStream, AutoCloseable{
             bufferInfo = MediaCodec.BufferInfo()
             prepared = true
         }catch (exception:Exception){
+            extractor.release()
             throw IllegalArgumentException("Wrong format or track #$track is DRM protected")
         }
         fillBufferQueue()
@@ -181,6 +196,9 @@ class AudioFileSoundStream: AudioInputStream, AutoCloseable{
         if (closed) throw IOException("Stream already closed")
         if (off < 0 || len < 0 || len > b.size - off)
             throw IllegalArgumentException("Wrong read(...) params")
+        if (len > MAX_READ_SIZE)
+            throw IllegalArgumentException("Wrong read(...) params, " +
+                    "cannot read more than $MAX_READ_SIZE bytes")
         if (off != 0) throw IllegalArgumentException("Non zero offset currently not supported")
         //close()
         if (((bytesRead >= bytesFinalCount && bytesFinalCount != 0)&&!fatalErrorInBuffer))

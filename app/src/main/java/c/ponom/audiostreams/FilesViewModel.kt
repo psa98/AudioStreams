@@ -52,7 +52,6 @@ class FilesViewModel : ViewModel() {
                         Log.e(TAG, "playUri - eof or error, samples=$samples")
                         break
                     }
-                    //вывод временной метки раз в секунду
                     val time =timeString(audioOutStream.timestamp)
                     if (lastTime!=time){
                         lastTime=time

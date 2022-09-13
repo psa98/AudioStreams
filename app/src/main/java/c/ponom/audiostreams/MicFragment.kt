@@ -74,11 +74,11 @@ class MicFragment : Fragment() {
     }
 
     private fun setupObservers() {
-        recordLevel.observe(this,{
+        recordLevel.observe(viewLifecycleOwner,{
             binding.meterLevel.level=it
             binding.textMicCurrentLevel.text=it.toString()})
-        bytesPassed.observe(this,{ binding.textMicBytesWritten.text=it.toString()})
-        currentState.observe(this,{ setControlsState(it)})
+        bytesPassed.observe(viewLifecycleOwner,{ binding.textMicBytesWritten.text=it.toString()})
+        currentState.observe(viewLifecycleOwner,{ setControlsState(it)})
     }
 
     private fun setControlsState(state: MicRecordState) {

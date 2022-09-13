@@ -9,6 +9,10 @@ import android.media.AudioRecord.*
 import android.media.MediaRecorder
 import android.util.Log
 import c.ponom.recorder2.audio_streams.TAG
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import java.io.IOException
 
 
@@ -292,8 +296,6 @@ class MicSoundInputStream : AudioInputStream {
         /**
          * Async creation of microphone input audio stream.
          *
-         * @return  the  Result&lt;MicSoundInputStream&gt; object containing created stream or
-         * Throwable
          * @param sampleRateInHz the sample rate expressed in Hertz. 44100Hz is currently the only
          *   rate that is guaranteed to work on all devices, but other rates such as 22050,
          *   16000, and 11025 may work on some devices.
@@ -304,14 +306,21 @@ class MicSoundInputStream : AudioInputStream {
          *   Only AudioFormat.ENCODING_PCM_16BIT currently supported.
          * @param bufferSizeMs the minimal size (in ms) of the buffer where audio data is written
          *   to during the recording. New audio data can be read from this buffer in smaller chunks
-         *   than this size.*/
+         *   than this size.
+         * @return  the  Result&lt;MicSoundInputStream&gt; object containing created stream or
+         * Throwable
+         *
+         *   */
         @JvmStatic
         fun createChannelAsync(sampleRateInHz: Int,
                                source: Int = MediaRecorder.AudioSource.DEFAULT,
                                channels: Int = 1,
                                encoding: Int = ENCODING_PCM_16BIT,
-                               bufferSizeMs: Int = 0):Result<MicSoundInputStream> = runCatching{            MicSoundInputStream(sampleRateInHz,source,channels, encoding, bufferSizeMs)  }
-
+                               bufferSizeMs: Int = 0): Deferred<Result<MicSoundInputStream>> =
+            CoroutineScope(Dispatchers.IO).async{
+                runCatching{
+                    MicSoundInputStream(sampleRateInHz,source,channels,encoding, bufferSizeMs)}
+            }
     }
 
 }

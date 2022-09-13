@@ -6,6 +6,10 @@ import android.content.Context
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.net.Uri
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers.IO
+import kotlinx.coroutines.async
 import java.io.IOException
 
 
@@ -13,11 +17,11 @@ import java.io.IOException
 class AudioDataInfo{
     private var uri: Uri=Uri.EMPTY
     private var path: String=""
-    var mimeString: String?=""
+    var mimeString: String=""
         private set
     var duration:Long=0L
         private set
-    var samplingRate:Int =0
+    var sampleRate:Int =0
         private set
     var channelsCount:Int =0
         private set
@@ -51,14 +55,15 @@ class AudioDataInfo{
         if (uri == Uri.EMPTY) throw IllegalArgumentException("Uri is empty")
         this.uri=uri
         extractor.setDataSource(context,uri,headers)
+        if (track>extractor.trackCount-1||track<0)
+            throw IllegalArgumentException("No such track in file")
         extractor.selectTrack(track)
         val trackFormat = extractor.getTrackFormat(track)
         extractor.release()
         //документация андроида утверждает что любая
         // дорожка медиафайла имеет этот параметр, но мало ли что нам подсунут
         val mime = trackFormat.getString("mime").toString()
-        require(mime.contains("audio",true)&&!mime
-            .contains("raw",true)){"Track $track isn't valid audio track"}
+        require(mime.contains("audio",true)){"Track $track isn't valid audio track"}
         initFields(trackFormat)
         }
 
@@ -85,12 +90,13 @@ class AudioDataInfo{
         if (path.isBlank()) throw IllegalArgumentException("Path is or empty")
         this.path=path
         extractor.setDataSource(path)
+        if (track>extractor.trackCount-1||track<0)
+            throw IllegalArgumentException("No such track in file")
         extractor.selectTrack(track)
         val trackFormat = extractor.getTrackFormat(track)
         extractor.release()
         val mime = trackFormat.getString("mime").toString()
-        require(mime.contains("audio",true)&&!mime
-            .contains("raw",true)){"Track $track  isn't valid audio track"}
+        require(mime.contains("audio",true)){"Track $track  isn't valid audio track"}
         initFields(trackFormat)
     }
 
@@ -105,9 +111,9 @@ class AudioDataInfo{
          */
         try {
             duration = trackFormat.getLong("durationUs").div(1000)
-            samplingRate = trackFormat.getInteger("sample-rate")
+            sampleRate = trackFormat.getInteger("sample-rate")
             channelsCount = trackFormat.getInteger("channel-count")
-            mimeString=trackFormat.getString("mime")
+            mimeString=trackFormat.getString("mime")?:""
         } catch (e:Exception){
             throw IllegalArgumentException ("Audio file $path $uri don't have valid media data")
         }
@@ -147,8 +153,8 @@ class AudioDataInfo{
         @Suppress("BlockingMethodInNonBlockingContext")
         fun getMediaDataAsync(
             context: Context, uri: Uri, track: Int = 0,
-            headers: Map<String, String>? = null): Result<AudioDataInfo> =
-            runCatching { AudioDataInfo(context, uri, track, headers) }
+            headers: Map<String, String>? = null): Deferred<Result<AudioDataInfo>> =
+            CoroutineScope(IO).async {runCatching { AudioDataInfo(context, uri, track, headers) }}
 
         /**
          * Returns the Result&lt;AudioDataInfo&gt; object containing basic info for media
@@ -165,8 +171,8 @@ class AudioDataInfo{
          * contains audio data, for most video sources audio tracks starts from #1
          */
         @JvmStatic
-        fun getMediaDataAsync(path: String, track: Int = 0): Result<AudioDataInfo> =
-            runCatching{AudioDataInfo(path,track) }
+        fun getMediaDataAsync(path: String, track: Int = 0):  Deferred<Result<AudioDataInfo>> =
+            CoroutineScope(IO).async {runCatching{AudioDataInfo(path,track) }}
 
 
         /**

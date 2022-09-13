@@ -8,10 +8,8 @@ import android.media.AudioTrack
 import android.media.AudioTrack.*
 import android.util.Log
 import c.ponom.recorder2.audio_streams.TAG
-import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.IO
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import java.io.IOException
 
 
@@ -319,8 +317,6 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
         /**
          * Async creation of AudioTrack audio stream.
          *
-         * @return  the  Result&lt;AudioTrackOutputStream&gt; object containing created stream or
-         * Throwable
          * @param sampleRateInHz the sample rate expressed in Hertz. 44100Hz is currently the only
          *   rate that is guaranteed to work on all devices, but other rates such as 22050,
          *   16000, and 11025 should work on most devices.
@@ -330,6 +326,8 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
          * @param minBufferMs the minimal size (in ms) of the buffer where audio data is written
          *   to during the recording. New audio data can be written to this buffer in smaller chunks
          *   than this size.
+         * @return  the  Result&lt;AudioTrackOutputStream&gt; object containing created stream or
+         * Throwable
          *
          */
         @JvmStatic
@@ -337,8 +335,8 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
             sampleRateInHz: Int,
             channels: Int,
             minBufferMs: Int = 0
-        ):Result<AudioTrackOutputStream> = runCatching{AudioTrackOutputStream (sampleRateInHz,
-            channels,minBufferMs)  }
+        ): Deferred<Result<AudioTrackOutputStream>> = CoroutineScope(IO).async{
+            runCatching{AudioTrackOutputStream (sampleRateInHz, channels,minBufferMs)  }}
 
     }
 
