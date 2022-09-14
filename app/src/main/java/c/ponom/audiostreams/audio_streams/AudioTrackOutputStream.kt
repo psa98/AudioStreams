@@ -82,6 +82,7 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
             .setBufferSizeInBytes(minBuffer.coerceAtLeast(minBufferInBytes))
             .setTransferMode(MODE_STREAM)
             .build()
+
     }
 
 
@@ -113,7 +114,7 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
     fun stopAndClear(){
         if (closed||audioOut == null||audioOut?.playState!= PLAYSTATE_STOPPED) return
         try {
-        audioOut?.setVolume(0.02f)         //это позволяет  убрать клик в конце
+        audioOut?.setVolume(0.02f)
             CoroutineScope(IO).launch {
                 delay(90) // shorter delay can give audible click
                 audioOut?.pause()
@@ -230,7 +231,7 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
      *
      * In streaming mode, the write will normally block until all the data has been enqueued
      * for playback.
-     * @param b the shorts array that holds the data to play.
+     * @param b the short array that holds the data to play.
      * @throws IOException if the track isn't properly initialized, or he AudioTrack is not valid
      * anymore and needs to be recreated
     */

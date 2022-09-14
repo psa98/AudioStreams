@@ -76,7 +76,8 @@ class AudioDataInfoTest {
         assertEquals((duration / 1000.0).roundToInt(),60)
         assertEquals(channels,1)
         assertEquals(sampleRate,44100)
-        assertEquals(mime,targetMime)
+        //.flac files can have "audio/flac" or "audio/raw"
+        assertTrue(mime == targetMime || mime=="audio/raw")
 
         testAsyncApi(uri)
         testForIllegalTrack(uri)

@@ -33,14 +33,15 @@ private const val QUEUE_SIZE  = 8
 
 @Suppress("unused")
 class AudioFileSoundStream: AudioInputStream, AutoCloseable{
-    private  var path: String=""
-    private lateinit var currentBuffer: ByteBuffer
+    private var path: String=""
+    private var uri: Uri= Uri.EMPTY
+    private var currentBuffer = ByteBuffer.allocate(0)
     private var maxChunkSize = 0
     private lateinit var codec: MediaCodec
     private var bufferReady: Boolean = false
     private val extractor: MediaExtractor = MediaExtractor()
-    private lateinit var codecInputBuffers: Array<ByteBuffer>
-    private lateinit var codecOutputBuffers: Array<ByteBuffer>
+    private var codecInputBuffers: Array<ByteBuffer> = emptyArray()
+    private var codecOutputBuffers: Array<ByteBuffer> = emptyArray()
     private var eofReached = false
     private var bufferInfo: MediaCodec.BufferInfo? = null
     private var prepared = false
@@ -53,8 +54,6 @@ class AudioFileSoundStream: AudioInputStream, AutoCloseable{
     private var bytesTotalCount = 0
     private var bytesFinalCount = 0
     private var released = false
-    private var uri: Uri= Uri.EMPTY
-
 
     /**
      * Class constructor.
@@ -85,8 +84,6 @@ class AudioFileSoundStream: AudioInputStream, AutoCloseable{
         extractor.setDataSource(path)
         return createStream(track)
     }
-
-
 
     /**
      * Class constructor.
@@ -228,8 +225,8 @@ class AudioFileSoundStream: AudioInputStream, AutoCloseable{
         duration=0
         mainBuffer= ByteBuffer.allocate(1)
         bufferQueue=ArrayBlockingQueue(1)
-        codecInputBuffers=Array(1){ ByteBuffer.allocate(1)}
-        codecOutputBuffers=Array(1){ ByteBuffer.allocate(1)}
+        codecInputBuffers= emptyArray()
+        codecOutputBuffers= emptyArray()
     }
 
     /**
@@ -346,7 +343,6 @@ class AudioFileSoundStream: AudioInputStream, AutoCloseable{
                         val eof = outputToBuff(currentBuffer)
                         maxPos = MAX_BUFFER_SIZE - (RESERVE_BUFFER_SIZE +maxChunkSize)
                         newByteBufferChunk.isLastBuffer = eof
-                        //newByteBufferChunk.byteBuffer.limit() //todo - это зачем?
                         if (currentBuffer.position() >= maxPos || eof){
                             currentBuffer.limit(currentBuffer.position())
                             break

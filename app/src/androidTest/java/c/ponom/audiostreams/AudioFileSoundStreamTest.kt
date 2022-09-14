@@ -20,7 +20,6 @@ import kotlin.math.roundToInt
 /**
  * Instrumented test, which will execute on an Android device.
  *
- * See [testing documentation](http://d.android.com/tools/testing).
  */
 @RunWith(AndroidJUnit4::class)
 class AudioFileSoundStreamTest {
@@ -81,8 +80,7 @@ class AudioFileSoundStreamTest {
         val maxVol = SoundVolumeUtils.getMaxVolume(shortsArray)
         assertTrue(maxVol>6200)
         assertTrue(maxVol<6800)
-        assertTrue(stream.timestamp/1000.0>59.9)
-        assertTrue(stream.timestamp/1000.0<60.1)
+        assertEquals((stream.timestamp / 1000.0).roundToInt(),60)
         assertTrue(stream.read(bufferArray)==-1)
         assertTrue(abs(stream.bytesRemainingEstimate() ) <sampleRate/0.1)
         stream.close()
