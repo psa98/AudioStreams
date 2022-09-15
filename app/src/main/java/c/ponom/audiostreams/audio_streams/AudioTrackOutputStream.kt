@@ -27,12 +27,7 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
      */
     var audioOut:AudioTrack?=null
 
-    /* todo - сделать State? а может глобальный enum со стейтом универсальный для всех потоков
-    *   включая PAUSE для тех что его поддерживают?
-    *   в v. 2 - удобное управление audioOut!!.setPreferredDevice(AudioDeviceInfo), с выбором
-    *   "Первый динамик", "первый динамик телефона"
-    *
-    */
+    
     var closed = false
     private set
 
