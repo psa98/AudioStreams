@@ -19,13 +19,7 @@ import java.nio.ByteBuffer
 import java.util.concurrent.ArrayBlockingQueue
 import kotlin.math.max
 
-/*
-*максимальный размер буфера - соответствует примерно 5 сек на 44100
-*/
 private const val MAX_BUFFER_SIZE = 512 * 1024
-
-// резервная зона в конце буфера, что бы избежать его переполнения,
-// к ней плюсуется максимальный размер буфера используемого кодеком (типично 4-16Кб)
 private const val RESERVE_BUFFER_SIZE = 32 * 1024
 const val MAX_READ_SIZE = MAX_BUFFER_SIZE - 128 *1024
 private const val TIMEOUT_US = 0L
@@ -162,12 +156,6 @@ class AudioFileSoundStream: AudioInputStream, AutoCloseable{
         }
         fillBufferQueue()
     }
-
-    //todo - протестить, погоняв на мини приложении с самыми разными форматами
-    // в идеале добиться выброски всех эксепшнов в тестах, и убедиться что исходный поток
-    // декодируется до байта.
-
-
 
     @Throws(IllegalArgumentException::class,NullPointerException::class, CodecException::class)
     override fun read(): Int {
