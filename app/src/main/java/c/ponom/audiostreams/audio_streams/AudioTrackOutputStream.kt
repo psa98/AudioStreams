@@ -26,8 +26,6 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
      *
      */
     var audioOut:AudioTrack?=null
-
-    
     var closed = false
     private set
 

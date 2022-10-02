@@ -200,6 +200,7 @@ class MicSoundInputStream : AudioInputStream {
         val samples = audioRecord!!.read(b, off, len)
         if (samples < 0) logMicError(samples)
         if (samples == ERROR_DEAD_OBJECT||samples == ERROR) {
+            close()
             return  -1
         }
          if (samples>0)bytesRead+=samples*2
@@ -221,10 +222,11 @@ class MicSoundInputStream : AudioInputStream {
      *
      */
     override fun close() {
-       if (audioRecord==null) return
-       audioRecord?.release()
-       closed=true
-       audioRecord=null
+        if (audioRecord != null) {
+            audioRecord?.release()
+            closed=true
+            audioRecord=null
+        }
     }
 
 

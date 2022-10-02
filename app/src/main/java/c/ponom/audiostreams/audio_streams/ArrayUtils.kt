@@ -23,7 +23,7 @@ object ArrayUtils {
     /** Convert bytes array to shorts array using little-endian ordering.<BR>
      * In android sound subsystem and most of native 16 bit audio formats audio samples in
      * form of signed short values stored and processed by hardware as little-endian byte
-     * array representation.<BR>
+     * arrays.<BR>
      * Mono samples:<BR>
      * [Short value,...] - > [byte1,byte2,...]
      * <BR>
@@ -42,7 +42,7 @@ object ArrayUtils {
     /** Convert shorts array to bytes array using little-endian ordering.<BR>
      * In android sound subsystem and most of native 16 bit audio formats audio samples in
      * form of signed short values stored and processed by hardware as little-endian byte
-     * array representation.<BR>
+     * arrays.<BR>
      * Mono samples:<BR>
      * [Short value,...] - > [byte1,byte2,...]
      * <BR>
