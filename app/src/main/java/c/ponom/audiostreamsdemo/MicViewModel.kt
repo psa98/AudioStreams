@@ -29,23 +29,22 @@ class MicTestViewModel : ViewModel() {
     private val outDir = File("$outDirName/AudioStreams/").apply { mkdir() }
     private lateinit var audioPump:StreamPump
     private val testFileMp3 = File(outDir, "/TestMicStream_$testFileNum.mp3")
-    var recordingIsOn=false
+    private var recordingIsOn=false
 
 
     fun record(source: Int, sampleRate: Int) {
-        //подготовим входящий микрофонный поток
-        recordingIsOn=true
         val outputFileStream:FileOutputStream
-        //подготовим входящий микрофонный поток и исходящий файловый
         try {
              outputFileStream = testFileMp3.outputStream()
         } catch (e:Exception){
             makeText(App.appContext,"Need all permissions to work!", LENGTH_LONG).show()
             return
         }
+        recordingIsOn=true
         val testMicStream=MicSoundInputStream(sampleRate, source)
         // recommended mp3 bitrate should be no more than sampleRate/137, like in 44100/320,
-        // or even sampleRate/160
+        // or even sampleRate/160. See table of recommended bitrate|sample rate combinations
+        // in Mp3OutputAudioStream() javadoc
         val encoderStream=Mp3OutputAudioStream(outputFileStream,
             sampleRate,sampleRate/160, LameBuilder.Mode.MONO)
         audioPump=StreamPump(testMicStream, encoderStream,bufferSize=1000,
@@ -54,10 +53,8 @@ class MicTestViewModel : ViewModel() {
             onFatalError={
                 Log.e(TAG, "Error=${it.localizedMessage}")
                 recorderState.postValue(NO_FILE_RECORDED)
-                // можно искуственно создать ошибку, к примеру, заменив выше sampleRate/150
-                // на недопустимый для частоты 16000 параметр =320
              })
-
+        recordingIsOn=true
         testMicStream.startRecordingSession()
         audioPump.start(true)
         recorderState.postValue(RECORDING)
@@ -67,6 +64,7 @@ class MicTestViewModel : ViewModel() {
     fun stopRecording() {
         recordingIsOn=false
         audioPump.stop(true)
+        // Test for  StreamPump class auto close feature with stop(true)
         recorderState.postValue(STOPPED_READY)
     }
 

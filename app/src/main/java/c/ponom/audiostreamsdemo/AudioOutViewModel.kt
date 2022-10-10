@@ -30,24 +30,18 @@ class AudioOutViewModel : ViewModel() {
 
 
     fun play(freq: Double, volume: Short, sampleRate: Int) {
-        //тестируется поведение конструктора AudioTrackOutputStream при заведомо
-        // неправильных значениях параметров
         try {
-            audioInStream = TestSoundInputStream(freq,volume, sampleRate, CHANNEL_IN_MONO,)
+            audioInStream = TestSoundInputStream(freq,volume, sampleRate, CHANNEL_IN_MONO)
             audioOutStream= AudioTrackOutputStream(audioInStream.sampleRate,
                 audioInStream.channelsCount,500)
          }catch (e:Exception){
             onError(e)
             return
         }
-        /*выбор  буфера не подходящего для sampleRate размера  приведет в щелчкам из-за его underruning-a -
-        StreamPump будет подавать данные меньшим темпом чем их будет забирать выход звука
-        В общем случае размер буферов при использовании библиотечных классов следует подбирать
-        в процессе отладки.
-        */
+
         audioPump=StreamPump(audioInStream, audioOutStream!!,
             sampleRate,
-            // тестируется правильность расчета поля audioInStream.timestamp
+            // testing audioInStream.timestamp field
             onWrite =  { secondsPlayed.postValue(audioOutStream!!.timestamp/100/10f)},
             onFinish = {recorderState.postValue(STOPPED)},
             onFatalError= {onError(it)})
@@ -74,21 +68,20 @@ class AudioOutViewModel : ViewModel() {
     fun stopPlaying() {
         if (recorderState.value!=PLAYING) return
         val audioOut=audioOutStream?.audioOut
-        /*полученный объект позволяет низкоуровнево  обращаться к внутренним свойствам AudioTrack,
-        к примеру можно сменить устройство вывода, получить данные о состоянии,подключить эффекты,
-        слушатели на позицию
+        /* Can access audioOut object for low level programming
         */
         if (audioOut?.playState==PLAYSTATE_STOPPED) return
         if (audioPump.state==StreamPump.State.PUMPING){
-            // пример использования - остановит звук без щелчка
+            // code below prevent audible clicks on stopping playback,
+            // see audioOutStream.stopAndClear() source code
             audioOut?.setVolume(0.0f)
             CoroutineScope(Default).launch {
                 recorderState.postValue(STOPPED)
                 delay(60)
+                // Test for  StreamPump class auto close feature with stop(false)
                 audioOut?.stop()
                 audioPump.stop(false)
                 audioOutStream?.stop()
-                // тестируется режим неавтоматического закрытие потоков StreamPump
                 audioInStream.close()
                 audioOutStream?.close()
 
@@ -97,10 +90,10 @@ class AudioOutViewModel : ViewModel() {
     }
 
     fun forceError() {
-        // имитация ошибки в выводном потоке для теста обработки ошибок StreamPump
+        // Test for onError in StreamPump
         val audioOut=audioOutStream?.audioOut
         if (audioOut?.playState == PLAYSTATE_PLAYING) audioOut.release()
-        // последующая запись в поток вызовет ошибку. Проверяется что ошибка  проброшена в onError
+        // Output to channel after audioOut.release() will force an error.
     }
 
     fun setVolume(volume: Float) {

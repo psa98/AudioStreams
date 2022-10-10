@@ -16,17 +16,13 @@ import c.ponom.audiostreamsdemo.databinding.FragmentFilesBinding
 import c.ponom.audiuostreams.audiostreams.AudioDataInfo
 
 
-
-
 @Suppress("FoldInitializerAndIfToElvis")
 class FilesFragment : Fragment() {
 
     /**
-     * Демонстрируется использование  потоков AudioTrackOutputStream, AudioFileSoundSource,
-     * свойства выходного потока  timestamp, получение медиаданных через AudioDataInfo
+     * Demo for AudioTrackOutputStream, AudioFileSoundSource classes, timestamp property,
+     * AudioDataInfo class
      */
-
-
 
     private var _binding: FragmentFilesBinding? = null
     private lateinit var secondsPlayed: LiveData<String>

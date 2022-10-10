@@ -14,12 +14,12 @@ import kotlinx.coroutines.launch
 @Suppress("BlockingMethodInNonBlockingContext")
 class FilesViewModel : ViewModel() {
 
-    internal var playing: Boolean=false
+    var playing: Boolean=false
     var secondsPlayed: MutableLiveData<String> = MutableLiveData("")
     var mediaData: MutableLiveData<String> = MutableLiveData("")
 
 
-    internal fun playUri(context: Context,uri: Uri){
+    fun playUri(context: Context,uri: Uri){
         if (playing)return
         if (uri == Uri.EMPTY) return
         val audioInStream: AudioFileSoundStream

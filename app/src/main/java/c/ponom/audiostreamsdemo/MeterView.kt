@@ -34,12 +34,13 @@ class MeterView : androidx.appcompat.widget.AppCompatImageView {
 
     var level = 0f
     set(value) {
-        field = logOfLevel(value.toDouble(), 10.0) //db scale
+        field = logOfLevel(value.toDouble()) //db scale
         invalidate()
     }
 
 
-    private fun logOfLevel(baseLevel: Double, logBase: Double): Float {
+    private fun logOfLevel(baseLevel: Double): Float {
+        val logBase = 10.0
         val modifiedLevel = baseLevel.coerceAtLeast(SILENCE_THRESHOLD_VOLUME)
         val levelLog = log(modifiedLevel, logBase)
         val baseLog = log(SILENCE_THRESHOLD_VOLUME, logBase)

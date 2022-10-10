@@ -22,6 +22,11 @@ import c.ponom.audiostreamsdemo.databinding.FragmentMicBinding
 
 class MicFragment : Fragment() {
 
+    /**
+     * Demo for AudioTrackOutputStream, AudioFileSoundSource, MicSoundInputStream, StreamPump,
+     * classes, error handling.
+     */
+
     private var _binding: FragmentMicBinding? = null
     var source = MediaRecorder.AudioSource.DEFAULT
     var sampleRate = 16000
@@ -36,13 +41,6 @@ class MicFragment : Fragment() {
     private val stopRecordingButton by lazy { binding.stopRecording}
     private val playRecordButton by lazy { binding.playRecord}
     private val stopPlayingButton by lazy { binding.stopPlaying}
-
-    /**
-     * Демонстрируется использование  потоков AudioTrackOutputStream, AudioFileSoundSource,
-     * MicSoundInputStream,  класса StreamPump, обработка ошибок, запись публичный медиа
-     * каталог
-     */
-
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
