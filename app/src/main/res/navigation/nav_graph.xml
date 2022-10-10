@@ -7,7 +7,7 @@
 
     <fragment
         android:id="@+id/FirstFragment"
-        android:name="c.ponom.audiostreams.audio_streams.newfeatures.FirstFragment"
+        android:name="c.ponom.audiuostreams.audiostreams.newfeatures.FirstFragment"
         android:label="@string/first_fragment_label"
         tools:layout="@layout/fragment_first">
 
@@ -17,7 +17,7 @@
     </fragment>
     <fragment
         android:id="@+id/SecondFragment"
-        android:name="c.ponom.audiostreams.audio_streams.newfeatures.SecondFragment"
+        android:name="c.ponom.audiuostreams.audiostreams.newfeatures.SecondFragment"
         android:label="@string/second_fragment_label"
         tools:layout="@layout/fragment_second">
 

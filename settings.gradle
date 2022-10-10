@@ -9,3 +9,4 @@ dependencyResolutionManagement {
 rootProject.name = "AudioStreams"
 include ':androidlame'
 include ':app'
+include ':audiostreams'

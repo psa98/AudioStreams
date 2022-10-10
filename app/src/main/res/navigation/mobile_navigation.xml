@@ -7,19 +7,19 @@
 
     <fragment
         android:id="@+id/navigation_files"
-        android:name="c.ponom.audiostreams.FilesFragment"
+        android:name="c.ponom.audiostreamsdemo.FilesFragment"
         android:label="@string/title_files"
         tools:layout="@layout/fragment_files" />
 
     <fragment
         android:id="@+id/navigation_mic"
-        android:name="c.ponom.audiostreams.MicFragment"
+        android:name="c.ponom.audiostreamsdemo.MicFragment"
         android:label="@string/title_mic"
         tools:layout="@layout/fragment_mic" />
 
     <fragment
         android:id="@+id/navigation_out"
-        android:name="c.ponom.audiostreams.AudioOutFragment"
+        android:name="c.ponom.audiostreamsdemo.AudioOutFragment"
         android:label="@string/title_out"
         tools:layout="@layout/fragment_audio_out" />
 </navigation>

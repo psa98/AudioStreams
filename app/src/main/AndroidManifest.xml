@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    package="c.ponom.audiostreams">
+    package="c.ponom.audiostreamsdemo">
 
     <application
-        android:name=".App"
+        android:name="c.ponom.audiostreamsdemo.App"
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
@@ -12,27 +12,10 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.AudioStreams"
         tools:replace="android:allowBackup">
+
+        <activity android:name="c.ponom.audiuostreams.audiostreams.newfeatures.BluetoothAudioRecorder" />
         <activity
-            android:name=".audio_streams.newfeatures.MainActivity"
-            android:exported="false"
-            android:label="@string/title_activity_main"
-            android:theme="@style/Theme.AudioStreams.NoActionBar" />
-        <!--
-        -activity
-            android:name=".audio_streams.BluetoothAudioRecorder"
-            android:exported="false" /
-        -->
-        <!--
--activity
-            android:name=".MainActivity"
-            android:exported="true"
-            android:label="@string/app_name"
-            android:theme="@style/Theme.AudioStreams.NoActionBar">
-        </activity
-        -->
-        <activity android:name=".audio_streams.newfeatures.BluetoothAudioRecorder" />
-        <activity
-            android:name=".TestActivity"
+            android:name="c.ponom.audiostreamsdemo.TestActivity"
             android:exported="true"
             android:screenOrientation="sensorPortrait"
             tools:ignore="LockedOrientationActivity">
