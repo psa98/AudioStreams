@@ -148,7 +148,7 @@ class AudioDataInfo{
          *        This can be {@code null} if no specific headers are to be sent with the
          *        request.
          */
-
+        @JvmOverloads
         @JvmStatic
         @Suppress("BlockingMethodInNonBlockingContext")
         fun getMediaDataAsync(
@@ -186,9 +186,9 @@ class AudioDataInfo{
          * @throws IOException if file or url is not available
          *
          * @param context the Context to use when resolving the Uri
-         * @param path the path to audio file. When <code>uri</code> refers to a network file the
+         * @param uri the path to audio file. When <code>uri</code> refers to a network file the
          * {@link android.Manifest.permission#INTERNET} permission is required.
-         * @param track  the number of audio track ib source. For most audio sources track #0
+         * @param track  the number of audio track in source. For most audio sources track #0
          * contains audio data, for most video sources audio tracks starts from #1
          * @param headers the headers to be sent together with the request for the data.
          *        This can be {@code null} if no specific headers are to be sent with the
@@ -225,6 +225,15 @@ class AudioDataInfo{
             return AudioDataInfo(path, track)
         }
 
+        /**
+         * Returns the  HashMap object containing  info for media tracks properties of media
+         * @return  the  HashMap<Int, AudioDataInfo.AudioTrackData>object containing
+         * info for media tracks properties of media located at path
+         * @throws IllegalArgumentException if the data at path is not a valid audio source,
+         * @throws IOException if file or url is not available
+         * @param path the path to audio file. When <code>path</code> refers to a network file the
+         * {@link android.Manifest.permission#INTERNET} permission is required.
+         */
         @JvmStatic
         @Throws(IllegalArgumentException::class, IOException::class)
         fun getTrackData(path: String): HashMap<Int, AudioTrackData> {
@@ -233,7 +242,19 @@ class AudioDataInfo{
             return trackData(extractor)
         }
 
-
+        /**
+         * Returns the  HashMap object containing  info for media tracks properties of media
+         * @return  the  HashMap<Int, AudioDataInfo.AudioTrackData>object containing
+         * info for media tracks properties of media located at path
+         * @throws IllegalArgumentException if the data at uri is not a valid audio source,
+         * @throws IOException if file or url is not available
+         * @param context the Context to use when resolving the Uri
+         * @param uri the path to audio file. When <code>uri</code> refers to a network file the
+         * {@link android.Manifest.permission#INTERNET} permission is required.
+         * @param headers the headers to be sent together with the request for the data.
+         *        This can be {@code null} if no specific headers are to be sent with the
+         *        request.
+         */
         @JvmStatic
         @JvmOverloads
         @Throws(IllegalArgumentException::class, IOException::class)
