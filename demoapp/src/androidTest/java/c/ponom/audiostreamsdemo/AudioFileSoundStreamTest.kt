@@ -21,13 +21,19 @@ import kotlin.math.roundToInt
  * Instrumented test, which will execute on an Android device.
  *
  */
+
+const val DURATION_SECONDS = 60
+const val TEST_FILE_SAMPLE_FREQ = 44100
+
 @RunWith(AndroidJUnit4::class)
 class AudioFileSoundStreamTest {
 
 
 
     private val appContext: Context = getInstrumentation().targetContext
-    private val fileList = listOf("test_60sec_440sinewave_m4a", "test_60sec_440sinewave_mp3","test_60sec_440sinewave_flac")
+    private val fileList = listOf("test_60sec_440sinewave_m4a",
+        "test_60sec_440sinewave_mp3",
+        "test_60sec_440sinewave_flac")
 
     @Test
     fun checkAudioStreams(){
@@ -39,34 +45,33 @@ class AudioFileSoundStreamTest {
 
     private fun openAudioFileSoundStream(name:String) {
         val soundId = appContext.resources.getIdentifier(name, "raw", appContext.packageName)
-
         val uri=Uri.parse(ContentResolver.SCHEME_ANDROID_RESOURCE + "://" +
                 appContext.packageName + "/$soundId")
         assertNotEquals(soundId,0)
 
-        val stream = AudioFileSoundStream(appContext,uri)
-        val duration = stream.duration
-        val frameSize = stream.frameSize
-        val sampleRate = stream.sampleRate
-        assertEquals((duration / 1000.0).roundToInt(),60)
-        assertEquals(stream.channelsCount,1)
+        val audioStream = AudioFileSoundStream(appContext,uri)
+        val duration = audioStream.duration
+        val frameSize = audioStream.frameSize
+        val sampleRate = audioStream.sampleRate
 
-        assertEquals(sampleRate,44100)
-        assertEquals(stream.bytesPerSample,2)
-        // add stereo to tests
-        assertEquals(stream.channelConfig,AudioFormat.CHANNEL_IN_MONO)
-        assertEquals(frameSize,2*stream.channelsCount)
+        assertEquals((duration / 1000.0).roundToInt(), DURATION_SECONDS)
+        assertEquals(audioStream.channelsCount,1)
+        assertEquals(sampleRate, TEST_FILE_SAMPLE_FREQ)
+        assertEquals(audioStream.bytesPerSample,2)
+        // todo - add stereo files to tests
+        assertEquals(audioStream.channelConfig,AudioFormat.CHANNEL_IN_MONO)
+        assertEquals(frameSize,2*audioStream.channelsCount)
         val expectedBytes:Int = (duration / 1000.0 * sampleRate * frameSize).toInt()
-        //estimated length no more than +/- 0,2 sec
-        assertTrue(abs(stream.bytesRemainingEstimate() - expectedBytes) < sampleRate/0.2)
-        assertTrue(abs(stream.totalBytesEstimate() - expectedBytes) < sampleRate/0.2)
-        assertEquals(stream.timestamp,0)
+        //estimated length no more than +/- 0,2 sec different from real
+        assertTrue(abs(audioStream.bytesRemainingEstimate() - expectedBytes) < sampleRate*0.2)
+        assertTrue(abs(audioStream.totalBytesEstimate() - expectedBytes) < sampleRate*0.2)
+        assertEquals(audioStream.timestamp,0)
 
         val byteArrayStream =ByteArrayOutputStream(1)
         val bufferArray = ByteArray (8192)
 
         do {
-            val count=stream.read(bufferArray)
+            val count=audioStream.read(bufferArray)
             if (count>0) byteArrayStream.write(bufferArray,0,count)
         }while (count>0)
 
@@ -80,12 +85,12 @@ class AudioFileSoundStreamTest {
         val maxVol = SoundVolumeUtils.getMaxVolume(shortsArray)
         assertTrue(maxVol>6200)
         assertTrue(maxVol<6800)
-        assertEquals((stream.timestamp / 1000.0).roundToInt(),60)
-        assertTrue(stream.read(bufferArray)==-1)
-        assertTrue(abs(stream.bytesRemainingEstimate() ) <sampleRate/0.1)
-        stream.close()
+        assertEquals((audioStream.timestamp / 1000.0).roundToInt(), DURATION_SECONDS)
+        assertTrue(audioStream.read(bufferArray)==-1)
+        assertTrue(abs(audioStream.bytesRemainingEstimate() ) <sampleRate/0.1)
+        audioStream.close()
         try{
-            stream.read(bufferArray)
+            audioStream.read(bufferArray)
             throw RuntimeException("Must throw IOException  after close()")
         }
         catch (e:Exception){
@@ -95,6 +100,7 @@ class AudioFileSoundStreamTest {
 
         val streamTestShorts = AudioFileSoundStream(appContext,uri)
         byteArrayStream.reset()
+        //todo - make same readShorts test
 
         do {
             val count=streamTestShorts.read(bufferArray)
@@ -103,6 +109,7 @@ class AudioFileSoundStreamTest {
 
         val readShortsArray= byteToShortArrayLittleEndian(byteArrayStream.toByteArray())
         assertArrayEquals(readShortsArray,shortsArray)
+
     }
 
 
