@@ -33,14 +33,13 @@ class AudioOutViewModel : ViewModel() {
         try {
             audioInStream = TestSoundInputStream(freq,volume, sampleRate, CHANNEL_IN_MONO)
             audioOutStream= AudioTrackOutputStream(audioInStream.sampleRate,
-                audioInStream.channelsCount,500)
+            audioInStream.channelsCount,1000)
          }catch (e:Exception){
             onError(e)
             return
         }
 
-        audioPump=StreamPump(audioInStream, audioOutStream!!,
-            sampleRate,
+        audioPump=StreamPump(audioInStream, audioOutStream!!,sampleRate,
             // testing audioInStream.timestamp field
             onWrite =  { secondsPlayed.postValue(audioOutStream!!.timestamp/100/10f)},
             onFinish = {recorderState.postValue(STOPPED)},

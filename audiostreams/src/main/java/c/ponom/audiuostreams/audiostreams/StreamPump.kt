@@ -52,8 +52,10 @@ class StreamPump @JvmOverloads constructor(
    }
     // задокументировать что onFinish вызывается всегда, даже при ошибке, после onError
 
+
     @Suppress("BlockingMethodInNonBlockingContext")
     private fun pump(autoClose: Boolean) {
+
         CoroutineScope(Dispatchers.IO).launch{
             do {
                 if (state==FINISHED||state==FATAL_ERROR) break

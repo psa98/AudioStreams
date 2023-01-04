@@ -11,7 +11,7 @@ import android.media.MediaFormat
 import android.net.Uri
 import c.ponom.audiuostreams.audiostreams.ArrayUtils.byteToShortArrayLittleEndian
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Dispatchers.Default
 import kotlinx.coroutines.launch
 import java.io.FileDescriptor
 import java.io.IOException
@@ -326,7 +326,7 @@ class AudioFileSoundStream: AudioInputStream, AutoCloseable{
     private fun fillBufferQueue(){
         var maxPos:Int
         if (!prepared) throw IllegalStateException("Extractor not ready or already released")
-        CoroutineScope(Dispatchers.Default).launch {
+        CoroutineScope(Default.limitedParallelism(4)).launch {
             maxChunkSize=0
             do {
                 val newByteBufferChunk=BufferedChunk()
