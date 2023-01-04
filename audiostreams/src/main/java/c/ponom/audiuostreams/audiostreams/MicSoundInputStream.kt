@@ -15,19 +15,22 @@ import kotlinx.coroutines.async
 import java.io.IOException
 
 
-@Suppress("MemberVisibilityCanBePrivate", "unused")
+
 class MicSoundInputStream : AudioInputStream {
 
 
     /**
+     * @author Sergey Ponomarev, 2022, 461300@mail.ru
+     * MIT licence
      * After initialisation, internal AudioRecord object can be accessed for low level control of
      * microphone recording.
-     * See registerAudioRecordingCallback(), setPreferredDevice(), setRecordPositionUpdateListener()
+     * See <code> setRecordPositionUpdateListener(),getRecordingState(),getRoutedDevice() </code>
      *
      *
      */
+    @Suppress("MemberVisibilityCanBePrivate")
     var audioRecord: AudioRecord?=null
-    private set
+        private set
 
     private constructor()
 
@@ -79,7 +82,7 @@ class MicSoundInputStream : AudioInputStream {
              throw IllegalArgumentException("Audio record init error - wrong params? ")
         bytesPerSample = if (encoding== ENCODING_PCM_16BIT) 2  else 1
         frameSize=bytesPerSample*channels
-
+        audioRecord?.routedDevice
         // todo - возможно нужны коллбэки на готовность и асинхронный вариант конструктора,
         //  инициализация микрофона может быть не быстрой
     }
@@ -150,7 +153,7 @@ class MicSoundInputStream : AudioInputStream {
         if (len == 0|| b.isEmpty()) return 0
         if (off < 0 || len < 0 || len > b.size - off)
             throw IllegalArgumentException("Wrong read(...) params")
-        if (len == 0) return 0
+
         if (closed) throw IOException("Stream already closed")
         if (!isRecording()) {
             logMicError(ERROR_INVALID_OPERATION)
@@ -229,6 +232,7 @@ class MicSoundInputStream : AudioInputStream {
     }
 
 
+    @Suppress("MemberVisibilityCanBePrivate")
     fun isRecording(): Boolean {
         return if (audioRecord != null)
             (audioRecord?.state==STATE_INITIALIZED &&
@@ -250,6 +254,7 @@ class MicSoundInputStream : AudioInputStream {
     /**
      * Stops (pause) recording.
      */
+    @Suppress("unused")
     fun stopRecordingSession() {
         if(isRecording()) audioRecord?.stop()
    }
@@ -274,6 +279,7 @@ class MicSoundInputStream : AudioInputStream {
      * Always check for value before setting own buffers size. Zero buffer size means than
      * device didn't initialised properly or stream is already closed
      */
+    @Suppress("unused")
     fun currentBufferSize(): Int {
         if (audioRecord==null) return 0
         return try {
@@ -312,6 +318,7 @@ class MicSoundInputStream : AudioInputStream {
          * Throwable
          *
          *   */
+        @Suppress("unused")
         @JvmStatic
         fun createChannelAsync(sampleRateInHz: Int,
                                source: Int = MediaRecorder.AudioSource.DEFAULT,

@@ -1,7 +1,14 @@
+@file:Suppress("unused")
+
 package c.ponom.audiuostreams.audiostreams
 
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+
+/**
+ * @author Sergey Ponomarev,2022, 461300@mail.ru
+ * MIT licence
+ */
 
 const val TAG = "Audio Streams"
 object ArrayUtils {

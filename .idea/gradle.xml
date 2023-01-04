@@ -11,12 +11,10 @@
         <option name="modules">
           <set>
             <option value="$PROJECT_DIR$" />
-            <option value="$PROJECT_DIR$/androidlame" />
             <option value="$PROJECT_DIR$/audiostreams" />
             <option value="$PROJECT_DIR$/demoapp" />
           </set>
         </option>
-        <option name="resolveModulePerSourceSet" value="false" />
       </GradleProjectSettings>
     </option>
   </component>

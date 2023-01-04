@@ -9,16 +9,18 @@ import java.io.InputStream
 
 
 /**
+ * @author Sergey Ponomarev,2022, 461300@mail.ru
+ * MIT licence
  * This abstract class is the superclass for classes representing
- * an  stream of bytes implementing standard for android binary representation of low level
+ * a stream of bytes implementing standard for android binary representation of low level
  * sound stream: 16bit, little  endian, left channel than right channel signed shorts in two
- * octet pairs, little-ending bytes.
- * Android audio subsystems use such audio format for raw audio data as input for media codecs
- * and as input and output format for audio devices. Other raw audio formats (more than 2 channels,
- * 8, 24 or 32 bit samples) used in very limited circumstances
- *
+ * octet pairs.
+ * Android audio subsystems use such audio format for raw audio data as input
+ * and output format for audio devices and media codecs. Other raw audio formats
+ * (more than 2 channels, 8, 24 or 32 bit samples) used in limited circumstances and
+ * usually not for audio music of voice playback or recording.
  * <p> Applications that need to define a subclass of <code>AudioInputStream</code>
- * must always provide method read(b: ByteArray?, off: Int, len: Int): Int
+ * must always provide method <code>read(b: ByteArray?, off: Int, len: Int): Int </code>
  * A method that returns the next byte of input must be provided, but for many real implementations
  * won't have sense and can just throw UnsupportedOperationException.
  *
@@ -26,14 +28,7 @@ import java.io.InputStream
  * @see     java.io.InputStream#read(byte b[], int off, int len)
  */
 
-
-//@Suppress("unused")
 abstract class AudioInputStream :    InputStream, AutoCloseable {
-
-
-    /* todo для всех классов где уместно - переопределить toString() выдачей данных о частоте и подобном
-
-     */
 
 
     /**  Class constructor.
@@ -185,7 +180,6 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
         val bytesEstimate=((this.sampleRate*this.duration*bytesPerSample*
                 this.channelsCount)/1000.0).toLong()
         return if (bytesEstimate==0L) -1L else bytesEstimate
-
     }
 
     /**

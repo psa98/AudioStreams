@@ -19,9 +19,11 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
     private var currentVolume: Float=1f
 
     /**
+     * @author Sergey Ponomarev, 2022, 461300@mail.ru
+     * MIT licence
      * After initialisation, internal AudioRecord object can be accessed for low level control of
-     * microphone recording.
-     * See registerAudioRecordingCallback(), setPreferredDevice(), setRecordPositionUpdateListener()
+     * microphone recording. <BR>
+     * See <code>registerAudioRecordingCallback(), setPreferredDevice(), setRecordPositionUpdateListener()</code>
      *
      */
     var audioOut:AudioTrack?=null

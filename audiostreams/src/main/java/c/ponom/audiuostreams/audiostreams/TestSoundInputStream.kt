@@ -1,34 +1,34 @@
 
 
 @file:Suppress("unused")
-
-package c.ponom.recorder2.audio_streams
+package c.ponom.audiuostreams.audiostreams
 
 import android.media.AudioFormat.*
 import android.util.Log
 import androidx.annotation.IntRange
 import c.ponom.audiuostreams.audiostreams.ArrayUtils.shortToByteArrayLittleEndian
-import c.ponom.audiuostreams.audiostreams.AudioInputStream
-import c.ponom.audiuostreams.audiostreams.TAG
-import c.ponom.recorder2.audio_streams.TestSoundInputStream.TestSignalType.MONO
-import c.ponom.recorder2.audio_streams.TestSoundInputStream.TestSignalType.STEREO
-import c.ponom.recorder2.audio_streams.TestSoundInputStream.TestStreamMode.FILE
-import c.ponom.recorder2.audio_streams.TestSoundInputStream.TestStreamMode.GENERATOR
+import c.ponom.audiuostreams.audiostreams.TestSoundInputStream.TestSignalType.MONO
+import c.ponom.audiuostreams.audiostreams.TestSoundInputStream.TestSignalType.STEREO
+import c.ponom.audiuostreams.audiostreams.TestSoundInputStream.TestStreamMode.FILE
+import c.ponom.audiuostreams.audiostreams.TestSoundInputStream.TestStreamMode.GENERATOR
 import java.io.IOException
-import java.lang.Math.min
 import kotlin.math.PI
 import kotlin.math.sin
 
 
-
+/**
+ * @author Sergey Ponomarev,2022, 461300@mail.ru
+ * MIT licence
+ */
+@Suppress("ConvertSecondaryConstructorToPrimary")
 class TestSoundInputStream private constructor() : AudioInputStream()  {
-    private var testChannelsMode: TestSignalType=MONO
+    private var testChannelsMode: TestSignalType =MONO
     private var closed: Boolean=false
     private lateinit var monoParams: MonoSoundParameters
     private lateinit var stereoParams: StereoSoundParameters
     private  var testMode = GENERATOR
-    var fileLen=0L
-    private set
+    private var fileLen=0L
+
 
     // todo realise Builder
 
@@ -49,7 +49,7 @@ class TestSoundInputStream private constructor() : AudioInputStream()  {
         @IntRange(from = 8000, to= 48000 )sampleRate: Int,
         @IntRange(from = 1, to= 16)channelConfig: Int,
         @IntRange(from = 1, to= 2) encoding: Int = ENCODING_PCM_16BIT,
-        mode:TestStreamMode= GENERATOR //todo
+        mode: TestStreamMode = GENERATOR //todo
     ) : this() {
         if (channelConfig!= CHANNEL_IN_MONO) // todo заменить как в AudioOut, 1 и 2 канала
             throw IllegalArgumentException("This constructor usable only for CHANNEL_IN_MONO")
@@ -89,7 +89,7 @@ class TestSoundInputStream private constructor() : AudioInputStream()  {
         @IntRange(from = 8000, to= 48000 )sampleRate: Int,
         @IntRange(from = 12, to= 12)channelConfig: Int,
         @IntRange(from = 1, to= 2) encoding: Int= ENCODING_PCM_16BIT,
-        mode:TestStreamMode= GENERATOR
+        mode: TestStreamMode = GENERATOR
     ) : this() {
         if (channelConfig!= CHANNEL_IN_STEREO)
             throw IllegalArgumentException("This constructor usable only for CHANNEL_IN_STEREO")
@@ -172,7 +172,7 @@ class TestSoundInputStream private constructor() : AudioInputStream()  {
         if (len == 0) return 0
         if (off != 0) throw IllegalArgumentException("Non zero offset currently not implemented")
         if (closed) return -1
-        val shortArray=ShortArray(min(len/2,b.size/2))
+        val shortArray=ShortArray((len / 2).coerceAtMost(b.size / 2))
         val bytes= readShorts(shortArray,0,len/2)*2
         shortToByteArrayLittleEndian(shortArray).copyInto(b)
         bytesRead+=bytes
@@ -189,7 +189,7 @@ class TestSoundInputStream private constructor() : AudioInputStream()  {
         if (off < 0 || len < 0 || len > b.size - off) throw IndexOutOfBoundsException("Wrong read(...) params")
         if (len == 0) return 0
         if (off != 0) throw IllegalArgumentException("Non zero offset currently not implemented")
-        val length = min(b.size,len)
+        val length = b.size.coerceAtMost(len)
         val dataArray=ShortArray(length)
         if (testChannelsMode== MONO) dataArray.forEachIndexed { index, _ ->
             dataArray[index] = calculateSampleValueMono(index.toLong())
@@ -252,9 +252,9 @@ class TestSoundInputStream private constructor() : AudioInputStream()  {
 
     inner class MonoSoundParameters {
         var samplesInPeriodMono: Double
-        var periodDurationMono: Double
+        private var periodDurationMono: Double
         val volumeMono: Short
-        val testFrequencyMono: Double
+        private val testFrequencyMono: Double
         constructor(volumeMono: Short, testFrequencyMono: Double) {
             this.volumeMono = volumeMono
             this.testFrequencyMono = testFrequencyMono
@@ -264,12 +264,12 @@ class TestSoundInputStream private constructor() : AudioInputStream()  {
     }
 
     inner  class  StereoSoundParameters {
-        var periodDurationRight: Double
+        private var periodDurationRight: Double
         var samplesInPeriodRight: Double
         var samplesInPeriodLeft: Double
-        var periodDurationLeft: Double
-        var testFrequencyLeft: Double
-        var testFrequencyRight: Double
+        private var periodDurationLeft: Double
+        private var testFrequencyLeft: Double
+        private var testFrequencyRight: Double
         var volumeLeft: Short
         var volumeRight: Short
 

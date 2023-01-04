@@ -10,12 +10,14 @@ abstract class AudioOutputStream :
     OutputStream,  AutoCloseable{
 
     /**  Class constructor.
+     * @author Sergey Ponomarev, 2022, 461300@mail.ru
+     * MIT licence
      * @param samplingRate the source sample rate expressed in Hz.
      * @param channelsNumber describes the number of the audio channels. It is NOT configuration of
-     * the audio channels:
-     *   See AudioFormat.CHANNEL_OUT_MONO and  AudioFormat.CHANNEL_OUT_STEREO
+     * the audio channels: See <code>AudioFormat.CHANNEL_OUT_MONO</code> and  <code>AudioFormat.CHANNEL_OUT_STEREO</code>
      *
      */
+    @Suppress("unused")
     constructor(@IntRange(from = 2400, to = 96000) samplingRate:Int,
                 @IntRange(from = 1, to = 2)channelsNumber: Int) : this() {
         channelsCount=channelsNumber
@@ -30,6 +32,7 @@ abstract class AudioOutputStream :
     /**
      * The audio format of stream as MediaFormat if known or null
      * */
+    @Suppress("unused")
     var mediaFormat: MediaFormat?=null
     protected set
 

@@ -6,6 +6,11 @@ package c.ponom.audiuostreams.audiostreams
 import kotlin.math.abs
 import kotlin.math.sqrt
 @Suppress("unused")
+
+/**
+ * @author Sergey Ponomarev,2022, 461300@mail.ru
+ * MIT licence
+ */
 object SoundVolumeUtils {
 
     /**

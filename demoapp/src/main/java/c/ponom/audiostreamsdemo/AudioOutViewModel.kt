@@ -10,7 +10,7 @@ import androidx.lifecycle.viewModelScope
 import c.ponom.audiostreamsdemo.AudioOutState.*
 import c.ponom.audiuostreams.audiostreams.AudioTrackOutputStream
 import c.ponom.audiuostreams.audiostreams.StreamPump
-import c.ponom.recorder2.audio_streams.TestSoundInputStream
+import c.ponom.audiuostreams.audiostreams.TestSoundInputStream
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers.Default
 import kotlinx.coroutines.delay

@@ -12,8 +12,12 @@ import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.async
 import java.io.IOException
 
+/**
+ * @author Sergey Ponomarev,2022, 461300@mail.ru
+ * MIT licence
+ */
 
-@Suppress("MemberVisibilityCanBePrivate")
+
 class AudioDataInfo{
     private var uri: Uri=Uri.EMPTY
     private var path: String=""
@@ -25,6 +29,7 @@ class AudioDataInfo{
         private set
     var channelsCount:Int =0
         private set
+    @Suppress("MemberVisibilityCanBePrivate")
     var mediaFormat:MediaFormat= MediaFormat()
         private set
     private var extractor:MediaExtractor= MediaExtractor()

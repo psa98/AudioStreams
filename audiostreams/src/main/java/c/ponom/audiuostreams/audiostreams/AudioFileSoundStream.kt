@@ -23,10 +23,15 @@ private const val MAX_BUFFER_SIZE = 512 * 1024
 private const val RESERVE_BUFFER_SIZE = 32 * 1024
 const val MAX_READ_SIZE = MAX_BUFFER_SIZE - 128 *1024
 private const val TIMEOUT_US = 0L
-private const val QUEUE_SIZE  = 8
+private const val QUEUE_SIZE  = 4
 
-@Suppress("unused")
+/**
+ * @author Sergey Ponomarev,2022, 461300@mail.ru
+ * MIT licence
+ */
+
 class AudioFileSoundStream: AudioInputStream, AutoCloseable{
+
     private var path: String=""
     private var uri: Uri= Uri.EMPTY
     private var currentBuffer = ByteBuffer.allocate(0)
@@ -57,6 +62,7 @@ class AudioFileSoundStream: AudioInputStream, AutoCloseable{
      * audio track
      * @throws IOException if file not accessible
      */
+    @Suppress("unused")
     @Throws(IOException::class,IllegalArgumentException::class)
     @JvmOverloads
     constructor (fd: FileDescriptor,track: Int=0){
@@ -320,7 +326,7 @@ class AudioFileSoundStream: AudioInputStream, AutoCloseable{
     private fun fillBufferQueue(){
         var maxPos:Int
         if (!prepared) throw IllegalStateException("Extractor not ready or already released")
-        CoroutineScope(Dispatchers.IO).launch {
+        CoroutineScope(Dispatchers.Default).launch {
             maxChunkSize=0
             do {
                 val newByteBufferChunk=BufferedChunk()
@@ -347,6 +353,11 @@ class AudioFileSoundStream: AudioInputStream, AutoCloseable{
                 if (newByteBufferChunk.isLastBuffer||newByteBufferChunk.inFatalError) break
             } while (true)
         }
+    }
+
+    override fun totalBytesEstimate(): Long {
+        return if (closed) 0 else
+            super.totalBytesEstimate()
     }
 
     @Throws(IllegalStateException::class, CodecException::class )

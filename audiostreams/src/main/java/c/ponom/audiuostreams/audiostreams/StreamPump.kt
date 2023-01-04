@@ -11,8 +11,11 @@ import java.io.IOException
 
 
 
-// todo - перетестить
-@Suppress("MemberVisibilityCanBePrivate")
+/**
+ * @author Sergey Ponomarev,2022, 461300@mail.ru
+ * MIT licence
+ */
+@Suppress("MemberVisibilityCanBePrivate", "unused")
 class StreamPump @JvmOverloads constructor(
     val inputStream: AudioInputStream,
     val outputStream: AudioOutputStream,
@@ -21,8 +24,6 @@ class StreamPump @JvmOverloads constructor(
     var onWrite:(bytesWritten:Long) -> Unit ={},
     var onFinish: () -> Unit = {},
     var onFatalError: (e: Exception) -> Unit = {}) {
-
-    //todo - javadoc
     var state: State=NOT_READY
         private set
     private var canPumpShorts=false
@@ -80,25 +81,23 @@ class StreamPump @JvmOverloads constructor(
                             continue
                         } else read=-1
                     }
-                    if (read < 0) {
-                        if (autoClose) try {
-                            //нормальное закрытие без ошибки
-                            inputStream.close()
-                            outputStream.close()
-                            state=FINISHED
-                            onFinish.invoke()
-                            break
-                        } catch (e:IOException){ // секция ловит ошибку в закрытии потоков
-                            e.printStackTrace()
-                            state=FATAL_ERROR
-                            onFatalError(e)
-                            onFinish.invoke()
-                            break
-                        } else {
-                            state=FINISHED
-                            onFinish.invoke()
-                            break
-                        }
+                    if (autoClose) try {
+                        //normal close
+                        inputStream.close()
+                        outputStream.close()
+                        state=FINISHED
+                        onFinish.invoke()
+                        break
+                    } catch (e:IOException){
+                        e.printStackTrace()
+                        state=FATAL_ERROR
+                        onFatalError(e)
+                        onFinish.invoke()
+                        break
+                    } else {
+                        state=FINISHED
+                        onFinish.invoke()
+                        break
                     }
                 } catch (e: Exception) { // секция ловит ошибку в чтении записи потоков
                     state = FATAL_ERROR
@@ -182,7 +181,7 @@ class StreamPump @JvmOverloads constructor(
 
     init {
         canPumpShorts = inputStream.canReadShorts() && outputStream.canWriteShorts()
-          if (bufferSize < 2) {
+        if (bufferSize < 2) {
             throw IllegalArgumentException ("Buffer size should be at least 2 bytes")
         } else {
             byteBuffer = ByteArray(bufferSize)
