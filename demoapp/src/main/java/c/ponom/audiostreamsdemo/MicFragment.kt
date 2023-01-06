@@ -18,6 +18,7 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.LiveData
 import c.ponom.audiostreamsdemo.MicRecordState.*
 import c.ponom.audiostreamsdemo.databinding.FragmentMicBinding
+import com.google.android.material.slider.Slider
 
 
 class MicFragment : Fragment() {
@@ -58,6 +59,7 @@ class MicFragment : Fragment() {
         setupSpinners()
         setupButtons()
         setupObservers()
+        initVolumeControls()
     }
 
     private fun setupButtons() {
@@ -72,9 +74,10 @@ class MicFragment : Fragment() {
     }
 
     private fun setupObservers() {
-        recordLevel.observe(viewLifecycleOwner,{
-            binding.meterLevel.level=it
-            binding.textMicCurrentLevel.text=it.toString()})
+        recordLevel.observe(viewLifecycleOwner) {
+            binding.meterLevel.level = it
+            binding.textMicCurrentLevel.text = it.toString()
+        }
         bytesPassed.observe(viewLifecycleOwner,{ binding.textMicBytesWritten.text=it.toString()})
         currentState.observe(viewLifecycleOwner,{ setControlsState(it)})
     }
@@ -96,24 +99,28 @@ class MicFragment : Fragment() {
                 stopRecordingButton.isEnabled=false
                 playRecordButton.isEnabled=false
                 stopPlayingButton.isEnabled=false
+                binding.volumeControlSlider.isEnabled=false
             }
             STOPPED_READY -> {
                 recordButton.isEnabled=true
                 stopRecordingButton.isEnabled=false
                 playRecordButton.isEnabled=true
                 stopPlayingButton.isEnabled=false
+                binding.volumeControlSlider.isEnabled=false
             }
             RECORDING -> {
                 recordButton.isEnabled=false
                 stopRecordingButton.isEnabled=true
                 playRecordButton.isEnabled=false
                 stopPlayingButton.isEnabled=false
+                binding.volumeControlSlider.isEnabled=true
             }
             PLAYING -> {
                 recordButton.isEnabled=false
                 stopRecordingButton.isEnabled=false
                 playRecordButton.isEnabled=false
                 stopPlayingButton.isEnabled=true
+                binding.volumeControlSlider.isEnabled=false
             }
         }
     }
@@ -169,6 +176,25 @@ class MicFragment : Fragment() {
         val writePermission = checkSelfPermission(requireContext(),WRITE_EXTERNAL_STORAGE) ==
                 PERMISSION_GRANTED
         return recordPermission && writePermission
+    }
+
+
+    private fun initVolumeControls() {
+        //TODO("Not yet implemented")
+        Log.e(TAG, "initVolumeControls start ")
+        with(binding) {
+            volumeControlSlider.value = 100f
+            volumeControlValue.text = "100"
+            volumeControlSlider.addOnChangeListener(object  : Slider.OnChangeListener {
+                override fun onValueChange(slider: Slider, value: Float, fromUser: Boolean) {
+                    val vol = (value/100f)
+                    viewModel.targetVolume=vol
+                    binding.volumeControlValue.text=(vol*100).toInt().toString()
+                    Log.e(TAG, "onValueChange: =$vol")
+                }
+
+            })
+        }
     }
 
 }
