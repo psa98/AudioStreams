@@ -184,12 +184,12 @@ class MicFragment : Fragment() {
         Log.e(TAG, "initVolumeControls start ")
         with(binding) {
             volumeControlSlider.value = 100f
-            volumeControlValue.text = "100"
+            volumeControlValue.text = "100%"
             volumeControlSlider.addOnChangeListener(object  : Slider.OnChangeListener {
                 override fun onValueChange(slider: Slider, value: Float, fromUser: Boolean) {
                     val vol = (value/100f)
                     viewModel.targetVolume=vol
-                    binding.volumeControlValue.text=(vol*100).toInt().toString()
+                    binding.volumeControlValue.text= "${(vol * 100).toInt()}%"
                     Log.e(TAG, "onValueChange: =$vol")
                 }
 

@@ -75,11 +75,8 @@ class MicTestViewModel : ViewModel() {
                 try{
                     val bytes = testMicStream.readShorts(buffer)
                     if (bytes==0) continue
-                    var level = getRMSVolume(buffer)
-                    Log.i(TAG, "level before: $level")
                     val newBuffer= doSimpleProcessing(buffer,targetVolume)
-                    level = getRMSVolume(newBuffer)
-                    Log.i(TAG, "level after: $level")
+                    val level = getRMSVolume(newBuffer)
                     recordLevel.postValue(level.toFloat())
                     bytesPassed.postValue(testMicStream.bytesRead.toInt())
                     if (bytes<0) {
