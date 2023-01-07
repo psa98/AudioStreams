@@ -66,42 +66,46 @@ class MicTestViewModel : ViewModel() {
 
         recordingIsOn=true
         testMicStream.startRecordingSession()
-        val buffer = ShortArray(sampleRate/4)
         recorderState.postValue(RECORDING)
 
         //Using readShorts and writeShorts with simple on the fly buffer preprocessing
         CoroutineScope(IO).launch {
-            do {
-                try{
-                    val bytes = testMicStream.readShorts(buffer)
-                    if (bytes==0) continue
-                    val newBuffer= doSimpleProcessing(buffer,targetVolume)
-                    val level = getRMSVolume(newBuffer)
-                    recordLevel.postValue(level.toFloat())
-                    bytesPassed.postValue(testMicStream.bytesRead.toInt())
-                    if (bytes<0) {
-                        recordingIsOn=false
-                        testMicStream.close()
-                        encoderStream.close()
-                        break
-                    } else {
-                        encoderStream.writeShorts(newBuffer,0,bytes)
-                    }
-                } catch (e:java.lang.Exception){
-                    recordingIsOn=false
-                    Log.e(TAG, "Error=${e.localizedMessage}")
-                    recorderState.postValue(NO_FILE_RECORDED)
-                    try {
-                        testMicStream.close()
-                        encoderStream.close()
-                    }catch (e:java.lang.Exception){
-                        e.printStackTrace()
-                    }
-                    break
-                }
-            }while (recordingIsOn)
+            recordMic(sampleRate, testMicStream, encoderStream)
         }
         Log.i(TAG, "Recording $source, $sampleRate")
+    }
+
+    private fun recordMic(sampleRate: Int,testMicStream: MicSoundInputStream,
+        encoderStream: Mp3OutputAudioStream) {
+        val buffer = ShortArray(sampleRate / 4)
+        do {
+            try {
+                val bytes = testMicStream.readShorts(buffer)
+                if (bytes == 0) continue
+                if (bytes < 0) {
+                    recordingIsOn = false
+                    testMicStream.close()
+                    encoderStream.close()
+                    break
+                }
+                val newBuffer = doSimpleProcessing(buffer.copyOf(bytes), targetVolume)
+                val level = getRMSVolume(newBuffer)
+                recordLevel.postValue(level.toFloat())
+                bytesPassed.postValue(testMicStream.bytesRead.toInt())
+                encoderStream.writeShorts(newBuffer)
+            } catch (e: java.lang.Exception) {
+                recordingIsOn = false
+                Log.e(TAG, "Error=${e.localizedMessage}")
+                recorderState.postValue(NO_FILE_RECORDED)
+                try {
+                    testMicStream.close()
+                    encoderStream.close()
+                } catch (e: java.lang.Exception) {
+                    e.printStackTrace()
+                }
+                break
+            }
+        } while (recordingIsOn)
     }
 
     fun stopRecording() {

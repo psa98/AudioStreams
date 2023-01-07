@@ -83,7 +83,7 @@
     android:text="0"
     android:textAlignment="center"
     app:layout_constraintEnd_toStartOf="@id/meter_level"
-    app:layout_constraintTop_toBottomOf="@id/volumeControl" />
+    app:layout_constraintTop_toBottomOf="@id/record_level" />
 
 
     <TextView
@@ -92,7 +92,7 @@
         android:layout_margin="@dimen/std_margin"
         android:text="Bytes in/out:"
         android:textAlignment="center"
-        app:layout_constraintTop_toBottomOf="@id/volumeControl"
+        app:layout_constraintTop_toBottomOf="@id/record_level"
         app:layout_constraintEnd_toStartOf="@id/text_mic_bytes_written" />
 
 
@@ -164,7 +164,7 @@
         android:layout_margin="6dp"
         android:background="#e1e1e1"
         android:visibility="visible"
-        android:id="@+id/volumeControl"
+        android:id="@+id/record_level"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toBottomOf="@id/stop_playing"
