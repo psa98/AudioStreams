@@ -32,20 +32,20 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
 
     /**
      * Class constructor.
-     * @param sampleRateInHz the sample rate expressed in Hertz. 44100Hz is currently the only
-     *   rate that is guaranteed to work on all devices, but other rates such as 22050,
+     * @param sampleRateInHz the sample rate expressed in Hertz. 44100Hz is the only
+     *   rate which is guaranteed to work on all devices, but other rates such as 22050,
      *   16000, and 11025 should work on most devices.
      * @param channels describes the number of the audio channels. Must be equal 1 or 2.
-     *   Mono recording  is guaranteed to work on all devices.
+     *   Mono recording is guaranteed to work on all devices.
      *   Only AudioFormat.ENCODING_PCM_16BIT currently supported.
      * @param minBufferMs the minimal size (in ms) of the buffer where audio data is written
      *   to during the recording. New audio data can be written to this buffer in smaller chunks
      *   than this size.
      *
-    * @throws UnsupportedOperationException – if the parameters  were incompatible,
+    * @throws UnsupportedOperationException if the parameters were incompatible,
      * or if they are not supported by the device, or if the device was not available
-     * @throws IllegalArgumentException if channels is not equal 1 or 2
-    * */
+     * @throws IllegalArgumentException if the channels parameter is not equal to 1 or 2
+    **/
 
     @JvmOverloads
     @Throws(IllegalArgumentException::class, UnsupportedOperationException::class)
@@ -171,8 +171,8 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
 
     /**
      * Sets the specified output gain value on all channels of this track.
-     * A value of 0.0 results in zero gain (silence), and
-     * a value of 1.0 means unity gain (signal unchanged).
+     * A value of 0.0 results in zero gains (silence), and
+     * a value of 1.0 means unity gains (signal unchanged).
      * Gain values are clamped to the closed interval [0.0, max] where max is the value of
      * audioOut.getMaxVolume() if it was set previously
      *
@@ -188,7 +188,7 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
      *Writes the audio data to the audio sink for playback (streaming mode), or copies audio
      * data for later playback.
      *
-     * The write will normally block until all the data has been enqueued for playback.
+     * The write will normally block until all the data have been enqueued for playback.
      * @param b the byte array that holds the data to play.
      * @param off the offset expressed in bytes in b where the data to write starts.
      *    Must not be negative, or cause the data access to go out of bounds of the array.
@@ -197,7 +197,7 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
      * @throws IOException if the track isn't properly initialized, or he AudioTrack is not valid
      * anymore and needs to be recreated
      * @throws IllegalArgumentException if the parameters don't resolve to valid data and indexes
-     * @throws NullPointerException if null array passed
+     * @throws NullPointerException if a null array passed
      */
 
     @Throws(IOException::class,NullPointerException::class,IllegalArgumentException::class)
@@ -220,13 +220,13 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
 
 
     /**
-     *Writes the audio data to the audio sink for playback (streaming mode), or copies audio
+     *Writes the audio data to the audio sink for playback, or copies audio
      * data for later playback calling writeShorts(b,0,b.size)
      *
-     * In streaming mode, the write will normally block until all the data has been enqueued
+     * In streaming mode the write(...) will normally block until all the data have been enqueued
      * for playback.
      * @param b the short array that holds the data to play.
-     * @throws IOException if the track isn't properly initialized, or he AudioTrack is not valid
+     * @throws IOException if the track isn't properly initialized, or the AudioTrack is not valid
      * anymore and needs to be recreated
     */
     @Throws(IOException::class,NullPointerException::class,IllegalArgumentException::class)
@@ -244,12 +244,12 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
     /**
      *Writes the audio data to the audio sink for playback (streaming mode), or copies audio
      * data for later playback.
-     * In streaming mode, the write will normally block until all the data has been enqueued
+     * In streaming mode the write(...) will normally block until all the data have been enqueued
      * for playback.
      * @param b the array that holds the data to play.
-     * @param off the offset  in b where the data to write   starts.
+     * @param off the offset in b where the data to write starts.
      * @param len the number of samples to write in b after the offset.
-     * @throws IOException if the track isn't properly initialized, or he AudioTrack is not valid
+     * @throws IOException if the track isn't properly initialized, or the AudioTrack is not valid
      * anymore and needs to be recreated
      * @throws IllegalArgumentException if the parameters don't resolve to valid data and indexes
      */
@@ -273,7 +273,7 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
     /**
      * Stops playback and closes this input stream and releases any system resources associated.
      * write(...) calls are no longer valid after this call and will  throw exception
-     *  Do nothing if stream already closed
+     *  Do nothing if the stream already closed
      */
     override fun close() {
         stopAndClear()
@@ -283,9 +283,7 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
     }
 
     /**
-     * True if writeShorts(b: ShortArray) and writeShorts(b: ShortArray, off: Int, len: Int)
-     * methods supported by class.
-     * @return true for AudioTrackOutputStream
+     * Not implemented for class
      */
     override fun write(b: Int) {
         throw NotImplementedError ("Not implemented, use write(...), writeShorts(...)")
@@ -294,8 +292,8 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
     /**
      * Returns the effective size of the AudioTrack buffer that the application writes to.
      * @return current mic buffer size in bytes.
-     * Always check value before setting own buffers size. Zero buffer size means than
-     * device didn't initialised properly or stream is already closed
+     * Always check value before setting own buffers size. Zero buffer size means that the
+     * device didn't initialise properly or stream is already closed
      */
     fun currentBufferSize(): Int {
         if (audioOut==null) return 0
@@ -313,10 +311,10 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
          * Async creation of AudioTrack audio stream.
          *
          * @param sampleRateInHz the sample rate expressed in Hertz. 44100Hz is currently the only
-         *   rate that is guaranteed to work on all devices, but other rates such as 22050,
+         *   rate which is guaranteed to work on all devices, but other rates such as 22050,
          *   16000, and 11025 should work on most devices.
          * @param channels describes the number of the audio channels. Must be equal 1 or 2.
-         *   Mono recording  is guaranteed to work on all devices.
+         *   Mono recording is guaranteed to work on all devices.
          *   Only AudioFormat.ENCODING_PCM_16BIT currently supported.
          * @param minBufferMs the minimal size (in ms) of the buffer where audio data is written
          *   to during the recording. New audio data can be written to this buffer in smaller chunks

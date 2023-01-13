@@ -44,8 +44,8 @@ abstract class AudioOutputStream :
     protected set
 
     /**
-     * Must be set in constructor of implementing class as CHANNEL_IN_MONO or CHANNEL_IN_STEREO.
-     * Any other range mean unfinished initialisation or non standard audio stream.
+     * Must be set in constructor of implementing class as CHANNEL_OUT_MONO or CHANNEL_OUT_STEREO.
+     * Any other value means unfinished initialisation or non-standard audio stream.
      * @see channelConfig(channels: Int)
      * */
     var channelConfig:Int= CHANNEL_INVALID
@@ -53,7 +53,7 @@ abstract class AudioOutputStream :
 
     /**
      * The sample rate of an audio format, in Hz
-     * The associated value is an integer. Android hardware typically support sample rates
+     * The associated value is an integer. Android hardware typically supports sample rates
      * from 8000 to 48000, with standard values 8000,11025,12000,16000,22050,24000,32000,
      * 44100,48000.
      */
@@ -61,7 +61,7 @@ abstract class AudioOutputStream :
     protected set
 
     /**
-     * A callback will be called on each write(...) and writeShorts(...)
+     * A callback, if set, will be called on each write(...) and writeShorts(...)
      *
      */
     open var onWriteCallback: ((sentBytes:Long) -> Unit)? ={  }
@@ -71,23 +71,22 @@ abstract class AudioOutputStream :
     var bytesPerSample: Int = 2
         protected set
 
-    /** Always  ENCODING_PCM_16BIT as ENCODING_PCM_8BIT currently not supported
-     * */
     var frameSize: Int=bytesPerSample*channelsCount
-        // todo убрать из конструкторов и протестить результат
         protected set
 
-    /** Always  ENCODING_PCM_16BIT as ENCODING_PCM_8BIT currently not supported
+    /** Always ENCODING_PCM_16BIT as ENCODING_PCM_8BIT currently not supported
      * */
     var encoding:Int= ENCODING_PCM_16BIT
     protected set
 
+    /** Time from stream start, in ms.
+     * */
     @Volatile
-    var timestamp=0L // время от начала проигрывания
-
+    var timestamp=0L
+    protected set
 
     /**
-     * The amount of bytes already sent to stream
+     * The number of bytes already sent to stream
      * */
     @Volatile
     var bytesSent: Long = 0
@@ -98,9 +97,9 @@ abstract class AudioOutputStream :
     }
 
     /**
-     * If implemented sets the specified output gain value on all channels of this track.
-     * A value of 0.0 results in zero gain (silence), and
-     * a value of 1.0 means unity gain (signal unchanged).
+     * If implemented, sets the specified output gain value on all channels of this track.
+     * A value of 0.0 results in zero gains (silence), and
+     * a value of 1.0 means unity gains (signal unchanged).
      * The default value is 1.0 meaning unity gain.
      * @param vol output gain for all channels.
      */
@@ -120,14 +119,14 @@ abstract class AudioOutputStream :
     /**
      *Writes the audio data to the output stream
      * @param b the byte array that holds the data to transfer.
-     * @param off the offset expressed in bytes in b  where the data to write starts.
+     * @param off the offset expressed in bytes in b where the data to write starts.
      * @param len the number of bytes to write in audioData after the offset.
      * @throws IOException if an I/O error occurs.
      */
     abstract override fun write(b: ByteArray?, off: Int, len: Int)
 
     /**
-     *Writes the audio data to the output stream by calling write(b,0,b.size)
+     *Writes the audio data to the output stream by calling write(b, 0 ,b.size)
      * @throws IOException if an I/O error occurs.
      */
     override fun write(b: ByteArray) {
@@ -139,12 +138,12 @@ abstract class AudioOutputStream :
      * True if writeShorts(b: ShortArray) and writeShorts(b: ShortArray, off: Int, len: Int)
      * methods supported by class.
      */
-    open fun canWriteShorts():Boolean =false
+    open fun canWriteShorts():Boolean = false
 
     /**
      * If implemented, writes the audio data to the output stream.
-     * @param b the shorts array that holds the data to transfer.
-     * @param off the offset in b  where the data to write starts.
+     * @param b the short array that holds the data to transfer.
+     * @param off the offset in b where the data to write starts.
      * @param len the number of samples to write in audioData after the offset.
      * @throws IOException if an I/O error occurs.
      */
@@ -157,7 +156,7 @@ abstract class AudioOutputStream :
     /**
      * If implemented, writes the audio data to the output stream by calling
      * writeShorts(b,0,b.size)
-     * @param b the shorts array that holds the data to transfer.
+     * @param b the short array that holds the data to transfer.
      * @throws IOException if an I/O error occurs.
      */
     @Throws(IOException::class)

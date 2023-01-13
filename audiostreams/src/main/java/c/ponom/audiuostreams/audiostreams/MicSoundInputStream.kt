@@ -48,7 +48,7 @@ class MicSoundInputStream : AudioInputStream {
      *   rate that is guaranteed to work on all devices, but other rates such as 22050,
      *   16000, and 11025 may work on some devices.
      * @param channels describes the number of the audio channels. Must be equal 1 or 2.
-     *   Mono recording  is guaranteed to work on all devices.
+     *   Mono recording is guaranteed to work on all devices.
      * @param encoding the format in which the audio data is to be returned.
      *   See AudioFormat.ENCODING_PCM_8BIT, AudioFormat.ENCODING_PCM_16BIT.
      *   Only AudioFormat#ENCODING_PCM_16BIT currently supported.
@@ -83,8 +83,7 @@ class MicSoundInputStream : AudioInputStream {
         bytesPerSample = if (encoding== ENCODING_PCM_16BIT) 2  else 1
         frameSize=bytesPerSample*channels
         audioRecord?.routedDevice
-        // todo - возможно нужны коллбэки на готовность и асинхронный вариант конструктора,
-        //  инициализация микрофона может быть не быстрой
+
     }
 
 
@@ -132,11 +131,11 @@ class MicSoundInputStream : AudioInputStream {
     /**
      * This method blocks until some input data is available
      * Params:
-     * @param b – the array to which the recorded audio data is written.
-     * @param off – offset in b to which the data is written. Must not be negative.
-     * @param len – the number of requested bytes.
+     * @param b the array to which the recorded audio data is written.
+     * @param off offset in b to which the data is written. Must not be negative.
+     * @param len the number of requested bytes.
      * Returns:
-     * @return  zero or the positive number of bytes that were read,
+     * @return zero or the positive number of bytes that were read,
      * -1  if the MicSoundInputStream not valid anymore due to error, or one of the following error
      * codes:
      * AudioRecord.ERROR_INVALID_OPERATION if the stream isn't properly initialized OR recording is
@@ -144,7 +143,7 @@ class MicSoundInputStream : AudioInputStream {
      * AudioRecord.ERROR_BAD_VALUE if the parameters don't resolve to valid data and indexes.
      * @throws IOException if MicSoundInputStream was closed on previous error or by calling close()
      * @throws IllegalArgumentException for illegal combinations of b.size, off and len parameters
-     * Method will write zero volume samples values to b if application don't hold
+     * Fun will write zero volume sample values to b if application doesn't hold
      * Manifest.permission.RECORD_AUDIO and during phone calls
      */
     @Throws(NullPointerException::class,IOException::class,IllegalArgumentException::class)
@@ -174,9 +173,9 @@ class MicSoundInputStream : AudioInputStream {
     /**
      * This method blocks until some input data is available
      * Params:
-     * @param b – the array to which the recorded audio data is written.
-     * @param off – offset in b to which the data is written. Must not be negative.
-     * @param len – the number of requested shorts samples.
+     * @param b the array to which the recorded audio data is written.
+     * @param off offset in b to which the data is written. Must not be negative.
+     * @param len the number of requested shorts samples.
      * Returns:
      * @return  zero or the positive number of bytes that were read,
      * -1  if the MicSoundInputStream not valid anymore due to error, or one of the following
@@ -186,7 +185,7 @@ class MicSoundInputStream : AudioInputStream {
      * AudioRecord.ERROR_BAD_VALUE if the parameters don't resolve to valid data and indexes.
      * @throws IOException if MicSoundInputStream was closed on previous error or by calling close()
      * @throws IllegalArgumentException for illegal combinations of b.size, off and len parameters
-     * Method will write zero volume samples values to b if application don't hold
+     * Fun will write zero volume sample values to b if application doesn't hold
      * Manifest.permission.RECORD_AUDIO and during phone calls
      */
     @Throws(IOException::class,IllegalArgumentException::class)
@@ -242,7 +241,7 @@ class MicSoundInputStream : AudioInputStream {
 
     /**
      * Start recording. No-op if already in recording state
-     * @throws IOException if stream was already closed
+     * @throws IOException if the stream was already closed
      */
     fun startRecordingSession() {
         if (closed) throw IOException ("Stream already closed")
@@ -276,8 +275,8 @@ class MicSoundInputStream : AudioInputStream {
     }
 
     /** @return current mic buffer size in bytes.
-     * Always check for value before setting own buffers size. Zero buffer size means than
-     * device didn't initialised properly or stream is already closed
+     * Always check for value before setting own buffers size. Zero buffer size means that the
+     * device didn't initialise properly or the stream is already closed
      */
     @Suppress("unused")
     fun currentBufferSize(): Int {
@@ -307,14 +306,14 @@ class MicSoundInputStream : AudioInputStream {
          *   rate that is guaranteed to work on all devices, but other rates such as 22050,
          *   16000, and 11025 may work on some devices.
          * @param channels describes the number of the audio channels. Must be equal 1 or 2.
-         *   Mono recording  is guaranteed to work on all devices.
+         *   Mono recording is guaranteed to work on all devices.
          * @param encoding the format in which the audio data is to be returned.
          *   See AudioFormat.ENCODING_PCM_8BIT, AudioFormat.ENCODING_PCM_16BIT.
          *   Only AudioFormat.ENCODING_PCM_16BIT currently supported.
          * @param bufferSizeMs the minimal size (in ms) of the buffer where audio data is written
          *   to during the recording. New audio data can be read from this buffer in smaller chunks
          *   than this size.
-         * @return  the  Result&lt;MicSoundInputStream&gt; object containing created stream or
+         * @return  the Result&lt;MicSoundInputStream&gt; object containing created stream or
          * Throwable
          *
          *   */

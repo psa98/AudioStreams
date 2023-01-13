@@ -73,8 +73,8 @@ class AudioFileSoundStream: AudioInputStream, AutoCloseable{
     /**
      * Class constructor.
      * @param path path to media file (file-path or http URL)
-     * @throws IllegalArgumentException if source is not valid audio file or track is not valid
-     * audio track
+     * @throws IllegalArgumentException if source is not valid audio file or track is a not
+     * valid audio track
      * @throws IOException if source not accessible
      */
     @Throws(IOException::class,IllegalArgumentException::class)
@@ -170,13 +170,13 @@ class AudioFileSoundStream: AudioInputStream, AutoCloseable{
 
     /**
      * Params:
-     * @param b – the bytes array to which the recorded audio data is written.
-     * @param off – offset in b to which the data is written. Non zero offset values currently
-     * not supported
-     * @param len – the number of requested bytes.
+     * @param b  the byte array to which the recorded audio data is written.
+     * @param off offset in b to which the data is written. Non-zero offset values currently
+     * are not supported
+     * @param len the number of requested bytes.
      * Returns:
-     * @return  zero or the positive number of bytes that were read, -1  if the end of file reached
-     * @throws IOException if stream was closed on previous error or by calling close(),
+     * @return  zero or the positive number of bytes that were read, -1 if the end of file reached
+     * @throws IOException if the stream was closed on previous error or by calling close(),
      * or codec error happens
      * @throws IllegalArgumentException for illegal combinations of b.size, off and len parameters
      */
@@ -229,23 +229,23 @@ class AudioFileSoundStream: AudioInputStream, AutoCloseable{
      * up skipping over some smaller number of bytes, possibly <code>0</code>.
      * @param      n   the number of bytes to be skipped.
      * @return     the actual number of bytes skipped.
-     * @throws IOException if stream was closed on previous error or by calling close()
+     * @throws IOException if the stream was closed on previous error or by calling close()
       */
     @Throws(IllegalArgumentException::class,NullPointerException::class, CodecException::class)
     override fun skip(n: Long): Long {
-        //todo - разбить на запрос кусков разумного размера, скажем 16K
+        //todo - should be split into a number of small reads
         return read(ByteArray(n.toInt())).toLong().coerceAtLeast(0)
     }
 
     /**
      * Params:
-     * @param b – the shorts array to which the recorded audio data is written.
-     * @param off – offset in b to which the data is written. Non zero offset values currently
+     * @param b the shorts array to which the recorded audio data is written.
+     * @param off  offset in b to which the data is written. Non zero offset values currently
      * not supported
-     * @param len – the number of requested bytes.
+     * @param len  the number of requested bytes.
      * Returns:
-     * @return  zero or the positive number of samples that were read, -1  if the end of file reached
-     * @throws IOException if stream was closed on previous error or by calling close()
+     * @return  zero or the positive number of samples that were read, -1,  if the end of file reached
+     * @throws IOException if the stream was closed on previous error or by calling close()
      * @throws IllegalArgumentException for illegal combinations of b.size, off and len parameters
       */
     override fun readShorts(b: ShortArray, off: Int, len: Int): Int {
@@ -268,7 +268,7 @@ class AudioFileSoundStream: AudioInputStream, AutoCloseable{
 
     /**
      * Reads up to <code>b.len</code> samples of audio data from the file into
-     * an array of shorts calling read(b,0, b.size)
+     * an array of short calling read(b,0, b.size)
      * @see readShorts(b: ShortArray, off: Int, len: Int)
      *
      */

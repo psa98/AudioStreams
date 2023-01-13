@@ -28,13 +28,13 @@ class Mp3OutputAudioStream : AudioOutputStream {
     /** Class constructor
      *
      * @param outStream OutputStream object for forwarding resulting compressed audio. Calling
-     * close() on Mp3OutputAudioStream will also close  outStream.
+     * close() on Mp3OutputAudioStream will also call close() on outStream.
      * @param inSampleRate sample rate for incoming audio stream, see below for recommended values.
      *
      * @param outBitrate output MP3 bitrate in kbps, from 16 to 320kbps. Recommended mp3 bitrate
      * to freq ratio should be no more than sampleRate/137, like in 44100/320.
      *
-     * Standard Quality settings list:
+     * Recommended standard Quality settings list:
      *
      * MP3     24kbps 11.025kHz Stereo
      * MP3     24kbps 22.05kHz Mono
@@ -62,8 +62,8 @@ class Mp3OutputAudioStream : AudioOutputStream {
      * MP3     320kbps 44.1kHz Stereo
      *
      * @param outStereoMode one of LameBuilder.Mode - STEREO, MONO, DEFAULT (stereo).
-     * @param qualityMode set internal algorithm. True quality is determined by the bitrate
-     * but this variable will effect quality by selecting expensive or cheap algorithms.
+     * @param qualityMode set internal algorithm. True quality is determined by the bitrate,
+     * but this variable will affect quality by selecting expensive or cheap algorithms.
      */
 
 
@@ -99,11 +99,11 @@ class Mp3OutputAudioStream : AudioOutputStream {
 
 
     /**
-     *Compress and write  the audio data to the output stream.
-     * @param b the byte array  that holds the audio data, short 16-bit PCM samples must be
+     *Compress and write the audio data to the output stream.
+     * @param b the byte array that holds the audio data, short 16-bit PCM samples must be
      * converted to little-ended byte stream
-     * For stereo streams b must contain interleaved data for left and right samples
-     * @param off the offset  in b where the data to write   starts.
+     * For stereo streams b must contain interleaved data for left and right samples, LL-RR-LL-RR...
+     * @param off the offset in b where the data to write starts.
      * @param len the number of samples to write in b after the offset.
      * @throws IOException if an I/O error or codec error occurs and if stream was already closed.
      * @throws IllegalArgumentException if the parameters don't resolve to valid data and indexes
@@ -126,9 +126,9 @@ class Mp3OutputAudioStream : AudioOutputStream {
 
 
     /**
-     *Compress and write  the audio data to the output stream by calling write(b,0,b.size)
+     *Compress and write the audio data to the output stream by calling write(b,0,b.size)
      * @param b the array of bytes that holds the data.
-     * For stereo streams b must contain interleaved little-ended data for left and right samples
+     * For stereo streams, b must contain interleaved little-ended data for left and right samples
      * @throws IOException if an I/O error or codec error occurs and if stream was already closed.
      * @throws IllegalArgumentException if the parameters don't resolve to valid data and indexes
      */
@@ -139,13 +139,10 @@ class Mp3OutputAudioStream : AudioOutputStream {
     }
 
 
-
-
-
     /**
-     *Compress and write  the audio data to the output stream by calling writeShorts(b,0,b.size)
+     *Compress and write the audio data to the output stream by calling writeShorts(b,0,b.size)
      * @param b the array of shorts that holds the data.
-     * For stereo streams b must contain interleaved data for left and right samples
+     * For stereo streams, b must contain interleaved data for left and right samples
      * @throws IOException if an I/O error or codec error occurs and if stream was already closed.
      * @throws IllegalArgumentException if the parameters don't resolve to valid data and indexes
      */
@@ -157,10 +154,10 @@ class Mp3OutputAudioStream : AudioOutputStream {
 
 
     /**
-     *Compress and write  the audio data to the output stream.
+     *Compress and write the audio data to the output stream.
      * @param b the array of shorts that holds the data.
-     * For stereo streams b must contain interleaved data for left and right samples
-     * @param off the offset  in b where the data to write   starts.
+     * For stereo streams, b must contain interleaved data for left and right samples
+     * @param off the offset in b where the data to write starts.
      * @param len the number of samples to write in b after the offset.
      * @throws IOException if an I/O error or codec error occurs and if stream was already closed.
      * @throws IllegalArgumentException if the parameters don't resolve to valid data and indexes
@@ -189,10 +186,11 @@ class Mp3OutputAudioStream : AudioOutputStream {
     override fun canWriteShorts(): Boolean = true
 
     /**
-     * Encode final MP3 frame, closes this stream and call close() on  underlying stream
-     * @throws IOException if an I/O error or codec error occurs and if stream was already closed.
+     * Encode the final MP3 frame, closes this stream and call close() on the underlying stream
+     * @throws IOException if an I/O error or codec error occurs, do nothing if stream already closed.
      */
 
+    @Throws(IOException::class)
     override fun close() {
         if (closed) return
         val result=encodeEofFrame()

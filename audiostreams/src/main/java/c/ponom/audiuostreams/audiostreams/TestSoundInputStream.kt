@@ -37,10 +37,10 @@ class TestSoundInputStream private constructor() : AudioInputStream()  {
 
 
     /**
-     *This constructor usable only for CHANNEL_IN_MONO and encoding ENCODING_PCM_16BIT. Only 16 bit
-     * encoding currently supported <BR>
-     *Test frequency below 32 or above 16000 Hz can be inaudible. Non standard sampling rates below
-     * 16000 or over 48000 can by problematic for testing of media encoders or players"
+     * This constructor is usable only for CHANNEL_IN_MONO and encoding ENCODING_PCM_16BIT.
+     * Only 16 bit encoding currently supported <BR>
+     *Test frequency below 32 or above 16000 Hz can be inaudible. Non-standard sampling rates below
+     * 16000 or over 48000 can be problematic for testing of media encoders or players
      */
     @JvmOverloads
     @Throws(IllegalArgumentException::class,IOException::class)
@@ -62,7 +62,6 @@ class TestSoundInputStream private constructor() : AudioInputStream()  {
             Log.v(TAG, "Non standard sampling rate of $sampleRate can by problematic for testing" +
                     "of media encoders or players")
         testMode=mode
-        // todo проверить выставление обязательных полей во всех конструкторах
         this.sampleRate = sampleRate
         this.encoding=encoding
         this.channelsCount = 1
@@ -76,10 +75,9 @@ class TestSoundInputStream private constructor() : AudioInputStream()  {
 
 
     /**
-     *This constructor usable only for CHANNEL_IN_STEREO and encoding ENCODING_PCM_16BIT. Only 16 bit
-     * encoding currently supported <BR>
-     *Test frequency below 32 or above 16000 Hz can be inaudible. Non standard sampling rate below
-     * 16000 or over 48000 can by problematic for testing of media encoders or players"
+     *This constructor is usable only for CHANNEL_IN_STEREO and encoding ENCODING_PCM_16BIT.
+     * Only 16 bit  encoding currently supported <BR>
+     *Test frequency below 32 or above 16000 Hz can be inaudible. Non-standard sampling rates below 16000 or over 48000 can be problematic for testing of media encoders or players
      */
     @JvmOverloads
     @Throws(IllegalArgumentException::class, IOException::class)
@@ -119,7 +117,7 @@ class TestSoundInputStream private constructor() : AudioInputStream()  {
 
 
    /**
-    * Return -1 when there is no estimated stream length (for example,for endless streams)
+    * Return -1 when there is no estimated stream length (for example, for endless streams)
     * or estimated rest of bytes in stream
     */
    override fun totalBytesEstimate(): Long {
@@ -238,10 +236,9 @@ class TestSoundInputStream private constructor() : AudioInputStream()  {
     }
 
     enum class TestStreamMode{
-        //пока поддерживается только этот вариант, поток выдает звуковые синусоидальные потоки
         GENERATOR,
-        FILE,
-        DEVICE
+        FILE, //todo
+        DEVICE //todo
     }
 
 

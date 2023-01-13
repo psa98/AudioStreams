@@ -48,8 +48,9 @@ class AudioDataInfo{
      *
      * <p>When <code>uri</code> refers to a network file the
      * {@link android.Manifest.permission#INTERNET} permission is required.
-     * @param track  the number of audio track ib source. For most audio sources track #0
-     * contains audio data, for most video sources audio tracks starts from #1
+     * @param track  the number of audio track in the source.
+     * For most audio sources, track #0 contains audio data, for most video
+     *  sources, audio tracks start from #1
      * @param headers the headers to be sent together with the request for the data.
      *        This can be {@code null} if no specific headers are to be sent with the
      *        request.

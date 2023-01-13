@@ -14,12 +14,12 @@ import kotlin.math.sqrt
 object SoundVolumeUtils {
 
     /**
-     * @return Peak volume for audio data chunk scaled from 0 to  Short.MAX_VALUE
+     * @return Peak volume for audio data chunk scaled from 0 to Short.MAX_VALUE
      * */
     fun getMaxVolume(data: ShortArray): Short = data.maxOf { abs(it.toInt()) }.toShort()
 
     /**
-     * @return peak volume for audio data chunk scaled from 0.0f to  1.0f
+     * @return peak volume for audio data chunk scaled from 0.0f to 1.0f
      * */
 
     fun getMaxVolumeFloat(data: ShortArray): Float = getMaxVolume(data).toFloat() / Short.MAX_VALUE
