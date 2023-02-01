@@ -102,7 +102,8 @@ class Mp3OutputAudioStream : AudioOutputStream {
      *Compress and write the audio data to the output stream.
      * @param b the byte array that holds the audio data, short 16-bit PCM samples must be
      * converted to little-ended byte stream
-     * For stereo streams b must contain interleaved data for left and right samples, LL-RR-LL-RR...
+     * For stereo streams b must contain interleaved data for the left and right samples,
+     * LL-RR-LL-RR...
      * @param off the offset in b where the data to write starts.
      * @param len the number of samples to write in b after the offset.
      * @throws IOException if an I/O error or codec error occurs and if stream was already closed.

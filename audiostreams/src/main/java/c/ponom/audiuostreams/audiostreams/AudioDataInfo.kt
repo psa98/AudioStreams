@@ -29,7 +29,7 @@ class AudioDataInfo{
         private set
     var channelsCount:Int =0
         private set
-    @Suppress("MemberVisibilityCanBePrivate")
+
     var mediaFormat:MediaFormat= MediaFormat()
         private set
     private var extractor:MediaExtractor= MediaExtractor()
@@ -87,8 +87,8 @@ class AudioDataInfo{
      * @param path the path to audio file
      * <p>When <code>uri</code> refers to a network file the
      * {@link android.Manifest.permission#INTERNET} permission is required.
-     * @param track  the number of audio track in source. For most audio sources track #0
-     * contains audio data, for most video sources audio tracks starts from #1
+     * @param track  the number of audio track in the source. For most audio sources, track #0
+     * contains audio data, for most video sources, audio tracks start from #1
      */
     @JvmOverloads
     @Throws (IllegalArgumentException::class,IOException::class)
@@ -136,20 +136,17 @@ class AudioDataInfo{
     companion object {
 
         /**
-         * Returns the  Result&lt;AudioDataInfo&gt; object containing basic info for media
-         *
-         * @return the  Result&lt;AudioDataInfo&gt; object containing basic info for media properties
-         * of media located at uri  or Throwable.
+         * Returns the Result&lt;AudioDataInfo&gt; object containing basic info for media
+         * @return the Result&lt;AudioDataInfo&gt; object containing basic info for media
+         * properties of media located at uri or Throwable.
          * @throws IllegalArgumentException if the data at uri is not a valid audio source,
          * @throws IOException if file or url is not available
-         *
          * @param context the Context to use when resolving the Uri
          * @param uri the Content URI of the data you want to extract from.
-         *
          * <p>When <code>uri</code> refers to a network file the
          * {@link android.Manifest.permission#INTERNET} permission is required.
-         * @param track  the number of audio track ib source. For most audio sources track #0
-         * contains audio data, for most video sources audio tracks starts from #1
+         * @param track the number of audio track in the source. For most audio sources, track #0
+         * contains audio data, for most video sources, audio tracks start from #1
          * @param headers the headers to be sent together with the request for the data.
          *        This can be {@code null} if no specific headers are to be sent with the
          *        request.
@@ -166,15 +163,15 @@ class AudioDataInfo{
          * Returns the Result&lt;AudioDataInfo&gt; object containing basic info for media
          *properties of media located at file-path or http URL.
          *
-         * @return  the  Result&lt;AudioDataInfo&gt; object containing basic info for media properties
+         * @return  the Result&lt;AudioDataInfo&gt; object containing basic info for media properties
          * of media located at uri file-path or http URL or Throwable
          *
          * @throws IllegalArgumentException if the data at path is not a valid audio source,
          * @throws IOException if file or url is not available
          * @param path the path to audio file. When <code>path</code> refers to a network file the
          * {@link android.Manifest.permission#INTERNET} permission is required.
-         * @param track  the number of audio track in source. For most audio sources track #0
-         * contains audio data, for most video sources audio tracks starts from #1
+         * @param track  the number of audio track in the source. For most audio sources, track #0
+         * contains audio data, for most video sources, audio tracks start from #1
          */
         @JvmStatic
         fun getMediaDataAsync(path: String, track: Int = 0):  Deferred<Result<AudioDataInfo>> =
@@ -194,8 +191,8 @@ class AudioDataInfo{
          * @param context the Context to use when resolving the Uri
          * @param uri the path to audio file. When <code>uri</code> refers to a network file the
          * {@link android.Manifest.permission#INTERNET} permission is required.
-         * @param track  the number of audio track in source. For most audio sources track #0
-         * contains audio data, for most video sources audio tracks starts from #1
+         * @param track  the number of audio track in the source. For most audio sources, track #0
+         * contains audio data, for most video sources, audio tracks start from #1
          * @param headers the headers to be sent together with the request for the data.
          *        This can be {@code null} if no specific headers are to be sent with the
          *        request.
@@ -221,8 +218,8 @@ class AudioDataInfo{
          *
          * @param path the path to audio file. When <code>path</code> refers to a network file the
          * {@link android.Manifest.permission#INTERNET} permission is required.
-         * @param track  the number of audio track in source. For most audio sources track 0
-         * contains audio data, for most video sources audio tracks starts from #1
+         * @param track  the number of audio track in the source. For most audio sources, track 0
+         * contains audio data; for most video sources, audio tracks start from #1
          */
         @JvmStatic
         @JvmOverloads
@@ -232,11 +229,11 @@ class AudioDataInfo{
         }
 
         /**
-         * Returns the  HashMap object containing  info for media tracks properties of media
-         * @return  the  HashMap<Int, AudioDataInfo.AudioTrackData>object containing
-         * info for media tracks properties of media located at path
+         * Returns the HashMap object containing info for media tracks properties of media
+         * @return  the HashMap<Int, AudioDataInfo.AudioTrackData>object containing
+         * info for media tracks properties of media located at the path.
          * @throws IllegalArgumentException if the data at path is not a valid audio source,
-         * @throws IOException if file or url is not available
+         * @throws IOException if the file or url is not available.
          * @param path the path to audio file. When <code>path</code> refers to a network file the
          * {@link android.Manifest.permission#INTERNET} permission is required.
          */
@@ -249,9 +246,9 @@ class AudioDataInfo{
         }
 
         /**
-         * Returns the  HashMap object containing  info for media tracks properties of media
-         * @return  the  HashMap<Int, AudioDataInfo.AudioTrackData>object containing
-         * info for media tracks properties of media located at path
+         * Returns the HashMap object containing  info for media tracks properties of media
+         * @return  the HashMap<Int, AudioDataInfo.AudioTrackData>object containing
+         * info for media tracks properties of media located at the path
          * @throws IllegalArgumentException if the data at uri is not a valid audio source,
          * @throws IOException if file or url is not available
          * @param context the Context to use when resolving the Uri

@@ -26,7 +26,7 @@ object SoundVolumeUtils {
 
 
     /**
-     * @return average RMS volume level for audio data chunk scaled from 0 to  Short.MAX_VALUE
+     * @return average RMS volume level for audio data chunk scaled from 0 to Short.MAX_VALUE
      * */
     fun getRMSVolume(data: ShortArray): Short {
         var sum = 0.0

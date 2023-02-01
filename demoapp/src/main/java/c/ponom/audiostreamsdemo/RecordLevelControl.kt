@@ -33,7 +33,7 @@ object RecordLevelControl {
     }
 
     /*
-    * x+x*(k)*inc, k = 1.0 at  16384 and drop down to  0.0 at Short.MAX_VALUE
+    * x+x*(k)*inc, k = 1.0 at  16384 and drop to 0.0 at Short.MAX_VALUE
     */
 
     private fun linearLimit(x: Int): Double {

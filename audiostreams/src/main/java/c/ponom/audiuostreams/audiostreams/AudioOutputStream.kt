@@ -38,7 +38,7 @@ abstract class AudioOutputStream :
 
     /** Must be set in constructor of implementing class
      * Value = 1 for mono and 2 for stereo audio streams.
-     * Value outside 1..2 range mean unfinished initialisation or non standard audio stream
+     * Values outside 1..2 range mean unfinished initialisation or non-standard audio stream
      * */
     var channelsCount:Int = 0
     protected set

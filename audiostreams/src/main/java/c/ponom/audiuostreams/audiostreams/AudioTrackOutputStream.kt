@@ -21,7 +21,7 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
     /**
      * @author Sergey Ponomarev, 2022, 461300@mail.ru
      * MIT licence
-     * After initialisation, internal AudioRecord object can be accessed for low level control of
+     * After initialisation, internal AudioRecord object can be accessed for low-level control of
      * microphone recording. <BR>
      * See <code>registerAudioRecordingCallback(), setPreferredDevice(), setRecordPositionUpdateListener()</code>
      *
@@ -83,12 +83,12 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
     /**
      * Starts playing an AudioTrack.
      * You can optionally prime the data path prior to calling play(), by writing data to buffer
-     * If you don't call write() first, or if you call write() but with an insufficient amount of
+     * If you don't call write() first, or if you call write() with an insufficient amount of
      * data, then the track will be in underrun state at play().  In this case,
      * playback will not actually start playing until the data path is filled to a
      * device-specific minimum level.  This requirement for the path to be filled
      * to a minimum level is also true when resuming audio playback after calling stop().
-     * Similarly the buffer will need to be filled up again after
+     * Similarly, the buffer will need to be filled up again after
      * the track underruns due to failure to call write() in a timely manner with sufficient data.
      * This allows play() to start immediately, and reduces the chance of underrun.
      *
@@ -110,7 +110,7 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
         try {
         audioOut?.setVolume(0.02f)
             CoroutineScope(IO).launch {
-                delay(90) // shorter delay can give audible click
+                delay(90) // shorter delays can give audible click
                 audioOut?.pause()
                 audioOut?.flush()
                 audioOut?.stop()
@@ -135,7 +135,7 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
     }
 
     /**
-    * Pauses the playback of the audio data. Data that has not been played
+    * Pauses the playback of the audio data. Data that have not been played
     * back will not be discarded. Subsequent calls to play() will play
     * this data back. See flush() to discard this data.
     *
@@ -145,7 +145,7 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
         try {
             audioOut?.setVolume(0.02f)
             CoroutineScope(IO).launch {
-                delay(90) // shorter delay can give audible click
+                delay(90) // shorter delays can give audible click
                 audioOut?.pause()
                 audioOut?.setVolume(currentVolume)
             }
@@ -156,7 +156,7 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
 
 
     /**
-     * Resume  playing an AudioTrack if in was paused before
+     * Resume playing an AudioTrack if in was paused before
      *
      * @throws IllegalStateException if the track isn't properly initialized or was already closed
      */
@@ -187,8 +187,7 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
     /**
      *Writes the audio data to the audio sink for playback (streaming mode), or copies audio
      * data for later playback.
-     *
-     * The write will normally block until all the data have been enqueued for playback.
+     * The write() will normally block until all the data have been enqueued for playback.
      * @param b the byte array that holds the data to play.
      * @param off the offset expressed in bytes in b where the data to write starts.
      *    Must not be negative, or cause the data access to go out of bounds of the array.
@@ -202,7 +201,7 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
 
     @Throws(IOException::class,NullPointerException::class,IllegalArgumentException::class)
     override fun write(b: ByteArray?, off: Int, len: Int){
-        // should add evenness checks for all params in all byte writes converted to short
+        // should add evenness checks for all params in all bytes writes converted to short
         if (audioOut == null||closed) throw IOException("Stream closed or in error state")
         if (b == null) throw NullPointerException ("Null array passed")
         if (off < 0 || len < 0 || len > b.size - off)
@@ -272,7 +271,7 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
 
     /**
      * Stops playback and closes this input stream and releases any system resources associated.
-     * write(...) calls are no longer valid after this call and will  throw exception
+     * write(...) calls are no longer valid after this call and will throw exception
      *  Do nothing if the stream already closed
      */
     override fun close() {
@@ -319,7 +318,7 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
          * @param minBufferMs the minimal size (in ms) of the buffer where audio data is written
          *   to during the recording. New audio data can be written to this buffer in smaller chunks
          *   than this size.
-         * @return  the  Result&lt;AudioTrackOutputStream&gt; object containing created stream or
+         * @return  the Result&lt;AudioTrackOutputStream&gt; object containing created stream or
          * Throwable
          *
          */

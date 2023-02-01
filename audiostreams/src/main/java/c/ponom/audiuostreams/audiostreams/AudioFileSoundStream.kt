@@ -58,9 +58,9 @@ class AudioFileSoundStream: AudioInputStream, AutoCloseable{
      * Class constructor.
      * @param fd file descriptor of media file. It is the caller's responsibility
      * to close the file descriptor. It is safe to do so as soon as this call returns.
-     * @throws IllegalArgumentException if file is not valid audio file or track is not valid
+     * @throws IllegalArgumentException if file is not valid audio file or track is a not valid
      * audio track
-     * @throws IOException if file not accessible
+     * @throws IOException if file is not accessible
      */
     @Suppress("unused")
     @Throws(IOException::class,IllegalArgumentException::class)
@@ -92,7 +92,7 @@ class AudioFileSoundStream: AudioInputStream, AutoCloseable{
      * @param context the Context to use when resolving the Uri.
      * @param uri the Content URI of the data you want to extract from.
      *
-     * @throws IllegalArgumentException if source is not valid audio file or track is not valid
+     * @throws IllegalArgumentException if source is not valid audio file or track is a not valid
      * audio track
      * @throws IOException if source not accessible
      */
@@ -239,8 +239,8 @@ class AudioFileSoundStream: AudioInputStream, AutoCloseable{
 
     /**
      * Params:
-     * @param b the shorts array to which the recorded audio data is written.
-     * @param off  offset in b to which the data is written. Non zero offset values currently
+     * @param b the short array to which the recorded audio data is written.
+     * @param off  offset in b to which the data is written. Non-zero offset values currently
      * not supported
      * @param len  the number of requested bytes.
      * Returns:

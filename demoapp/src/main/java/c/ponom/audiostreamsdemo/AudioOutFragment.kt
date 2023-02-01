@@ -17,8 +17,8 @@ class AudioOutFragment : Fragment() {
 
 
     /**
-     * Using of  AudioTrackOutputStream, AudioFileSoundSource,
-     * MicSoundInputStream,   StreamPump classes demonstrated
+     * Using of AudioTrackOutputStream, AudioFileSoundSource,
+     * MicSoundInputStream, StreamPump classes demonstrated
      */
 
     private val  viewModel: AudioOutViewModel by lazy {
@@ -36,8 +36,8 @@ class AudioOutFragment : Fragment() {
     private lateinit var currentState: LiveData<AudioOutState>
 
     /**
-     * Демонстрируется использование  потоков AudioTrackOutputStream, TestSoundInputStream,
-     * свойства выходного потока  timestamp, низкоуровнего обращения к свойству audioOut
+     * Демонстрируется использование потоков AudioTrackOutputStream, TestSoundInputStream,
+     * свойства выходного потока timestamp, низкоуровневого обращения к свойству audioOut
      * управление громкостью AudioTrackOutputStream
      */
 
@@ -71,9 +71,9 @@ class AudioOutFragment : Fragment() {
 
 
     private fun setupObservers() {
-        secondsPlayed.observe(viewLifecycleOwner,{binding.secondsPlayed.text=it.toString()})
-        errorMessage.observe(viewLifecycleOwner,{ binding.errorMessageText.text=it.toString()})
-        currentState.observe(viewLifecycleOwner,{ setControlsState(it)})
+        secondsPlayed.observe(viewLifecycleOwner) { binding.secondsPlayed.text = it.toString() }
+        errorMessage.observe(viewLifecycleOwner) { binding.errorMessageText.text = it.toString() }
+        currentState.observe(viewLifecycleOwner) { setControlsState(it) }
     }
 
     private fun setControlsState(state: AudioOutState) {

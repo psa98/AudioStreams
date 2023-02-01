@@ -27,7 +27,7 @@ object ArrayUtils {
         return shorts
     }
 
-    /** Convert a bytes array to the shorts array using little-endian ordering.<BR>
+    /** Convert a byte array to the short array using little-endian ordering.<BR>
      * In an android sound subsystem and most native 16-bit audio formats audio samples in
      * the form of signed short values, stored and processed by hardware as little-endian byte
      * arrays.<BR>
@@ -46,9 +46,9 @@ object ArrayUtils {
         return shorts
     }
 
-    /** Convert shorts array to bytes array using little-endian ordering.<BR>
-     * In android sound subsystem and most of native 16 bit audio formats audio samples in
-     * form of signed short values stored and processed by hardware as little-endian byte
+    /** Convert a short array to the byte array using little-endian ordering.<BR>
+     * In the android sound subsystem and most of native 16-bit audio formats audio samples
+     * in the form of signed short values stored and processed by hardware as little-endian byte
      * arrays.<BR>
      * Mono samples:<BR>
      * [Short value,...] - > [byte1,byte2,...]
@@ -65,10 +65,10 @@ object ArrayUtils {
     }
 
     /** Return array with size winLength containing last winLength Short samples of the data Array.
-     *  If winLength > data.size, last winLength samples located in the end of the resulting
-     *  array and the beginning of array is filled with zeroes.
+     *  If winLength > data.size, last winLength samples located at the end of the resulting
+     *  array and the beginning of the array is filled with zeroes.
      * <p>
-     *  @return Shorts array filled with last winLength samples of data array
+     *  @return Shorts array filled with last winLength samples of the data array
      */
     @JvmStatic
     fun getSlidingWindow(data: ShortArray, winLength: Int): ShortArray {

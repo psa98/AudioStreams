@@ -67,7 +67,7 @@ class AudioOutViewModel : ViewModel() {
     fun stopPlaying() {
         if (recorderState.value!=PLAYING) return
         val audioOut=audioOutStream?.audioOut
-        /* Can access audioOut object for low level programming
+        /* Can access audioOut object for low-level control
         */
         if (audioOut?.playState==PLAYSTATE_STOPPED) return
         if (audioPump.state==StreamPump.State.PUMPING){

@@ -78,8 +78,8 @@ class MicFragment : Fragment() {
             binding.meterLevel.level = it
             binding.textMicCurrentLevel.text = it.toString()
         }
-        bytesPassed.observe(viewLifecycleOwner,{ binding.textMicBytesWritten.text=it.toString()})
-        currentState.observe(viewLifecycleOwner,{ setControlsState(it)})
+        bytesPassed.observe(viewLifecycleOwner) { binding.textMicBytesWritten.text = it.toString() }
+        currentState.observe(viewLifecycleOwner) { setControlsState(it) }
     }
 
     private fun setControlsState(state: MicRecordState) {
@@ -185,14 +185,11 @@ class MicFragment : Fragment() {
         with(binding) {
             volumeControlSlider.value = 100f
             volumeControlValue.text = "100%"
-            volumeControlSlider.addOnChangeListener(object  : Slider.OnChangeListener {
-                override fun onValueChange(slider: Slider, value: Float, fromUser: Boolean) {
-                    val vol = (value/100f)
-                    viewModel.targetVolume=vol
-                    binding.volumeControlValue.text= "${(vol * 100).toInt()}%"
-                    Log.e(TAG, "onValueChange: =$vol")
-                }
-
+            volumeControlSlider.addOnChangeListener(Slider.OnChangeListener { _, value, _ ->
+                val vol = (value/100f)
+                viewModel.targetVolume=vol
+                binding.volumeControlValue.text= "${(vol * 100).toInt()}%"
+                Log.e(TAG, "onValueChange: =$vol")
             })
         }
     }

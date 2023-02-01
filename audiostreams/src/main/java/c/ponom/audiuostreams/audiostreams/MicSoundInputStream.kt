@@ -22,7 +22,7 @@ class MicSoundInputStream : AudioInputStream {
     /**
      * @author Sergey Ponomarev, 2022, 461300@mail.ru
      * MIT licence
-     * After initialisation, internal AudioRecord object can be accessed for low level control of
+     * After initialisation, internal AudioRecord object can be accessed for low-level control of
      * microphone recording.
      * See <code> setRecordPositionUpdateListener(),getRecordingState(),getRoutedDevice() </code>
      *
@@ -142,7 +142,7 @@ class MicSoundInputStream : AudioInputStream {
      * not started or was stopped,
      * AudioRecord.ERROR_BAD_VALUE if the parameters don't resolve to valid data and indexes.
      * @throws IOException if MicSoundInputStream was closed on previous error or by calling close()
-     * @throws IllegalArgumentException for illegal combinations of b.size, off and len parameters
+     * @throws IllegalArgumentException for illegal combinations of b.size, off and len parameters.
      * Fun will write zero volume sample values to b if application doesn't hold
      * Manifest.permission.RECORD_AUDIO and during phone calls
      */
@@ -184,7 +184,7 @@ class MicSoundInputStream : AudioInputStream {
      * not started or was stopped,
      * AudioRecord.ERROR_BAD_VALUE if the parameters don't resolve to valid data and indexes.
      * @throws IOException if MicSoundInputStream was closed on previous error or by calling close()
-     * @throws IllegalArgumentException for illegal combinations of b.size, off and len parameters
+     * @throws IllegalArgumentException for illegal combinations of b.size, off and len parameters.
      * Fun will write zero volume sample values to b if application doesn't hold
      * Manifest.permission.RECORD_AUDIO and during phone calls
      */

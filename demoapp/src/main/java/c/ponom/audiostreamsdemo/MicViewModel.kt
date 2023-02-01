@@ -111,7 +111,7 @@ class MicTestViewModel : ViewModel() {
     fun stopRecording() {
         recordingIsOn=false
         //audioPump.stop(true)
-        // Test for  StreamPump class auto close feature with stop(true)
+        // Test for StreamPump class auto close feature with stop(true)
         recorderState.postValue(STOPPED_READY)
     }
 

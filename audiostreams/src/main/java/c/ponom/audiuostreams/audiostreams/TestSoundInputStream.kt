@@ -76,7 +76,7 @@ class TestSoundInputStream private constructor() : AudioInputStream()  {
 
     /**
      *This constructor is usable only for CHANNEL_IN_STEREO and encoding ENCODING_PCM_16BIT.
-     * Only 16 bit  encoding currently supported <BR>
+     * Only 16 bit encoding currently supported <BR>
      *Test frequency below 32 or above 16000 Hz can be inaudible. Non-standard sampling rates below 16000 or over 48000 can be problematic for testing of media encoders or players
      */
     @JvmOverloads
@@ -129,7 +129,7 @@ class TestSoundInputStream private constructor() : AudioInputStream()  {
    }
 
     /**
-     * Return -1 when there is no estimated stream length (for example,for endless streams)
+     * Return -1 when there is no estimated stream length (for example, for endless streams)
      * or estimated rest of bytes in stream
      */
    override fun bytesRemainingEstimate(): Long {

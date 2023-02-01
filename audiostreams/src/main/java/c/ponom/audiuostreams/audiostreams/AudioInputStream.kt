@@ -12,11 +12,11 @@ import java.io.InputStream
  * @author Sergey Ponomarev,2022, 461300@mail.ru
  * MIT licence
  * This abstract class is the superclass for classes representing
- * a stream of bytes implementing standard for android binary representation of low level
- * sound stream: 16bit, little  endian, left channel than right channel signed shorts in two
+ * a stream of bytes implementing standard for android binary representation of low-level
+ * sound stream: 16bit, little endian, left channel than right channel signed shorts in two
  * octet pairs.
- * Android audio subsystems use such audio format for raw audio data as input
- * and output format for audio devices and media codecs. Other raw audio formats
+ * Android audio subsystems use such audio format for raw audio data as the input
+ * and output formats for audio devices and media codecs. Other raw audio formats
  * (more than 2 channels, 8, 24 or 32 bit samples) used in limited circumstances and
  * usually not for audio music of voice playback or recording.
  * <p> Applications that need to define a subclass of <code>AudioInputStream</code>
@@ -28,7 +28,7 @@ import java.io.InputStream
  * @see     java.io.InputStream#read(byte b[], int off, int len)
  */
 
-abstract class AudioInputStream :    InputStream, AutoCloseable {
+abstract class AudioInputStream protected constructor() :    InputStream(), AutoCloseable {
 
 
     /**  Class constructor.
@@ -37,15 +37,15 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
      * the audio channels:
      *   See {@link AudioFormat#CHANNEL_OUT_MONO} and
      *   {@link AudioFormat#CHANNEL_OUT_STEREO}
-     *  @param streamDuration is duration in ms of input stream if known,  for example, for streams
+     *  @param streamDuration is duration in ms of input stream if known, for example, for streams
      *  from audio files.
-     * The constructor could also  be used for creating potentially endless streams.
+     * The constructor could also be used for creating potentially endless streams.
      *
      */
     @JvmOverloads
     constructor(  @IntRange(from = 2400, to= 96000) samplingRate:Int,
                   @IntRange(from = 1, to=2)channelsNumber: Int,
-                  streamDuration: Long = 0){
+                  streamDuration: Long = 0) : this() {
         duration=streamDuration
         channelsCount=channelsNumber
         sampleRate=samplingRate
@@ -54,7 +54,7 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
         frameSize=bytesPerSample*channelsCount
     }
 
-    protected constructor()
+
 
     /** Class constructor.
      *  This constructor can be used, for example, when stream created with data from
@@ -63,7 +63,7 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
      * todo - переделать что можно на этот конструктор
      */
     @Throws(IllegalArgumentException::class)
-    constructor(format: MediaFormat){
+    constructor(format: MediaFormat) : this() {
         mediaFormat=format
         val duration = mediaFormat?.getLong("durationUs")?.div(1000)
         val sampleRate = mediaFormat?.getInteger("sample-rate")
@@ -93,7 +93,7 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
 
     /**
      * The sample rate of an audio format, in Hz
-     * The associated value is an integer. Android hardware typically support sample rates
+     * The associated value is an integer. Android hardware typically supports sample rates
      * from 8000 to 48000, with standard values 8000,11025,12000,16000,22050,24000,32000,
      * 44100,48000.
      */
@@ -114,14 +114,14 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
 
     /** Must be set in constructor of implementing class
      * Value = 1 for mono and 2 for stereo audio streams.
-     * Value outside 1..2 range mean unfinished initialisation or non standard audio stream
+     * Values outside 1..2 range mean unfinished initialisation or non-standard audio stream
      * */
     var channelsCount:Int = 0
         protected set
 
     /**
      * Must be set in constructor of implementing class as CHANNEL_IN_MONO or CHANNEL_IN_STEREO.
-     * Any other range mean unfinished initialisation or non standard audio stream.
+     * Any other range means unfinished initialisation or non-standard audio stream.
      * @see channelConfig(channels: Int)
      * */
     var channelConfig:Int= AudioFormat.CHANNEL_INVALID
@@ -132,19 +132,19 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
     var bytesPerSample: Int =2
         protected set
 
-    /** Must be set in constructor of implementing class to 4 for stereo and 2  for mono streams
+    /** Must be set in constructor of implementing class to 4 for stereo and 2 for mono streams
      * */
     var frameSize: Int=bytesPerSample*channelsCount
         protected set
 
-    /** Always  ENCODING_PCM_16BIT as ENCODING_PCM_8BIT currently not supported
+    /** Always ENCODING_PCM_16BIT as ENCODING_PCM_8BIT currently not supported
     * */
     var encoding:Int= ENCODING_PCM_16BIT
         protected set
 
     /**
-     * The current time position of audio stream in ms from begin, calculated from number of bytes
-     * read from stream
+     * The current time position of audio stream in ms from begin, calculated from the number
+     * of bytes read from stream
      */
     @Volatile
     open var timestamp=0L //пересчет выведенных байтов в мс.
@@ -152,7 +152,7 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
 
 
     /**
-     * The amount of bytes already read from stream
+     * The number of bytes already read from stream
      * */
     @Volatile
     open var bytesRead = 0L
@@ -169,12 +169,13 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
     open var onReadCallback: ((sentBytes:Long) -> Unit)? ={  }
 
 
+
     /**
-     * @return estimated total amount of bytes in stream, calculated from stream duration, if known, or
-     * -1 if duration unknown
+     * @return estimated total number of bytes in stream, calculated from the stream duration,
+     * if known, or -1 if duration unknown
      *
-     * Override the method to return -1 if there is no estimated stream length (for example,for endless
-     * streams)
+     * Override the method to return -1 if there is no estimated stream length (for example,
+     * for endless streams)
      */
     open fun totalBytesEstimate():Long{
         val bytesEstimate=((this.sampleRate*this.duration*bytesPerSample*
@@ -183,8 +184,8 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
     }
 
     /**
-     * @return -1 if there is no estimated stream length (for example,for endless streams)
-     * or estimated number of rest of bytes in the stream
+     * @return -1 if there is no estimated stream length (for example, for endless streams)
+     * or estimated number of unplayed bytes in the stream
      */
     open fun bytesRemainingEstimate():Long{
         return if (totalBytesEstimate()<0) -1 else
@@ -214,14 +215,13 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
     abstract override fun close()
 
     /**
-     * Reads the next byte of data from the input stream. The value byte is
+     * Read the next byte of data from the input stream. The value byte is
      * returned as an <code>int</code> in the range <code>0</code> to
      * <code>255</code>. If no byte is available because the end of the stream
      * has been reached, the value <code>-1</code> is returned. This method
-     * blocks until input data is available, the end of the stream is detected,
+     * blocks until input data are available, the end of the stream is detected,
      * or an exception is thrown.
-     *
-     * <p> A subclass must provide an implementation of this method.
+     *     * <p> A subclass must provide an implementation of this method.
      *
      * @return     the next byte of data, or <code>-1</code> if the end of the
      *             stream is reached.
@@ -236,12 +236,12 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
      * <code>len</code> bytes, but a smaller number may be read.
      * The number of bytes actually read is returned as an integer.
      *
-     * <p> This method blocks until input data is available, end of file is
+     * <p> This method blocks until input data are available, end of file is
      * detected, or an exception is thrown.
      *
      * <p> If <code>len</code> is zero, then no bytes are read and
      * <code>0</code> is returned; otherwise, there is an attempt to read at
-     * least one byte. If no byte is available because the stream is at end of
+     * least one byte. If no byte is available because the stream is at the end of
      * file, the value <code>-1</code> is returned; otherwise, at least one
      * byte is read and stored into <code>b</code>.
      *
@@ -254,14 +254,14 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
      * <code>b[off+len-1]</code> unaffected.
      *
      * @param      b     the buffer into which the data is read.
-     * @param      off   the start offset in array <code>b</code>
-     *                   at which the data is written.
+     * @param      off   the start offset in the array <code>b</code>
+     *                   at which the data are written.
      * @param      len   the maximum number of bytes to read.
      * @return     the total number of bytes read into the buffer, or
      *             <code>-1</code> if there is no more data because the end of
      *             the stream has been reached.
      * @exception  IOException If the first byte cannot be read for any reason
-     * other than end of file, or if the input stream has been closed, or if
+     * other than the end of the file, or if the input stream has been closed, or if
      * some other I/O error occurs.
      * @exception  NullPointerException If <code>b</code> is <code>null</code>.
      * @exception  IllegalArgumentException If <code>off</code> is negative,
@@ -288,14 +288,14 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
      * an array of shorts if implementing class can do that
      *
      * @param      b     the buffer into which the data is read.
-     * @param      off   the start offset in array <code>b</code>
-     *                   at which the data is written.
-     * @param      len   the maximum number of short values  to read.
-     * @return     the total number of shorts  read into the buffer, or
+     * @param      off   the start offset in the array <code>b</code>
+     *                   at which the data are written.
+     * @param      len   the maximum number of short values to read.
+     * @return     the total number of shorts read into the buffer, or
      *             <code>-1</code> if there is no more data because the end of
      *             the stream has been reached.
      * @exception  IOException If the first sample cannot be read for any reason
-     * other than end of file, or if the input stream has been closed, or if
+     * other than the end of the file, or if the input stream has been closed, or if
      * some other I/O error occurs.
      * @exception  NullPointerException If <code>b</code> is <code>null</code>.
      * @exception  IllegalArgumentException If <code>off</code> is negative,
@@ -314,11 +314,11 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
      * an array of bytes calling read(b,0, b.size)
      *
      * @param      b     the buffer into which the data is read.
-     * @return     the total number of shorts  read into the buffer, or
+     * @return     the total number of shorts read into the buffer, or
      *             <code>-1</code> if there is no more data because the end of
      *             the stream has been reached.
      * @exception  IOException If the first sample cannot be read for any reason
-     * other than end of file, or if the input stream has been closed, or if
+     * other than the end of the file, or if the input stream has been closed, or if
      * some other I/O error occurs.
      * @exception  NullPointerException If <code>b</code> is <code>null</code>.
      * @exception  IllegalArgumentException If <code>off</code> is negative,
@@ -414,5 +414,6 @@ abstract class AudioInputStream :    InputStream, AutoCloseable {
     override fun toString(): String {
         return "AudioInputStream(sampleRate=$sampleRate, duration=$duration, channelsCount=$channelsCount, encoding=$encoding)"
     }
+
 
 }
