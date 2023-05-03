@@ -39,6 +39,7 @@ class AudioDataInfoTest {
         testForIllegalUri()
         testAsyncApi(Uri.EMPTY)
         testAsyncApi(Uri.parse("illegal uri"))
+
 }
 
     private fun testForIllegalUri() {
@@ -78,7 +79,7 @@ class AudioDataInfoTest {
         assertEquals(sampleRate,44100)
         //.flac files can have "audio/flac" or "audio/raw"
         assertTrue(mime == targetMime || mime=="audio/raw")
-
+        testTrackInfo(uri)
         testAsyncApi(uri)
         testForIllegalTrack(uri)
 
@@ -119,5 +120,25 @@ class AudioDataInfoTest {
         }
     }
 
+
+    private fun testTrackInfo(uri: Uri) {
+
+        val audioTrackMap = try {
+            AudioDataInfo.getTrackData(appContext,uri)
+        } catch (e:java.lang.Exception){
+            e.printStackTrace()
+            null
+        }
+        if (audioTrackMap==null||audioTrackMap.isEmpty()) return
+        // todo - должно быть только для неверных данных, добавить ассерт
+        val item1= audioTrackMap[0]!!
+        println("Audio track=$item1")
+        assertEquals((item1.duration / 1000.0).roundToInt(),60)
+        assertEquals(item1.channelsCount,1)
+        assertEquals(item1.samplingRate,44100)
+        assertTrue(item1.mimeString.contains("audio",true))
+        assertTrue(item1.language =="und"||item1.language =="")
+
+    }
 
 }

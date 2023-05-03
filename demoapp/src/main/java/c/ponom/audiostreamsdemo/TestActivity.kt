@@ -43,7 +43,6 @@ class TestActivity : AppCompatActivity() {
     }
 
 
-
     private fun checkPermissions() {
         if (!isPermissionsGranted()) requestPermissions(this,
             arrayOf(RECORD_AUDIO, WRITE_EXTERNAL_STORAGE), PERMISSION_REQUEST_CODE)

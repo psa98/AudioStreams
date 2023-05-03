@@ -280,6 +280,7 @@ class AudioDataInfo{
                 var trackDuration:Long
                 var samplingRate:Int
                 var channelsCount:Int
+                var lang= ""
                 try {
                     trackDuration = trackMediaFormat.getLong("durationUs").div(1000)
                     samplingRate = trackMediaFormat.getInteger("sample-rate")
@@ -287,8 +288,14 @@ class AudioDataInfo{
                 } catch (e:Exception){
                     continue
                 }
+                try {
+                    val langValue = trackMediaFormat.getString("language")
+                    if (langValue!=null) lang = langValue
+                } catch (e:Exception){
+                    e.printStackTrace()
+                }
                 audioTracks[trackNumber] = AudioTrackData(mimeString,trackDuration,
-                    samplingRate,channelsCount)
+                    samplingRate,channelsCount,lang)
             }
             extractor.release()
             return audioTracks
@@ -300,10 +307,9 @@ class AudioDataInfo{
     override fun toString(): String {
         return "Media format for source $path $uri = ${mediaFormat}\n"
     }
-
-    data class AudioTrackData (var mimeString: String="",
-                               var duration:Long=0L,
-                               var samplingRate:Int =0,
-                               var channelsCount:Int =0)
-
+    data class AudioTrackData (val mimeString: String="",
+                               val duration:Long=0L,
+                               val samplingRate:Int =0,
+                               val channelsCount:Int =0,
+                               val language:String="")
 }
