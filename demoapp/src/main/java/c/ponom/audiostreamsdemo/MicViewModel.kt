@@ -26,8 +26,9 @@ class MicTestViewModel : ViewModel() {
 
     var targetVolume: Float=1f
 
-    // using different filenames for different instances
-    private val testFileNum = Random(137).nextInt(100000).toString(16)
+    // using different filenames for different instances of application,
+    // or else files from old versions cannot be overwriten
+    private val testFileNum = Random.Default.nextInt(100000).toString(16)
     var recordLevel: MutableLiveData<Float> = MutableLiveData(0.0f)
     var bytesPassed: MutableLiveData<Int> = MutableLiveData(0)
     var recorderState: MutableLiveData<MicRecordState> = MutableLiveData(NO_FILE_RECORDED)
@@ -53,17 +54,6 @@ class MicTestViewModel : ViewModel() {
         // in Mp3OutputAudioStream() javadoc
         val encoderStream=Mp3OutputAudioStream(outputFileStream,
             sampleRate,sampleRate/160, LameBuilder.Mode.MONO)
-        /*
-        audioPump=StreamPump(testMicStream, encoderStream,bufferSize=1000,
-            onEachPump = {recordLevel.postValue(getRMSVolume(byteToShortArrayLittleEndian(it)).toFloat())},
-            onWrite =  { bytesPassed.postValue(it.toInt())},
-            onFatalError={
-                Log.e(TAG, "Error=${it.localizedMessage}")
-                recorderState.postValue(NO_FILE_RECORDED)
-             })
-        audioPump.start(true)
-        */
-
         recordingIsOn=true
         testMicStream.startRecordingSession()
         recorderState.postValue(RECORDING)

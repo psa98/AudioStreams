@@ -217,6 +217,7 @@ class AudioFileSoundStream: AudioInputStream, AutoCloseable{
         channelsCount=0
         sampleRate=0
         duration=0
+        //deallocate memory immediately
         mainBuffer= ByteBuffer.allocate(1)
         bufferQueue=ArrayBlockingQueue(1)
         codecInputBuffers= emptyArray()
@@ -250,7 +251,7 @@ class AudioFileSoundStream: AudioInputStream, AutoCloseable{
       */
     override fun readShorts(b: ShortArray, off: Int, len: Int): Int {
         val byteArray =ByteArray(b.size*2)
-        val bytes = read(byteArray, off, len*2)
+        val bytes = read(byteArray, off*2, len*2)
         if (bytes==-1) return -1
         val resultShorts= byteToShortArrayLittleEndian(byteArray)
         resultShorts.copyInto(b,0,0,bytes/2)

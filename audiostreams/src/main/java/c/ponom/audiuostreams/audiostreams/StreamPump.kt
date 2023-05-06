@@ -69,7 +69,7 @@ class StreamPump @JvmOverloads constructor(
                             onWrite(bytesSent)
                         //у меня микрофонный поток может вернуть не -1 при ошибке,
                             // поэтому не на -1 проверка
-                            outputStream.writeShorts(shortBuffer)
+                            outputStream.writeShorts(shortBuffer,0,read)
                             onEachPump(shortToByteArrayLittleEndian(shortBuffer))
                             continue
                         } else read=-1
@@ -78,7 +78,7 @@ class StreamPump @JvmOverloads constructor(
                         if (read>=0) {
                             bytesSent+=read
                             onWrite(bytesSent)
-                            outputStream.write(byteBuffer)
+                            outputStream.write(byteBuffer,0,read)
                             onEachPump(byteBuffer)
                             continue
                         } else read=-1

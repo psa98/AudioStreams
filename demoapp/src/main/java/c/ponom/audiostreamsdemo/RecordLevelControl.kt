@@ -23,6 +23,10 @@ object RecordLevelControl {
     }
 
 
+    /*
+    * Level limiter, sample value cannot be more than Short.MAX_VALUE
+    *
+    */
     private fun changeVolume(sample: Short,k:Float): Short {
         val increment = k - 1f
         val sign = sign(sample.toDouble())
@@ -32,10 +36,11 @@ object RecordLevelControl {
         return (resultValue * sign).toInt().toShort()
     }
 
+
     /*
+    * Level limiter
     * x+x*(k)*inc, k = 1.0 at  16384 and drop to 0.0 at Short.MAX_VALUE
     */
-
     private fun linearLimit(x: Int): Double {
         if (x < Short.MAX_VALUE / 2) return 1.0
         val rest = x - Short.MAX_VALUE / 2

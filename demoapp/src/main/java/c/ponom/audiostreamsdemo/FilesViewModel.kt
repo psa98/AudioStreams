@@ -41,7 +41,7 @@ class FilesViewModel : ViewModel() {
                 try {
                     if (!playing) break
                     val samples = audioInStream.readShorts(bufferArray)
-                    if (samples > 0) audioOutStream.writeShorts(bufferArray)
+                    if (samples > 0) audioOutStream.writeShorts(bufferArray,0,samples)
                     else{
                         Log.e(TAG, "playUri - eof or error, samples=$samples")
                         break

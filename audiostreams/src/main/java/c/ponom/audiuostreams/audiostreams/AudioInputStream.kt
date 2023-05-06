@@ -147,7 +147,7 @@ abstract class AudioInputStream protected constructor() :    InputStream(), Auto
      * of bytes read from stream
      */
     @Volatile
-    open var timestamp=0L //пересчет выведенных байтов в мс.
+    open var timestamp=0L
         protected set
 
 

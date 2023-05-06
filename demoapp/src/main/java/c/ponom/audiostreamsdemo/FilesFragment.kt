@@ -101,16 +101,9 @@ class FilesFragment : Fragment() {
         Log.v(TAG, "callback Uri = $uri")
         val tracks =AudioDataInfo.getTrackData(requireContext(),uri)
         val mediaData=AudioDataInfo(requireContext(),uri)
-        binding.textMediaData.text="Media Data: $mediaData \n Media Data for track:  $tracks"
+        binding.textMediaData.text="Media Data: $mediaData \n Media Data for tracks:  $tracks"
         binding.stopButton.isEnabled=true
         viewModel.playUri(requireContext(),uri)
     }
-
-
-
-
-
-
-
 
 }
