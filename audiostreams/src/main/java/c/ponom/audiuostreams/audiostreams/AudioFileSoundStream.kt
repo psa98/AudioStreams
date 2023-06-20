@@ -238,9 +238,21 @@ class AudioFileSoundStream: AudioInputStream, AutoCloseable{
       */
     @Throws(IllegalArgumentException::class,NullPointerException::class, CodecException::class)
     override fun skip(n: Long): Long {
-        //todo - should be split into a number of small reads
-        return read(ByteArray(n.toInt())).toLong().coerceAtLeast(0)
-    }
+        // split reads to normal size chunks (less than 1 second)
+        val bufferSize = (sampleRate/2).coerceAtMost(n.toInt())
+        var actualBytes = 0L
+        var reminder = n
+        do {
+            val read =read(ByteArray(bufferSize.coerceAtMost(reminder.toInt())))
+            if (read<0 )
+                return actualBytes
+            actualBytes+=read
+            reminder-=read
+            if (actualBytes>=n||reminder<=0)
+                return actualBytes
+
+        }while (true)
+     }
 
     /**
      * Params:
