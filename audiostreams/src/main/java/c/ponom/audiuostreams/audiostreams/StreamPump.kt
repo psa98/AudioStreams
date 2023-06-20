@@ -50,7 +50,6 @@ class StreamPump @JvmOverloads constructor(
             FATAL_ERROR -> throw IllegalStateException ("already finished on error")
         }
    }
-    // задокументировать что onFinish вызывается всегда, даже при ошибке, после onError
 
 
     @Suppress("BlockingMethodInNonBlockingContext")
@@ -67,7 +66,7 @@ class StreamPump @JvmOverloads constructor(
                         if (read>=0) {
                             bytesSent+=read*2
                             onWrite(bytesSent)
-                        //у меня микрофонный поток может вернуть не -1 при ошибке,
+                            //у меня микрофонный поток может вернуть не -1 при ошибке,
                             // поэтому не на -1 проверка
                             outputStream.writeShorts(shortBuffer,0,read)
                             onEachPump(shortToByteArrayLittleEndian(shortBuffer))
@@ -110,7 +109,7 @@ class StreamPump @JvmOverloads constructor(
                         outputStream.close()
                         break
                     } catch (e:IOException){
-                        // секция ловит ошибку в *закрытии* потоков.
+                        // секция ловит ошибку в закрытии потоков.
                         // эта ошибка не передается выше, поскольку она затрет реальную
                         e.printStackTrace()
                         break
@@ -173,7 +172,7 @@ class StreamPump @JvmOverloads constructor(
 
 
     enum class State{
-        NOT_READY, //todo убрать
+        NOT_READY,
         PREPARED,
         PUMPING,
         PAUSED,

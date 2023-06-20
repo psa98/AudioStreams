@@ -63,7 +63,7 @@ class FilesViewModel : ViewModel() {
     }
 
 
-    private fun timeString(msTime:Long): String {
+    private fun timeString(msTime:Number): String {
         val audioTime: String
         val dur = msTime.toInt()
         val hrs = dur / 3600000

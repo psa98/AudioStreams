@@ -66,8 +66,6 @@ class AudioDataInfo{
         extractor.selectTrack(track)
         val trackFormat = extractor.getTrackFormat(track)
         extractor.release()
-        //документация андроида утверждает что любая
-        // дорожка медиафайла имеет этот параметр, но мало ли что нам подсунут
         val mime = trackFormat.getString("mime").toString()
         require(mime.contains("audio",true)){"Track $track isn't valid audio track"}
         initFields(trackFormat)
@@ -246,7 +244,7 @@ class AudioDataInfo{
         }
 
         /**
-         * Returns the HashMap object containing  info for media tracks properties of media
+         * Returns the HashMap object containing info for media tracks properties of media
          * @return  the HashMap<Int, AudioDataInfo.AudioTrackData>object containing
          * info for media tracks properties of media located at the path
          * @throws IllegalArgumentException if the data at uri is not a valid audio source,

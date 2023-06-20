@@ -47,7 +47,7 @@ abstract class AudioInputStream protected constructor() :    InputStream(), Auto
                   @IntRange(from = 1, to=2)channelsNumber: Int,
                   streamDuration: Long = 0) : this() {
         duration=streamDuration
-        channelsCount=channelsNumber
+        channelsCount=channelsNumber.coerceAtMost(2)
         sampleRate=samplingRate
         channelConfig=channelConfig(channelsNumber)
         bytesPerSample = if (encoding== ENCODING_PCM_16BIT) 2  else 1
