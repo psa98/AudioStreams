@@ -127,7 +127,7 @@ class AudioFileSoundStream: AudioInputStream, AutoCloseable{
             duration = format.getLong("durationUs").div(1000)
             sampleRate = format.getInteger("sample-rate")
             channelsCount = format.getInteger("channel-count")
-            // todo спорно = по итогам тестов класс успешно отдает 2 канальный звук
+            // по итогам тестов класс успешно отдает 2 канальный звук
             //  при открытии 6 канального (5.1) файла на обычном девайсе, кодек справляется с этим
             //  под капотом сам отдавая 2 канала но это не документировано
             if (channelsCount>2) channelsCount = 2
