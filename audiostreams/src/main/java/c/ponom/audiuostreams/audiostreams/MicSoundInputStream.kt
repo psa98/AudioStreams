@@ -82,7 +82,6 @@ class MicSoundInputStream : AudioInputStream {
              throw IllegalArgumentException("Audio record init error - wrong params? ")
         bytesPerSample = if (encoding== ENCODING_PCM_16BIT) 2  else 1
         frameSize=bytesPerSample*channels
-        audioRecord?.routedDevice
 
     }
 
