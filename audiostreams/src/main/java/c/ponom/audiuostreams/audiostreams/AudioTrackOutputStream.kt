@@ -21,8 +21,6 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
     /**
      * @author Sergey Ponomarev, 2022, 461300@mail.ru
      * MIT licence
-     * See <code>registerAudioRecordingCallback(), setPreferredDevice(), setRecordPositionUpdateListener()</code>
-     *
      */
     var audioOut:AudioTrack?=null
     var closed = false
