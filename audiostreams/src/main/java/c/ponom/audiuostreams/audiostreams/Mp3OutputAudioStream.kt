@@ -93,7 +93,7 @@ class Mp3OutputAudioStream : AudioOutputStream {
             .setInSampleRate(inSampleRate)
             .setMode(outStereoMode )
             .setOutChannels(channelsCount)
-            .setOutBitrate(outBitrate.coerceAtMost(320).coerceAtLeast(32))
+            .setOutBitrate(outBitrate.coerceAtMost(320).coerceAtLeast(24))
             .build()
     }
 
