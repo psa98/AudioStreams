@@ -164,7 +164,7 @@ class MicFragment : Fragment() {
     private inner class  InputSelector : AdapterView.OnItemSelectedListener {
         override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long): Unit =
             run{
-                source = inputList[position].split("=")[0]. toInt()
+                source = inputList[position].split("=")[0].toInt()
                 Log.e(TAG, "onItemSelected: =$source")
             }
         override fun onNothingSelected(parent: AdapterView<*>?) {}

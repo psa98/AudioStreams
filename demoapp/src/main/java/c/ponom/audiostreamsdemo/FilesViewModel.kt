@@ -20,8 +20,7 @@ class FilesViewModel : ViewModel() {
 
 
     fun playUri(context: Context,uri: Uri){
-        if (playing)return
-        if (uri == Uri.EMPTY) return
+        if (playing||uri == Uri.EMPTY) return
         val audioInStream: AudioFileSoundStream
         val audioOutStream:AudioTrackOutputStream
         try {
@@ -32,11 +31,11 @@ class FilesViewModel : ViewModel() {
             mediaData.postValue("Error in media file - ${e.localizedMessage} ")
             return
         }
-        playing=true
         CoroutineScope(IO).launch{
             audioOutStream.play()
             val bufferArray = ShortArray(1024) // при выводе в динамик желателен малый буфер
             var lastTime =""
+            playing=true
             do {
                 try {
                     if (!playing) break

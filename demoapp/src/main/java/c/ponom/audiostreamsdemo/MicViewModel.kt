@@ -58,7 +58,7 @@ class MicTestViewModel : ViewModel() {
         testMicStream.startRecordingSession()
         recorderState.postValue(RECORDING)
 
-        //Using readShorts and writeShorts with simple on the fly buffer preprocessing
+
         CoroutineScope(IO).launch {
             recordMic(sampleRate, testMicStream, encoderStream)
         }
@@ -74,10 +74,9 @@ class MicTestViewModel : ViewModel() {
                 if (bytes == 0) continue
                 if (bytes < 0) {
                     recordingIsOn = false
-                    testMicStream.close()
-                    encoderStream.close()
                     break
                 }
+                //Using readShorts and writeShorts with simple on the fly buffer preprocessing
                 val newBuffer = doSimpleProcessing(buffer.copyOf(bytes), targetVolume)
                 val level = getRMSVolume(newBuffer)
                 recordLevel.postValue(level.toFloat())
@@ -87,15 +86,15 @@ class MicTestViewModel : ViewModel() {
                 recordingIsOn = false
                 Log.e(TAG, "Error=${e.localizedMessage}")
                 recorderState.postValue(NO_FILE_RECORDED)
-                try {
-                    testMicStream.close()
-                    encoderStream.close()
-                } catch (e: java.lang.Exception) {
-                    e.printStackTrace()
-                }
                 break
             }
         } while (recordingIsOn)
+        try {
+            testMicStream.close()
+            encoderStream.close()
+        } catch (e: java.lang.Exception) {
+            e.printStackTrace()
+        }
     }
 
     fun stopRecording() {
@@ -112,7 +111,10 @@ class MicTestViewModel : ViewModel() {
             onEachPump = {recordLevel.postValue(getRMSVolume(byteToShortArrayLittleEndian(it)).toFloat())},
             onWrite =  { bytesPassed.postValue(it.toInt())},
             onFinish = {recorderState.postValue(STOPPED_READY)},
-            onFatalError={ Log.e(TAG, "Error=${it.localizedMessage}")})
+            onFatalError={
+                Log.e(TAG, "Error=${it.localizedMessage}")
+                recorderState.postValue(NO_FILE_RECORDED)
+            })
         audioOut.play()
         audioPump.start(true)
         recorderState.postValue(PLAYING)
