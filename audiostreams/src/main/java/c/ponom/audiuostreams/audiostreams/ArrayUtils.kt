@@ -7,7 +7,7 @@ import java.nio.ByteOrder
 
 /**
  * @author Sergey Ponomarev,2022, 461300@mail.ru
- * MIT licence
+ * MIT license
  */
 
 const val TAG = "Audio Streams"
@@ -64,22 +64,20 @@ object ArrayUtils {
         return byteBuffer.array()
     }
 
-    /** Return array with size winLength containing last winLength Short samples of the data Array.
-     *  If winLength > data.size, last winLength samples located at the end of the resulting
-     *  array and the beginning of the array is filled with zeroes.
-     * <p>
-     *  @return Shorts array filled with last winLength samples of the data array
-     */
-    @JvmStatic
-    fun getSlidingWindow(data: ShortArray, winLength: Int): ShortArray {
-        val copyWindowSize = winLength.coerceAtMost(data.size)
-        val resultingArray = ShortArray(winLength)
-        val startingPosSource = (data.size - copyWindowSize).coerceAtLeast(0)
-        System.arraycopy(
-            data, startingPosSource, resultingArray,
-            resultingArray.size - copyWindowSize, copyWindowSize
-        )
-        return resultingArray
+    fun ShortArray.toByteArrayLittleEndian(): ByteArray {
+        return shortToByteArrayLittleEndian(this)
+    }
+
+    fun ShortArray.toByteArray(): ByteArray {
+        return shortToByteArray(this)
+    }
+
+    fun ByteArray.toShortArrayLittleEndian(): ShortArray {
+        return byteToShortArrayLittleEndian(this)
+    }
+
+    fun ByteArray.toShortArray(): ShortArray {
+        return byteToShortArray(this)
     }
 
 

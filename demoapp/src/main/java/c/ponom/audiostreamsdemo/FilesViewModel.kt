@@ -11,58 +11,59 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.launch
 
-@Suppress("BlockingMethodInNonBlockingContext")
+
 class FilesViewModel : ViewModel() {
 
-    var playing: Boolean=false
+    var playing: Boolean = false
     var secondsPlayed: MutableLiveData<String> = MutableLiveData("")
     var mediaData: MutableLiveData<String> = MutableLiveData("")
 
 
-    fun playUri(context: Context,uri: Uri){
-        if (playing||uri == Uri.EMPTY) return
+    fun playUri(context: Context, uri: Uri) {
+        if (playing || uri == Uri.EMPTY) return
         val audioInStream: AudioFileSoundStream
-        val audioOutStream:AudioTrackOutputStream
+        val audioOutStream: AudioTrackOutputStream
         try {
-            audioInStream = AudioFileSoundStream(context,uri)
-            audioOutStream= AudioTrackOutputStream(audioInStream.sampleRate,
-                audioInStream.channelsCount,1000)
-        }catch (e:java.lang.Exception){
+            audioInStream = AudioFileSoundStream(context, uri)
+            audioOutStream = AudioTrackOutputStream(
+                audioInStream.sampleRate, audioInStream.channelsCount, 1000
+            )
+        } catch (e: java.lang.Exception) {
             mediaData.postValue("Error in media file - ${e.localizedMessage} ")
             return
         }
-        CoroutineScope(IO).launch{
+        CoroutineScope(IO).launch {
             audioOutStream.play()
-            val bufferArray = ShortArray(1024) // при выводе в динамик желателен малый буфер
-            var lastTime =""
-            playing=true
+            val bufferArray = ShortArray(1024)
+            var lastTime = ""
+            playing = true
             do {
                 try {
                     if (!playing) break
                     val samples = audioInStream.readShorts(bufferArray)
-                    if (samples > 0) audioOutStream.writeShorts(bufferArray,0,samples)
-                    else{
-                        Log.e(TAG, "playUri - eof or error, samples=$samples")
+                    if (samples > 0) audioOutStream.writeShorts(bufferArray, 0, samples)
+                    else {
+                        Log.i(TAG, "playUri - eof or error, samples=$samples")
                         break
                     }
-                    val time =timeString(audioOutStream.timestamp)
-                    if (lastTime!=time){
-                        lastTime=time
+                    val time = timeString(audioOutStream.timestamp)
+                    if (lastTime != time) {
+                        lastTime = time
                         secondsPlayed.postValue(timeString(audioOutStream.timestamp))
                     }
-                } catch (e:Exception){
+                } catch (e: Exception) {
                     e.printStackTrace()
                     break
                 }
-            }while(true)
-            playing=false
+            } while (true)
+            playing = false
             audioOutStream.close()
             audioInStream.close()
         }
     }
 
 
-    private fun timeString(msTime:Number): String {
+    private fun timeString(msTime: Number): String {
         val audioTime: String
         val dur = msTime.toInt()
         val hrs = dur / 3600000

@@ -8,14 +8,12 @@ import kotlin.math.sign
 
 object RecordLevelControl {
 
-
-
-    fun doSimpleProcessing(dataToProcess: ShortArray,k:Float): ShortArray {
+    fun doSimpleProcessing(dataToProcess: ShortArray, k: Float): ShortArray {
         val processedData = ShortArray(dataToProcess.size)
         with(dataToProcess) {
             forEachIndexed { index, _ ->
                 apply {
-                    processedData[index] = changeVolume(dataToProcess[index],k)
+                    processedData[index] = changeVolume(dataToProcess[index], k)
                 }
             }
         }
@@ -27,12 +25,12 @@ object RecordLevelControl {
     * Level limiter, sample value cannot be more than Short.MAX_VALUE
     *
     */
-    private fun changeVolume(sample: Short,k:Float): Short {
+    private fun changeVolume(sample: Short, k: Float): Short {
         val increment = k - 1f
         val sign = sign(sample.toDouble())
         val value = abs(sample.toInt())
-        val resultValue =(value + value * linearLimit(value) * increment)
-                .coerceAtMost(Short.MAX_VALUE - 1.0)
+        val resultValue = (value + value * linearLimit(value) * increment)
+            .coerceAtMost(Short.MAX_VALUE - 1.0)
         return (resultValue * sign).toInt().toShort()
     }
 

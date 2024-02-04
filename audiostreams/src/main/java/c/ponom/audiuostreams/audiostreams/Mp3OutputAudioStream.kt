@@ -109,6 +109,7 @@ class Mp3OutputAudioStream : AudioOutputStream {
      * @throws IOException if an I/O error or codec error occurs and if stream was already closed.
      * @throws IllegalArgumentException if the parameters don't resolve to valid data and indexes
      */
+    @Synchronized
     @Throws(NullPointerException::class,IllegalArgumentException::class,IOException::class)
     override fun write(b: ByteArray?, off: Int, len: Int){
         if (closed) throw IOException("Stream was already closed")
@@ -121,7 +122,7 @@ class Mp3OutputAudioStream : AudioOutputStream {
             encodeInterleavedStream(samples)
         else encodeMonoStream(samples)
         outputStream.write(result)
-        bytesSent += samples.size*2
+        moreBytesSent(samples.size*2)
         onWriteCallback?.invoke(bytesSent)
     }
 
@@ -147,6 +148,7 @@ class Mp3OutputAudioStream : AudioOutputStream {
      * @throws IOException if an I/O error or codec error occurs and if stream was already closed.
      * @throws IllegalArgumentException if the parameters don't resolve to valid data and indexes
      */
+
     @Throws(java.lang.IllegalArgumentException::class, IOException::class)
     override fun writeShorts(b: ShortArray) {
         writeShorts(b,0,b.size)
@@ -163,7 +165,7 @@ class Mp3OutputAudioStream : AudioOutputStream {
      * @throws IOException if an I/O error or codec error occurs and if stream was already closed.
      * @throws IllegalArgumentException if the parameters don't resolve to valid data and indexes
      */
-
+    @Synchronized
     @Throws(IllegalArgumentException::class, IOException::class)
     override fun writeShorts(b: ShortArray, off: Int, len: Int) {
         if (closed) throw IOException("Stream was already closed")
@@ -172,7 +174,7 @@ class Mp3OutputAudioStream : AudioOutputStream {
         val samples=b.copyOf(len)
         val result:ByteArray = if (channelsCount==1) encodeMonoStream(samples)
             else encodeInterleavedStream(samples)
-        bytesSent += b.size.coerceAtMost(len) *2
+        moreBytesSent(b.size.coerceAtMost(len) *2)
         onWriteCallback?.invoke(bytesSent)
         outputStream.write(result)
     }
@@ -190,7 +192,7 @@ class Mp3OutputAudioStream : AudioOutputStream {
      * Encode the final MP3 frame, closes this stream and call close() on the underlying stream
      * @throws IOException if an I/O error or codec error occurs, do nothing if stream already closed.
      */
-
+    @Synchronized
     @Throws(IOException::class)
     override fun close() {
         if (closed) return

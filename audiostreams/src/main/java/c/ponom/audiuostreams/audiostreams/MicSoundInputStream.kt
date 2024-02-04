@@ -82,7 +82,6 @@ class MicSoundInputStream : AudioInputStream {
              throw IllegalArgumentException("Audio record init error - wrong params? ")
         bytesPerSample = if (encoding== ENCODING_PCM_16BIT) 2  else 1
         frameSize=bytesPerSample*channels
-
     }
 
 
@@ -111,6 +110,7 @@ class MicSoundInputStream : AudioInputStream {
     /*
    Returns current size of MicSoundInputStream internal buffer.
    */
+
    override fun available(): Int {
        return audioRecord?.bufferSizeInFrames?.times(frameSize)?:0
    }
@@ -146,6 +146,7 @@ class MicSoundInputStream : AudioInputStream {
      * Manifest.permission.RECORD_AUDIO and during phone calls
      */
     @Throws(NullPointerException::class,IOException::class,IllegalArgumentException::class)
+    @Synchronized
     override fun read(b: ByteArray?, off: Int, len: Int): Int {
         if (b == null) throw NullPointerException ("Null array passed")
         if (len == 0|| b.isEmpty()) return 0
@@ -163,7 +164,7 @@ class MicSoundInputStream : AudioInputStream {
             close()
             return  -1
         }
-        if (bytes>0) bytesRead += bytes
+        if (bytes>0) moreBytesRead(bytes)
         onReadCallback?.invoke(bytesRead)
         return bytes
     }
@@ -188,6 +189,7 @@ class MicSoundInputStream : AudioInputStream {
      * Manifest.permission.RECORD_AUDIO and during phone calls
      */
     @Throws(IOException::class,IllegalArgumentException::class)
+    @Synchronized
     override fun readShorts(b: ShortArray, off: Int, len: Int): Int {
         if (len == 0|| b.isEmpty()) return 0
         if (off < 0 || len < 0 || len > b.size - off)
@@ -203,7 +205,7 @@ class MicSoundInputStream : AudioInputStream {
             close()
             return  -1
         }
-         if (samples>0)bytesRead+=samples*2
+         if (samples>0)moreBytesRead(samples*2)
         return samples
     }
 

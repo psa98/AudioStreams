@@ -161,7 +161,7 @@ class TestSoundInputStream private constructor() : AudioInputStream()  {
     /**
      *
      */
-
+    @Synchronized
     @Throws(NullPointerException::class,IllegalArgumentException::class)
     override fun read(b: ByteArray?, off: Int, len: Int): Int {
         if (b == null) throw NullPointerException("Null array passed")
@@ -173,14 +173,14 @@ class TestSoundInputStream private constructor() : AudioInputStream()  {
         val shortArray=ShortArray((len / 2).coerceAtMost(b.size / 2))
         val bytes= readShorts(shortArray,0,len/2)*2
         shortToByteArrayLittleEndian(shortArray).copyInto(b)
-        bytesRead+=bytes
+        moreBytesRead(bytes)
         onReadCallback?.invoke(bytesRead)
         return bytes
    }
 
 
 
-
+    @Synchronized
     @Throws(NullPointerException::class)
     override fun readShorts(b: ShortArray, off: Int, len: Int): Int {
         if (closed) return -1
@@ -200,10 +200,11 @@ class TestSoundInputStream private constructor() : AudioInputStream()  {
             }
         }
         dataArray.copyInto(b)
-        bytesRead+=length*2
+        moreBytesRead(length*2)
         return len
     }
 
+    @Synchronized
     override fun skip(n: Long): Long {
         return read(ByteArray(n.toInt())).toLong()
     }

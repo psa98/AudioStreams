@@ -8,9 +8,11 @@ import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.SeekBar
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.viewModels
 import androidx.lifecycle.LiveData
-import androidx.lifecycle.ViewModelProvider
-import c.ponom.audiostreamsdemo.AudioOutState.*
+import c.ponom.audiostreamsdemo.AudioOutState.ERROR
+import c.ponom.audiostreamsdemo.AudioOutState.PLAYING
+import c.ponom.audiostreamsdemo.AudioOutState.STOPPED
 import c.ponom.audiostreamsdemo.databinding.FragmentAudioOutBinding
 
 class AudioOutFragment : Fragment() {
@@ -21,29 +23,32 @@ class AudioOutFragment : Fragment() {
      * MicSoundInputStream, StreamPump classes demonstrated
      */
 
-    private val  viewModel: AudioOutViewModel by lazy {
-        ViewModelProvider(this)[AudioOutViewModel::class.java]
-    }
+    private val viewModel: AudioOutViewModel by viewModels()
     private var _binding: FragmentAudioOutBinding? = null
     private val binding get() = _binding!!
-    var currentVolume=1f
+    var currentVolume = 1f
     var sampleRate = 16000
-    val sampleRateList = arrayOf("Select sampling rate","16000 (Default)","22050","32000","44100","9999999 (Illegal value)")
-    private val volume:Short =16000
+    val sampleRateList = arrayOf(
+        "Select sample rate",
+        "16000 (Default)",
+        "22050",
+        "32000",
+        "44100",
+        "9999999 (Illegal value)"
+    )
+    private val volume: Short = 16000
     private val freq = 440.0
-    private lateinit var secondsPlayed: LiveData<Float>
-    private lateinit var errorMessage: LiveData<String>
-    private lateinit var currentState: LiveData<AudioOutState>
+    private val secondsPlayed: LiveData<Float> by lazy { viewModel.secondsPlayed }
+    private val errorMessage: LiveData<String> by lazy { viewModel.errorData }
+    private val currentState: LiveData<AudioOutState> by lazy { viewModel.recorderState }
 
     /**
-     * Демонстрируется использование потоков AudioTrackOutputStream, TestSoundInputStream,
-     * свойства выходного потока timestamp, низкоуровневого обращения к свойству audioOut
-     * управление громкостью AudioTrackOutputStream
+     * File shows use of AudioTrackOutputStream, TestSoundInputStream, AudioOutStream timestamp property,
+     * use of audioOut property, AudioTrackOutputStream level control
      */
 
     override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
+        inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View {
         _binding = FragmentAudioOutBinding.inflate(inflater, container, false)
         return binding.root
@@ -51,9 +56,6 @@ class AudioOutFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        secondsPlayed=viewModel.secondsPlayed
-        errorMessage=viewModel.errorData
-        currentState=viewModel.recorderState
         setupButtons()
         setupObservers()
         setupSpinner()
@@ -62,10 +64,12 @@ class AudioOutFragment : Fragment() {
 
     private fun setupButtons() {
         with(binding) {
-            playButton.setOnClickListener {viewModel.play(freq, volume, sampleRate)}
-            stopButton.setOnClickListener {viewModel.stopPlaying()}
-            forceError.setOnClickListener {viewModel.forceError()
-            playButton.isEnabled=true}
+            playButton.setOnClickListener { viewModel.play(freq, volume, sampleRate) }
+            stopButton.setOnClickListener { viewModel.stopPlaying() }
+            forceError.setOnClickListener {
+                viewModel.forceError()
+                playButton.isEnabled = true
+            }
         }
     }
 
@@ -77,27 +81,29 @@ class AudioOutFragment : Fragment() {
     }
 
     private fun setControlsState(state: AudioOutState) {
-        with (binding){
-            secondsPlayed.text="0.0"
-            volumeSlider.progress=100
-            currentVol.text= 1f.toString()
-            when(state) {
+        with(binding) {
+            secondsPlayed.text = "0.0"
+            volumeSlider.progress = 100
+            currentVol.text = 1f.toString()
+            when (state) {
                 STOPPED -> {
-                    volumeSlider.isEnabled=false
+                    volumeSlider.isEnabled = false
                     playButton.isEnabled = true
                     stopButton.isEnabled = false
                     forceError.isEnabled = false
                 }
+
                 PLAYING -> {
-                    volumeSlider.isEnabled=true
+                    volumeSlider.isEnabled = true
                     playButton.isEnabled = false
                     stopButton.isEnabled = true
                     forceError.isEnabled = true
                     errorMessageText.visibility = View.GONE
                     errorLabel.visibility = View.GONE
                 }
+
                 ERROR -> {
-                    volumeSlider.isEnabled=false
+                    volumeSlider.isEnabled = false
                     playButton.isEnabled = true
                     stopButton.isEnabled = false
                     forceError.isEnabled = false
@@ -111,9 +117,9 @@ class AudioOutFragment : Fragment() {
     }
 
     private fun setupSpinner() {
-
-        val rateAdapter = ArrayAdapter(requireContext(),
-            android.R.layout.simple_spinner_item, sampleRateList)
+        val rateAdapter = ArrayAdapter(
+            requireContext(), android.R.layout.simple_spinner_item, sampleRateList
+        )
         binding.rateSelector.adapter = rateAdapter
         binding.rateSelector.onItemSelectedListener = SampleRateSelector()
         binding.rateSelector.prompt = "Select sampling rate"
@@ -126,27 +132,26 @@ class AudioOutFragment : Fragment() {
     }
 
 
-    inner class  SampleRateSelector : AdapterView.OnItemSelectedListener {
-        override fun onItemSelected(parent: AdapterView<*>?, view: View?,
-                                    position: Int, id: Long): Unit =
-            run {
-                if (position!=0)
-                    sampleRate=sampleRateList[position].substringBefore(" (").toInt()
-                }
+    inner class SampleRateSelector : AdapterView.OnItemSelectedListener {
+        override fun onItemSelected(
+            parent: AdapterView<*>?, view: View?, position: Int, id: Long
+        ): Unit = run {
+            if (position != 0) sampleRate = sampleRateList[position].substringBefore(" (").toInt()
+        }
+
         override fun onNothingSelected(parent: AdapterView<*>?) {}
     }
 
-
     private fun setVolumeControl() {
-        binding.volumeSlider.isEnabled=false
+        binding.volumeSlider.isEnabled = false
         binding.volumeSlider.max = 100
         binding.volumeSlider.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {}
             override fun onStartTrackingTouch(seekBar: SeekBar) {}
             override fun onStopTrackingTouch(seekBar: SeekBar) {
-                currentVolume = seekBar.progress.toFloat()/100f
+                currentVolume = seekBar.progress.toFloat() / 100f
                 viewModel.setVolume(currentVolume)
-                binding.currentVol.text= currentVolume.toString()
+                binding.currentVol.text = currentVolume.toString()
             }
         })
     }
@@ -154,7 +159,6 @@ class AudioOutFragment : Fragment() {
     override fun onPause() {
         super.onPause()
         viewModel.stopPlaying()
-
     }
 
 }

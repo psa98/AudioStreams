@@ -8,35 +8,34 @@ import android.util.AttributeSet
 import android.util.TypedValue
 import kotlin.math.log
 
-private const val SILENCE_THRESHOLD_VOLUME =36.0
+private const val SILENCE_THRESHOLD_VOLUME = 36.0
 
 class MeterView : androidx.appcompat.widget.AppCompatImageView {
-    constructor(context: Context) :
-            super(context)
+    constructor(context: Context) : super(context)
 
     constructor(context: Context, attrs: AttributeSet?) : super(context, attrs)
     constructor(context: Context, attrs: AttributeSet?, defStyleAttr: Int) : super(
-        context,attrs,defStyleAttr)
+        context, attrs, defStyleAttr
+    )
 
 
-    private var backGroundColor = run{
+    private var backGroundColor = run {
         val typedValue = TypedValue()
         context.theme.resolveAttribute(android.R.attr.colorBackground, typedValue, true)
         typedValue.data
 
     }
-
-    set(value) {
-        field=value
-        invalidate()
-    }
+        set(value) {
+            field = value
+            invalidate()
+        }
 
 
     var level = 0f
-    set(value) {
-        field = logOfLevel(value.toDouble()) //db scale
-        invalidate()
-    }
+        set(value) {
+            field = logOfLevel(value.toDouble()) //db scale
+            invalidate()
+        }
 
 
     private fun logOfLevel(baseLevel: Double): Float {

@@ -6,6 +6,7 @@ import android.media.MediaFormat
 import androidx.annotation.IntRange
 import java.io.IOException
 import java.io.InputStream
+import java.util.concurrent.atomic.AtomicLong
 
 
 /**
@@ -28,7 +29,7 @@ import java.io.InputStream
  * @see     java.io.InputStream#read(byte b[], int off, int len)
  */
 
-abstract class AudioInputStream protected constructor() :    InputStream(), AutoCloseable {
+abstract class AudioInputStream protected constructor() : InputStream(), AutoCloseable {
 
 
     /**  Class constructor.
@@ -43,17 +44,18 @@ abstract class AudioInputStream protected constructor() :    InputStream(), Auto
      *
      */
     @JvmOverloads
-    constructor(  @IntRange(from = 2400, to= 96000) samplingRate:Int,
-                  @IntRange(from = 1, to=2)channelsNumber: Int,
-                  streamDuration: Long = 0) : this() {
-        duration=streamDuration
-        channelsCount=channelsNumber.coerceAtMost(2)
-        sampleRate=samplingRate
-        channelConfig=channelConfig(channelsNumber)
-        bytesPerSample = if (encoding== ENCODING_PCM_16BIT) 2  else 1
-        frameSize=bytesPerSample*channelsCount
+    constructor(
+        @IntRange(from = 2400, to = 96000) samplingRate: Int,
+        @IntRange(from = 1, to = 2) channelsNumber: Int,
+        streamDuration: Long = 0
+    ) : this() {
+        duration = streamDuration
+        channelsCount = channelsNumber.coerceAtMost(2)
+        sampleRate = samplingRate
+        channelConfig = channelConfig(channelsNumber)
+        bytesPerSample = if (encoding == ENCODING_PCM_16BIT) 2 else 1
+        frameSize = bytesPerSample * channelsCount
     }
-
 
 
     /** Class constructor.
@@ -64,32 +66,31 @@ abstract class AudioInputStream protected constructor() :    InputStream(), Auto
      */
     @Throws(IllegalArgumentException::class)
     constructor(format: MediaFormat) : this() {
-        mediaFormat=format
+        mediaFormat = format
         val duration = mediaFormat?.getLong("durationUs")?.div(1000)
         val sampleRate = mediaFormat?.getInteger("sample-rate")
         val channelsCount = mediaFormat?.getInteger("channel-count")
 
-        var encoding:Int?
+        var encoding: Int?
         try {
-            encoding= mediaFormat?.getInteger("pcm-encoding")
-            if (encoding!= ENCODING_PCM_16BIT)
-                throw IllegalArgumentException ("Only PCM 16 bit encoding currently supported")
-        }catch (e:NullPointerException){
+            encoding = mediaFormat?.getInteger("pcm-encoding")
+            if (encoding != ENCODING_PCM_16BIT)
+                throw IllegalArgumentException("Only PCM 16 bit encoding currently supported")
+        } catch (e: NullPointerException) {
             // если ключа нет, метод бросает это исключение, то все в порядке, 16 битная кодировка
             encoding = ENCODING_PCM_16BIT
         }
-        bytesPerSample = if (encoding== ENCODING_PCM_16BIT) 2  else 1
-        if (duration != null) this.duration=duration
-        if (sampleRate != null) this.sampleRate=sampleRate
+        bytesPerSample = if (encoding == ENCODING_PCM_16BIT) 2 else 1
+        if (duration != null) this.duration = duration
+        if (sampleRate != null) this.sampleRate = sampleRate
         if (channelsCount != null) {
-            this.channelsCount=channelsCount
-            channelConfig=channelConfig(channelsCount)
+            this.channelsCount = channelsCount
+            channelConfig = channelConfig(channelsCount)
         }
-        if (this.sampleRate<=0||channelsCount !in 1..2) throw
-            IllegalArgumentException ("Need valid sampleRate and channelsCount parameters in MediaFormat" )
+        if (this.sampleRate <= 0 || channelsCount !in 1..2) throw IllegalArgumentException("Need valid sampleRate and channelsCount parameters in MediaFormat")
 
-        frameSize=bytesPerSample*this.channelsCount
-   }
+        frameSize = bytesPerSample * this.channelsCount
+    }
 
     /**
      * The sample rate of an audio format, in Hz
@@ -97,18 +98,18 @@ abstract class AudioInputStream protected constructor() :    InputStream(), Auto
      * from 8000 to 48000, with standard values 8000,11025,12000,16000,22050,24000,32000,
      * 44100,48000.
      */
-    var sampleRate:Int =0
+    var sampleRate: Int = 0
         protected set
 
     /**
      * The audio format of stream as MediaFormat if known or null
      * */
-    var mediaFormat:MediaFormat?=null
+    var mediaFormat: MediaFormat? = null
         protected set
 
     /** Must be set in constructor of implementing class
-    * The duration in ms of finite audio stream if known or 0
-    * */
+     * The duration in ms of finite audio stream if known or 0
+     * */
     var duration: Long = 0
         protected set
 
@@ -116,7 +117,7 @@ abstract class AudioInputStream protected constructor() :    InputStream(), Auto
      * Value = 1 for mono and 2 for stereo audio streams.
      * Values outside 1..2 range mean unfinished initialisation or non-standard audio stream
      * */
-    var channelsCount:Int = 0
+    var channelsCount: Int = 0
         protected set
 
     /**
@@ -124,22 +125,22 @@ abstract class AudioInputStream protected constructor() :    InputStream(), Auto
      * Any other range means unfinished initialisation or non-standard audio stream.
      * @see channelConfig(channels: Int)
      * */
-    var channelConfig:Int= AudioFormat.CHANNEL_INVALID
+    var channelConfig: Int = AudioFormat.CHANNEL_INVALID
         protected set
 
     /** Always 2, as ENCODING_PCM_8BIT currently not supported
      * */
-    var bytesPerSample: Int =2
+    var bytesPerSample: Int = 2
         protected set
 
     /** Must be set in constructor of implementing class to 4 for stereo and 2 for mono streams
      * */
-    var frameSize: Int=bytesPerSample*channelsCount
+    var frameSize: Int = bytesPerSample * channelsCount
         protected set
 
     /** Always ENCODING_PCM_16BIT as ENCODING_PCM_8BIT currently not supported
-    * */
-    var encoding:Int= ENCODING_PCM_16BIT
+     * */
+    var encoding: Int = ENCODING_PCM_16BIT
         protected set
 
     /**
@@ -147,27 +148,30 @@ abstract class AudioInputStream protected constructor() :    InputStream(), Auto
      * of bytes read from stream
      */
     @Volatile
-    open var timestamp=0L
+    open var timestamp = 0L
         protected set
 
 
+
+
+    private val bytesReadInternal: AtomicLong = AtomicLong(0L)
+    @Synchronized
+    protected fun moreBytesRead(moreBytesRead: Number) {
+        val bytesRead = bytesReadInternal.addAndGet(moreBytesRead.toLong())
+        timestamp = (frameTimeMs(sampleRate) * bytesRead).toLong()
+    }
     /**
      * The number of bytes already read from stream
      * */
-    @Volatile
-    open var bytesRead = 0L
-    @Synchronized
-    protected set(value) {
-            field=value
-            timestamp=(frameTimeMs(sampleRate)*value).toLong()
-    }
+    val bytesRead
+        get() = bytesReadInternal.get()
+
 
     /**
      * A callback will be called on each read(...) and readShorts(...)
      *
      */
-    open var onReadCallback: ((sentBytes:Long) -> Unit)? ={  }
-
+    open var onReadCallback: ((sentBytes: Long) -> Unit)? = { }
 
 
     /**
@@ -177,31 +181,31 @@ abstract class AudioInputStream protected constructor() :    InputStream(), Auto
      * Override the method to return -1 if there is no estimated stream length (for example,
      * for endless streams)
      */
-    open fun totalBytesEstimate():Long{
-        val bytesEstimate=((this.sampleRate*this.duration*bytesPerSample*
-                this.channelsCount)/1000.0).toLong()
-        return if (bytesEstimate==0L) -1L else bytesEstimate
+    open fun totalBytesEstimate(): Long {
+        val bytesEstimate = ((this.sampleRate * this.duration * bytesPerSample *
+                this.channelsCount) / 1000.0).toLong()
+        return if (bytesEstimate == 0L) -1L else bytesEstimate
     }
 
     /**
      * @return -1 if there is no estimated stream length (for example, for endless streams)
      * or estimated number of unplayed bytes in the stream
      */
-    open fun bytesRemainingEstimate():Long{
-        return if (totalBytesEstimate()<0) -1 else
-            (totalBytesEstimate()-bytesRead).coerceAtLeast(0)
+    open fun bytesRemainingEstimate(): Long {
+        return if (totalBytesEstimate() < 0) -1 else
+            (totalBytesEstimate() - bytesRead).coerceAtLeast(0)
     }
 
     /**
-    * @return an estimate of the number of bytes that can be read (or skipped over) from this input
-     stream without blocking by the next invocation of a method for this input stream single read
-     or skip of this many bytes will not block, but may read or skip fewer bytes.
+     * @return an estimate of the number of bytes that can be read (or skipped over) from this input
+    stream without blocking by the next invocation of a method for this input stream single read
+    or skip of this many bytes will not block, but may read or skip fewer bytes.
     Note that while some implementations of AudioInputStream will return the total number of bytes
     in the stream, many will not. It is never correct to use the return value of this method
     to allocate a buffer intended to hold all data in this stream.
      */
     override fun available(): Int {
-        return (totalBytesEstimate()-bytesRead).toInt().coerceAtLeast(0)
+        return (totalBytesEstimate() - bytesRead).toInt().coerceAtLeast(0)
     }
 
 
@@ -269,6 +273,7 @@ abstract class AudioInputStream protected constructor() :    InputStream(), Auto
      * <code>b.length - off</code>
      * @see        java.io.InputStream#read()
      */
+
     @Throws(IOException::class)
     abstract override fun read(b: ByteArray?, off: Int, len: Int): Int
 
@@ -277,10 +282,10 @@ abstract class AudioInputStream protected constructor() :    InputStream(), Auto
      * Reads up to <code>b.len</code> bytes of data from the input stream into
      * an array of bytes calling read(b,0, b.size)
      */
-     @Throws(IOException::class)
+    @Throws(IOException::class)
     override fun read(b: ByteArray?): Int {
         if (b == null) throw NullPointerException("Null byte array passed") else
-            return read(b,0, b.size)
+            return read(b, 0, b.size)
     }
 
     /**
@@ -305,8 +310,10 @@ abstract class AudioInputStream protected constructor() :    InputStream(), Auto
      */
     @Throws(IOException::class)
     open fun readShorts(b: ShortArray, off: Int, len: Int): Int {
-        throw NoSuchMethodException("Check canReadShorts() value. Implementing class  must override " +
-                "readShorts(b: ShortArray, off: Int, len: Int) and canReadShorts()")
+        throw NoSuchMethodException(
+            "Check canReadShorts() value. Implementing class  must override " +
+                    "readShorts(b: ShortArray, off: Int, len: Int) and canReadShorts()"
+        )
     }
 
     /**
@@ -328,8 +335,10 @@ abstract class AudioInputStream protected constructor() :    InputStream(), Auto
      */
     @Throws(IOException::class)
     open fun readShorts(b: ShortArray): Int {
-        throw NoSuchMethodException("Check canReadShorts() value. Implementing class  must override " +
-                "readShorts(b: ShortArray) and canReadShorts()")
+        throw NoSuchMethodException(
+            "Check canReadShorts() value. Implementing class  must override " +
+                    "readShorts(b: ShortArray) and canReadShorts()"
+        )
     }
 
     /**
@@ -396,17 +405,17 @@ abstract class AudioInputStream protected constructor() :    InputStream(), Auto
      * True if readShorts(b: ShortArray) and readShorts(b: ShortArray, off: Int, len: Int)
      * methods supported by class
      */
-    open fun canReadShorts():Boolean = false
+    open fun canReadShorts(): Boolean = false
 
 
-    private fun frameTimeMs(rate:Int):Double{
-        return 1000.0/(rate*frameSize.toDouble())
+    private fun frameTimeMs(rate: Int): Double {
+        return 1000.0 / (rate * frameSize.toDouble())
     }
 
     fun channelConfig(channels: Int) = when (channels) {
-        1-> AudioFormat.CHANNEL_IN_MONO
-        2-> AudioFormat.CHANNEL_IN_STEREO
-        else ->{
+        1 -> AudioFormat.CHANNEL_IN_MONO
+        2 -> AudioFormat.CHANNEL_IN_STEREO
+        else -> {
             AudioFormat.CHANNEL_INVALID
         }
     }

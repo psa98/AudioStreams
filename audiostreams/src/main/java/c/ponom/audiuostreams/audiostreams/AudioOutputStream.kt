@@ -5,6 +5,7 @@ import android.media.MediaFormat
 import androidx.annotation.IntRange
 import java.io.IOException
 import java.io.OutputStream
+import java.util.concurrent.atomic.AtomicLong
 
 abstract class AudioOutputStream :
     OutputStream,  AutoCloseable{
@@ -85,16 +86,17 @@ abstract class AudioOutputStream :
     var timestamp=0L
     protected set
 
+
+    private val bytesSentInternal: AtomicLong = AtomicLong(0L)
+    protected fun moreBytesSent(moreBytesSent: Number) {
+        val bytesSent = bytesSentInternal.addAndGet(moreBytesSent.toLong())
+        timestamp = (frameTimeMs(sampleRate) * bytesSent).toLong()
+    }
     /**
      * The number of bytes already sent to stream
      * */
-    @Volatile
-    var bytesSent: Long = 0
-    @Synchronized
-    protected set(value) {
-        field=value
-        timestamp=(frameTimeMs(this.sampleRate)*value).toLong()
-    }
+    val bytesSent
+        get() = bytesSentInternal.get()
 
     /**
      * If implemented, sets the specified output gain value on all channels of this track.
@@ -129,6 +131,7 @@ abstract class AudioOutputStream :
      *Writes the audio data to the output stream by calling write(b, 0 ,b.size)
      * @throws IOException if an I/O error occurs.
      */
+    @Synchronized
     override fun write(b: ByteArray) {
         write(b,0,b.size)
     }

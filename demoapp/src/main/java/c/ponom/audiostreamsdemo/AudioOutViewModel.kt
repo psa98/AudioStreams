@@ -21,31 +21,32 @@ class AudioOutViewModel : ViewModel() {
 
 
     private lateinit var audioInStream: TestSoundInputStream
-    private var audioOutStream: AudioTrackOutputStream?=null
+    private var audioOutStream: AudioTrackOutputStream? = null
     var secondsPlayed: MutableLiveData<Float> = MutableLiveData(0.0f)
     var recorderState: MutableLiveData<AudioOutState> = MutableLiveData(STOPPED)
     var errorData: MutableLiveData<String> = MutableLiveData("")
     private lateinit var audioPump: StreamPump
 
 
-
     fun play(freq: Double, volume: Short, sampleRate: Int) {
         try {
-            audioInStream = TestSoundInputStream(freq,volume, sampleRate, CHANNEL_IN_MONO)
-            audioOutStream= AudioTrackOutputStream(audioInStream.sampleRate,
-            audioInStream.channelsCount,1000)
-         }catch (e:Exception){
+            audioInStream = TestSoundInputStream(freq, volume, sampleRate, CHANNEL_IN_MONO)
+            audioOutStream = AudioTrackOutputStream(
+                audioInStream.sampleRate,
+                audioInStream.channelsCount, 1000
+            )
+        } catch (e: Exception) {
             onError(e)
             return
         }
 
-        audioPump=StreamPump(audioInStream, audioOutStream!!,sampleRate,
+        audioPump = StreamPump(audioInStream, audioOutStream!!, sampleRate,
             // testing audioInStream.timestamp field
-            onWrite =  { secondsPlayed.postValue(audioOutStream!!.timestamp/100/10f)},
-            onFinish = {recorderState.postValue(STOPPED)},
-            onFatalError= {onError(it)})
-        Log.i(TAG, "play: AudioTrackOutputStream buffer =" +
-                "${audioOutStream?.audioOut?.bufferSizeInFrames} frames" )
+            onWrite = { secondsPlayed.postValue(audioOutStream!!.timestamp / 100 / 10f) },
+            onFinish = { recorderState.postValue(STOPPED) },
+            onFatalError = { onError(it) })
+        Log.i(TAG, "playing: AudioTrackOutputStream buffer =" +
+                    "${audioOutStream?.audioOut?.bufferSizeInFrames} frames")
         audioPump.start(false)
         recorderState.postValue(PLAYING)
         viewModelScope.launch {
@@ -55,7 +56,7 @@ class AudioOutViewModel : ViewModel() {
 
     }
 
-    private fun onError (e:Exception) {
+    private fun onError(e: Exception) {
         Log.e(TAG, "Error=${e.localizedMessage}")
         errorData.postValue(e.localizedMessage)
         recorderState.postValue(ERROR)
@@ -65,42 +66,36 @@ class AudioOutViewModel : ViewModel() {
 
 
     fun stopPlaying() {
-        if (recorderState.value!=PLAYING) return
-        val audioOut=audioOutStream?.audioOut
-        /* Can access audioOut object for low-level control
-        */
-        if (audioOut?.playState==PLAYSTATE_STOPPED) return
-        if (audioPump.state==StreamPump.State.PUMPING){
-            // code below prevent audible clicks on stopping playback,
+        if (recorderState.value != PLAYING) return
+        val audioOut = audioOutStream?.audioOut
+        /* Can access audioOut object for low-level control */
+        if (audioOut?.playState == PLAYSTATE_STOPPED) return
+        if (audioPump.state == StreamPump.State.PUMPING) {
+            // The code below prevent audible clicks on stopping playback,
             // see audioOutStream.stopAndClear() source code
             audioOut?.setVolume(0.0f)
             CoroutineScope(Default).launch {
                 recorderState.postValue(STOPPED)
                 delay(60)
-                // Test for  StreamPump class auto close feature with stop(false)
+                // Test for StreamPump class auto close feature with stop(false)
                 audioOut?.stop()
                 audioPump.stop(false)
                 audioOutStream?.stop()
                 audioInStream.close()
                 audioOutStream?.close()
-
             }
         }
     }
 
     fun forceError() {
         // Test for onError in StreamPump
-        val audioOut=audioOutStream?.audioOut
+        val audioOut = audioOutStream?.audioOut
         if (audioOut?.playState == PLAYSTATE_PLAYING) audioOut.release()
         // Output to channel after audioOut.release() will force an error.
     }
 
     fun setVolume(volume: Float) {
-        if (recorderState.value == PLAYING) {
-            val outStream = audioOutStream
-            if (outStream != null && !outStream.closed)
-                outStream.setVolume(volume)
-        }
+        audioOutStream?.setVolume(volume)
     }
 
     override fun onCleared() {
@@ -109,7 +104,7 @@ class AudioOutViewModel : ViewModel() {
     }
 }
 
-enum class AudioOutState{
+enum class AudioOutState {
     STOPPED,
     PLAYING,
     ERROR

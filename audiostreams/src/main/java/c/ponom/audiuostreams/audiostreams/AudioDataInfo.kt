@@ -125,11 +125,6 @@ class AudioDataInfo{
 
 
 
-
-
-
-
-
     /* Static and async API for class */
     companion object {
 
@@ -151,7 +146,6 @@ class AudioDataInfo{
          */
         @JvmOverloads
         @JvmStatic
-        @Suppress("BlockingMethodInNonBlockingContext")
         fun getMediaDataAsync(
             context: Context, uri: Uri, track: Int = 0,
             headers: Map<String, String>? = null): Deferred<Result<AudioDataInfo>> =
@@ -174,7 +168,6 @@ class AudioDataInfo{
         @JvmStatic
         fun getMediaDataAsync(path: String, track: Int = 0):  Deferred<Result<AudioDataInfo>> =
             CoroutineScope(IO).async {runCatching{AudioDataInfo(path,track) }}
-
 
         /**
          *
@@ -227,8 +220,8 @@ class AudioDataInfo{
         }
 
         /**
-         * Returns the HashMap object containing info for media tracks properties of media
-         * @return  the HashMap<Int, AudioDataInfo.AudioTrackData>object containing
+         * Returns the Map object containing info for media tracks properties of media
+         * @return  the Map<Int, AudioDataInfo.AudioTrackData>object containing
          * info for media tracks properties of media located at the path.
          * @throws IllegalArgumentException if the data at path is not a valid audio source,
          * @throws IOException if the file or url is not available.
@@ -237,7 +230,7 @@ class AudioDataInfo{
          */
         @JvmStatic
         @Throws(IllegalArgumentException::class, IOException::class)
-        fun getTrackData(path: String): HashMap<Int, AudioTrackData> {
+        fun getTrackData(path: String): Map<Int, AudioTrackData> {
             val extractor = MediaExtractor()
             extractor.setDataSource(path)
             return trackData(extractor)
@@ -248,7 +241,7 @@ class AudioDataInfo{
          * @return  the HashMap<Int, AudioDataInfo.AudioTrackData>object containing
          * info for media tracks properties of media located at the path
          * @throws IllegalArgumentException if the data at uri is not a valid audio source,
-         * @throws IOException if file or url is not available
+         * @throws IOException if a file or a url is not available
          * @param context the Context to use when resolving the Uri
          * @param uri the path to audio file. When <code>uri</code> refers to a network file the
          * {@link android.Manifest.permission#INTERNET} permission is required.
@@ -260,13 +253,13 @@ class AudioDataInfo{
         @JvmOverloads
         @Throws(IllegalArgumentException::class, IOException::class)
         fun getTrackData(context: Context, uri: Uri,headers: Map<String,
-                String>? = null): HashMap<Int, AudioTrackData> {
+                String>? = null): Map<Int, AudioTrackData> {
             val extractor = MediaExtractor()
             extractor.setDataSource(context,uri,headers)
             return trackData(extractor)
         }
 
-        private fun trackData(extractor: MediaExtractor):HashMap<Int, AudioTrackData>  {
+        private fun trackData(extractor: MediaExtractor):Map<Int, AudioTrackData>  {
             val tracks = ArrayList<MediaFormat>()
             val audioTracks = HashMap<Int,AudioTrackData>()
             for (i in 0 until extractor.trackCount)

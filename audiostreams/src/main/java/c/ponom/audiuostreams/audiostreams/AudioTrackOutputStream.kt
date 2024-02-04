@@ -176,7 +176,7 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
      * @param vol output gain for all channels.
      */
     override fun setVolume(vol: Float) {
-       currentVolume =vol
+       currentVolume = vol
        audioOut?.setVolume(vol.coerceAtLeast(0f).coerceAtMost(1f))
     }
 
@@ -194,7 +194,7 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
      * @throws IllegalArgumentException if the parameters don't resolve to valid data and indexes
      * @throws NullPointerException if a null array passed
      */
-
+    @Synchronized
     @Throws(IOException::class,NullPointerException::class,IllegalArgumentException::class)
     override fun write(b: ByteArray?, off: Int, len: Int){
         // should add evenness checks for all params in all bytes writes converted to short
@@ -204,7 +204,7 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
             throw IllegalArgumentException("Wrong write(....) parameters")
         val samplesShorts = ArrayUtils.byteToShortArrayLittleEndian(b)
         val result:Int = audioOut!!.write(samplesShorts, off/2, len/2)
-        bytesSent += result.coerceAtLeast(0)
+        moreBytesSent(result.coerceAtLeast(0))
         if (result<0){
             audioOut?.release()
             audioOut=null
@@ -248,14 +248,15 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
      * anymore and needs to be recreated
      * @throws IllegalArgumentException if the parameters don't resolve to valid data and indexes
      */
+    @Synchronized
     @Throws(IllegalArgumentException::class,IOException::class)
     override fun writeShorts(b: ShortArray, off: Int, len: Int) {
         if (audioOut == null||closed) throw IOException("Stream closed or in error state")
         val size=b.size
-        if (off > len ||len>size||off>size||off<0||len<0)
+        if (off < 0 || len < 0 || len > size - off)
             throw IllegalArgumentException("Wrong write(....) parameters")
         val result = audioOut!!.write(b, off, len, WRITE_BLOCKING)
-        bytesSent += result.coerceAtLeast(0)*2
+        moreBytesSent(result.coerceAtLeast(0)*2)
         if (result<0){
             audioOut?.release()
             audioOut=null
@@ -270,6 +271,7 @@ class AudioTrackOutputStream private constructor() : AudioOutputStream(){
      * write(...) calls are no longer valid after this call and will throw exception
      *  Do nothing if the stream already closed
      */
+    @Synchronized
     override fun close() {
         stopAndClear()
         audioOut?.release()
