@@ -14,7 +14,10 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.LiveData
 import c.ponom.audiostreamsdemo.databinding.FragmentFilesBinding
 import c.ponom.audiuostreams.audiostreams.AudioDataInfo
-
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.yield
 
 
 class FilesFragment : Fragment() {
@@ -23,7 +26,7 @@ class FilesFragment : Fragment() {
      * Demo for AudioTrackOutputStream, AudioFileSoundSource classes, timestamp property,
      * AudioDataInfo class
      */
-
+    private var mediaJob: Job? = null
     private var _binding: FragmentFilesBinding? = null
     private var activityResultLaunch = registerForActivityResult(
         StartActivityForResult()
@@ -71,6 +74,7 @@ class FilesFragment : Fragment() {
         binding.playButton.isEnabled = true
         binding.stopButton.isEnabled = false
         viewModel.playing = false
+        mediaJob?.cancel()
     }
 
     override fun onDestroyView() {
@@ -89,14 +93,18 @@ class FilesFragment : Fragment() {
 
 
     @SuppressLint("SetTextI18n")
-    private fun callback(result: ActivityResult) {
-        val uri = result.data?.data ?: return
+    private fun callback(resultData: ActivityResult) {
+        val uri = resultData.data?.data ?: return
         Log.i(TAG, "callback Uri = $uri")
-        val tracks = AudioDataInfo.getTrackData(requireContext(), uri)
-        val mediaData = AudioDataInfo(requireContext(), uri)
-        binding.textMediaData.text = "Media Data: $mediaData \n Media Data for tracks:  $tracks"
         binding.stopButton.isEnabled = true
         viewModel.playUri(requireContext(), uri)
+        val request = AudioDataInfo.getMediaDataAsync(requireContext(), uri)
+        mediaJob = MainScope().launch {
+            val result = request.await()
+            yield()
+            binding.textMediaData.text = "Media Data: $result \n "
+        }
     }
+
 
 }

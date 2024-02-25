@@ -47,7 +47,7 @@ object ArrayUtils {
     }
 
     /** Convert a short array to the byte array using little-endian ordering.<BR>
-     * In the android sound subsystem and most of native 16-bit audio formats audio samples
+     * In the android sound subsystem and most native 16-bit audio formats audio samples
      * in the form of signed short values stored and processed by hardware as little-endian byte
      * arrays.<BR>
      * Mono samples:<BR>
@@ -79,6 +79,5 @@ object ArrayUtils {
     fun ByteArray.toShortArray(): ShortArray {
         return byteToShortArray(this)
     }
-
 
 }
