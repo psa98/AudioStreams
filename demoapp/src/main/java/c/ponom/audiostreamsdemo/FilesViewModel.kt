@@ -37,9 +37,8 @@ class FilesViewModel : ViewModel() {
             val bufferArray = ShortArray(1024)
             var lastTime = ""
             playing = true
-            do {
+            while (playing) {
                 try {
-                    if (!playing) break
                     val samples = audioInStream.readShorts(bufferArray)
                     if (samples > 0) audioOutStream.writeShorts(bufferArray, 0, samples)
                     else {
@@ -55,7 +54,7 @@ class FilesViewModel : ViewModel() {
                     e.printStackTrace()
                     break
                 }
-            } while (true)
+            }
             playing = false
             audioOutStream.close()
             audioInStream.close()
