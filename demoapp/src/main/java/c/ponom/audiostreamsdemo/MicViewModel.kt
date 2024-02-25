@@ -69,27 +69,27 @@ class MicTestViewModel : ViewModel() {
         sampleRate: Int, testMicStream: MicSoundInputStream, encoderStream: Mp3OutputAudioStream
     ) {
         val buffer = ShortArray(sampleRate / 4)
-        do {
+        while (recordingIsOn) {
             try {
-                val bytes = testMicStream.readShorts(buffer)
-                if (bytes == 0) continue
-                if (bytes < 0) {
+                val shorts = testMicStream.readShorts(buffer)
+                if (shorts == 0) continue
+                if (shorts < 0) {
                     recordingIsOn = false
                     break
                 }
                 //Using readShorts and writeShorts with simple on the fly buffer preprocessing
-                val newBuffer = doSimpleProcessing(buffer.copyOf(bytes), targetVolume)
+                val newBuffer = doSimpleProcessing(buffer.copyOf(shorts), targetVolume)
                 val level = getRMSVolume(newBuffer)
                 recordLevel.postValue(level.toFloat())
                 bytesPassed.postValue(testMicStream.bytesRead.toInt())
-                encoderStream.writeShorts(newBuffer)
+                encoderStream.writeShorts(newBuffer,0,shorts)
             } catch (e: java.lang.Exception) {
                 recordingIsOn = false
                 Log.e(TAG, "Error=${e.localizedMessage}")
                 recorderState.postValue(NO_FILE_RECORDED)
                 break
             }
-        } while (recordingIsOn)
+        }
         try {
             testMicStream.close()
             encoderStream.close()
@@ -101,6 +101,7 @@ class MicTestViewModel : ViewModel() {
     fun stopRecording() {
         recordingIsOn = false
         recorderState.postValue(STOPPED_READY)
+
     }
 
     fun play() {
@@ -124,6 +125,7 @@ class MicTestViewModel : ViewModel() {
     fun stopPlaying() {
         if (audioPump.state == StreamPump.State.PUMPING) audioPump.stop()
         recorderState.postValue(STOPPED_READY)
+        recordLevel.postValue(0f)
     }
 }
 

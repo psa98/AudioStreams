@@ -5,7 +5,6 @@ import android.annotation.SuppressLint
 import android.graphics.Color
 import android.media.MediaRecorder
 import android.os.Bundle
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -64,7 +63,9 @@ class MicFragment : Fragment() {
 
     private fun setupButtons() {
         recordButton.setOnClickListener { viewModel.record(source, sampleRate) }
-        stopRecordingButton.setOnClickListener{ viewModel.stopRecording() }
+        stopRecordingButton.setOnClickListener{
+            viewModel.stopRecording()
+        }
         playRecordButton.setOnClickListener{ viewModel.play() }
         stopPlayingButton.setOnClickListener{
             viewModel.stopPlaying()
@@ -176,8 +177,7 @@ class MicFragment : Fragment() {
                 val vol = (value/100f)
                 viewModel.targetVolume=vol
                 binding.volumeControlValue.text= "${(vol * 100).toInt()}%"
-                Log.e(TAG, "onValueChange: =$vol")
-            })
+             })
         }
     }
 

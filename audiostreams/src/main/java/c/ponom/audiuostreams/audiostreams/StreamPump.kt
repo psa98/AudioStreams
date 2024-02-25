@@ -71,6 +71,7 @@ class StreamPump @JvmOverloads constructor(
                         } else read = -1
                     } else {
                         read = inputStream.read(byteBuffer)
+                        if (state == FINISHED || state == FATAL_ERROR) break
                         if (read >= 0) {
                             bytesSent += read
                             onWrite(bytesSent)
