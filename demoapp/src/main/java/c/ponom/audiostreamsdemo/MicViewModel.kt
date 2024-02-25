@@ -10,7 +10,7 @@ import c.ponom.audiostreamsdemo.MicRecordState.PLAYING
 import c.ponom.audiostreamsdemo.MicRecordState.RECORDING
 import c.ponom.audiostreamsdemo.MicRecordState.STOPPED_READY
 import c.ponom.audiostreamsdemo.RecordLevelControl.doSimpleProcessing
-import c.ponom.audiuostreams.audiostreams.ArrayUtils.byteToShortArrayLittleEndian
+import c.ponom.audiuostreams.audiostreams.ArrayUtils.toShortArrayLittleEndian
 import c.ponom.audiuostreams.audiostreams.AudioFileSoundStream
 import c.ponom.audiuostreams.audiostreams.AudioTrackOutputStream
 import c.ponom.audiuostreams.audiostreams.MicSoundInputStream
@@ -80,7 +80,10 @@ class MicTestViewModel : ViewModel() {
                 //Using readShorts and writeShorts with simple on the fly buffer preprocessing
                 val newBuffer = doSimpleProcessing(buffer.copyOf(shorts), targetVolume)
                 val level = getRMSVolume(newBuffer)
-                recordLevel.postValue(level.toFloat())
+                if (recordingIsOn)
+                    recordLevel.postValue(level.toFloat())
+                else
+                    recordLevel.postValue(0f)
                 bytesPassed.postValue(testMicStream.bytesRead.toInt())
                 encoderStream.writeShorts(newBuffer,0,shorts)
             } catch (e: java.lang.Exception) {
@@ -101,7 +104,6 @@ class MicTestViewModel : ViewModel() {
     fun stopRecording() {
         recordingIsOn = false
         recorderState.postValue(STOPPED_READY)
-
     }
 
     fun play() {
@@ -110,7 +112,7 @@ class MicTestViewModel : ViewModel() {
         audioPump = StreamPump(audioIn,
             audioOut,
             2048,
-            onEachPump = { recordLevel.postValue(getRMSVolume(byteToShortArrayLittleEndian(it)).toFloat()) },
+            onEachPump = { recordLevel.postValue(getRMSVolume(it.toShortArrayLittleEndian()).toFloat()) },
             onWrite = { bytesPassed.postValue(it.toInt()) },
             onFinish = { recorderState.postValue(STOPPED_READY) },
             onFatalError = {
@@ -125,7 +127,6 @@ class MicTestViewModel : ViewModel() {
     fun stopPlaying() {
         if (audioPump.state == StreamPump.State.PUMPING) audioPump.stop()
         recorderState.postValue(STOPPED_READY)
-        recordLevel.postValue(0f)
     }
 }
 
