@@ -3,6 +3,14 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="c.ponom.audiostreamsdemo">
 
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <uses-permission android:name="android.permission.BROADCAST_STICKY" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" />
+
     <application
         android:name="c.ponom.audiostreamsdemo.App"
         android:allowBackup="false"
@@ -13,7 +21,6 @@
         android:theme="@style/Theme.AudioStreams"
         tools:replace="android:allowBackup">
 
-        <activity android:name="c.ponom.audiuostreams.audiostreams.newfeatures.BluetoothAudioRecorder" />
         <activity
             android:name="c.ponom.audiostreamsdemo.TestActivity"
             android:exported="true"
@@ -21,18 +28,10 @@
             tools:ignore="LockedOrientationActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
     </application>
-    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
-    <uses-permission android:name="android.permission.BROADCAST_STICKY" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
-    <uses-permission
-        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-        tools:ignore="ScopedStorage" />
 
 </manifest>
